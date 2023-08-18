@@ -4,6 +4,8 @@
 import serial
 import threading
 import time
+from PyQt6.QtCore import (Qt, pyqtSignal)
+from PyQt6.QtWidgets import QWidget
 
 VERSION = "3"
 
@@ -36,31 +38,51 @@ def get_port_list():
     import serial.tools.list_ports
     return [p for p in serial.tools.list_ports.comports() if p.vid]
 
-class Board:
+class Board(QWidget):
+    valueChanged = pyqtSignal(object)
     """Represent a single ADC-8 board."""
 
-    def __init__(self, portname):
-        """\
+    def __init__(self, portname=None, parent=None):
+        super(Board, self).__init__(parent)
+        self._msg = ""
+        """
         Initialize an ADC-8 Board object.  portname is the name of
         the board's USB serial port device, which will be opened in
         exclusive mode.
         """
+        self.connected = False
 
         if portname is None:
-            raise ValueError("No serial port name specified")
-        self.dev = serial.Serial(portname, exclusive=True)
-        time.sleep(0.8)
+            #print("No serial port name specified")
+            self.dev = None
+        else :
+            self.dev = serial.Serial(portname, exclusive=True)
+            time.sleep(0.8)
 
-        # Verify that the device is an ADC-8 board running the
-        # proper firmware
-        a = self.get_board_id()
-        if not a.startswith("ADC-8"):
-            self.close()
-            raise ValueError("Device is not an ADC-8 board")
+            # Verify that the device is an ADC-8 board running the
+            # proper firmware
+            self.msg = self.get_board_id()
+            if self.msg.startswith("ADC-8"):
+                # self.close()
 
-        self.read = self.dev.read
-        self.read_until = self.dev.read_until
-        self.write = self.dev.write
+                self.read = self.dev.read
+                self.read_until = self.dev.read_until
+                self.write = self.dev.write
+                self.connected = True
+
+            else:
+                self.dev = None
+                print("Device is not an ADC-8 board")
+
+    
+    @property
+    def msg(self):
+        return self._msg
+    
+    @msg.setter
+    def msg(self, value):
+        self._msg = value
+        self.valueChanged.emit(value)
 
     def __repr__(self):
         """String representation of adc8 Board."""
@@ -74,7 +96,6 @@ class Board:
 
     def get_board_id(self):
         """Return the board's identification string and store its serial_number."""
-
         self.dev.timeout = 0.01
         self.dev.write(b'\n')
         self.dev.reset_input_buffer()
