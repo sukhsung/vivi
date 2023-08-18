@@ -1,5 +1,3 @@
-import sys
-
 from PyQt6.QtCore import QSize, Qt
 from PyQt6.QtWidgets import (
     QApplication,
@@ -10,20 +8,17 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QTabWidget,
     QWidget,
-    QGroupBox
+    QGroupBox,
+    QComboBox
 )
 from PyQt6.QtGui import QPalette, QColor, QFont, QFontDatabase
+
+import sys
 import os
+import vivi
 
-class Color(QWidget):
 
-    def __init__(self, color):
-        super(Color, self).__init__()
-        self.setAutoFillBackground(True)
 
-        palette = self.palette()
-        palette.setColor(QPalette.ColorRole.Window, QColor(color))
-        self.setPalette(palette)
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -34,6 +29,12 @@ class MainWindow(QMainWindow):
         group_top = QGroupBox("Vivi")
         group_top.setFixedSize(QSize(1280, 200))
         layout_top = QHBoxLayout()
+        self.dev_list = QComboBox(  )
+        self.dev_list.addItems( [p.device for p in vivi.get_port_list()] )
+        # print( self.dev_list.currentText() )
+        self.board = vivi.Board( self.dev_list.currentText())
+
+        layout_top.addWidget( self.dev_list )
         group_top.setLayout(layout_top)
 
         group_bot = QGroupBox("Viviewer")
@@ -49,7 +50,14 @@ class MainWindow(QMainWindow):
         self.setCentralWidget( widget )
 app = QApplication(sys.argv)
 
+# import serial.tools.list_ports
+# ports =  vivi.get_port_list()
+# for p in ports:
+#     print( p.device )
+
 window = MainWindow()
 window.show()
+
+
 
 app.exec()
