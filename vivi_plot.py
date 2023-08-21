@@ -36,7 +36,7 @@ class Plotter(QObject):
         self.legend.clear()# = self.Plot_Widget.addLegend()
         self.Plot_Objs = []
         for i in range(4):
-            self.Plot_Objs.append(self.Plot_Widget.plot( xs, ys, pen=self.pen[i], name="Channel {}".format(i+1)) )
+            self.Plot_Objs.append(self.Plot_Widget.plot( xs, ys, pen=self.pen[i], name="Ch. {}".format(i+1)) )
     def update_plot_board(self, xs, data):
         for i in range(4):
             self.Plot_Objs[i].setData( xs, data[:,i])

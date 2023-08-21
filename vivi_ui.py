@@ -45,16 +45,17 @@ class MainWindow(QMainWindow):
         self.port_list = vivi.get_port_list()
         self.dev_list.addItems( [p.device for p in self.port_list] )
         self.dev_list.addItems( ["1","2"] )
-        # self.dev_list.currentIndexChanged.connect( self.dev_changed )
         self.PB_connect = QPushButton( "Connect" )
-        self.PB_connect.pressed.connect( self.connect_device )
-        self.PB_disconnect = QPushButton( "Disconnect" )
-        self.PB_disconnect.pressed.connect( self.disconnect_device )
-        self.PB_disconnect.setEnabled( False )
+        self.PB_connect.pressed.connect( self.on_press_connect )
         layout_dev.addWidget( self.dev_list )
         layout_dev.addWidget( self.PB_connect )
-        layout_dev.addWidget( self.PB_disconnect )
+        # layout_dev.addWidget( self.PB_disconnect )
 
+        # Settings Panel
+        self.group_dev_setting = QGroupBox()
+        layout_vivi_setting = QVBoxLayout()
+        self.group_dev_setting.setLayout( layout_vivi_setting )
+        self.group_dev_setting.setFlat( True )
         # All Channel Settings
         layout_dev_input = QHBoxLayout()
         self.CB_allGains = QComboBox()
@@ -99,26 +100,24 @@ class MainWindow(QMainWindow):
         layout_PB_send.addWidget( self.PB_send )
 
         layout_vivi.addLayout( layout_dev )
-        layout_vivi.addLayout( layout_dev_input )
-        layout_vivi.addLayout(layout_gains)
-        layout_vivi.addLayout( layout_dev_status )
-        layout_vivi.addLayout( layout_PB_send )
+        layout_vivi_setting.addLayout( layout_dev_input )
+        layout_vivi_setting.addLayout(layout_gains)
+        layout_vivi_setting.addLayout( layout_dev_status )
+        layout_vivi_setting.addLayout( layout_PB_send )
 
+        layout_vivi.addWidget( self.group_dev_setting)
         group_vivi.setLayout( layout_vivi )
 
         layout_right = QVBoxLayout()
 
-        group_live = QGroupBox("Live View")
+        group_live = QGroupBox("Acquisition")
         group_live.setFixedSize(QSize(790, 200))
         layout_live = QHBoxLayout()
 
         layout_live_control = QVBoxLayout()
-        self.PB_live_start = QPushButton( "Start" )
+        self.PB_live_start = QPushButton( "Live: Start" )
         self.PB_live_start.setEnabled( False )
-        self.PB_live_start.pressed.connect( self.pressed_start_view )
-        self.PB_live_stop = QPushButton( "Stop" )
-        self.PB_live_stop.setEnabled( False )
-        self.PB_live_stop.pressed.connect( self.pressed_stop_view )
+        self.PB_live_start.pressed.connect( self.on_press_start_view )
 
         layout_num_live_sample = QHBoxLayout()
         label_num_live_sample = QLabel("# Live Sample")
@@ -139,7 +138,6 @@ class MainWindow(QMainWindow):
         layout_live_time.addWidget( self.LE_live_time )
 
         layout_live_control.addWidget( self.PB_live_start)
-        layout_live_control.addWidget( self.PB_live_stop)
         layout_live_control.addLayout( layout_num_live_sample)
         layout_live_control.addLayout( layout_num_dft)
         layout_live_control.addLayout( layout_live_time)
@@ -166,7 +164,7 @@ class MainWindow(QMainWindow):
         self.setCentralWidget( widget )
     
     def on_quit( self ):
-        print("I'm quitting")
+        print("Exiting Vivi")
         if not self.board == None:
             self.board.set_stop( True )
             time.sleep(0.3)
@@ -175,30 +173,34 @@ class MainWindow(QMainWindow):
     def on_status_change( self,value ):
         if value == -1: # Board not Ready
             self.PB_live_start.setEnabled( False )
-            self.PB_live_stop.setEnabled( False )
         elif value == 0:# Board Ready
             self.PB_live_start.setEnabled( True )
-            self.PB_live_stop.setEnabled( False )
-        elif value == 1:# Board Acquiring
-            self.PB_live_start.setEnabled( False )
-            self.PB_live_stop.setEnabled( True )
+        # elif value == 1:# Board Acquiring
 
-    def pressed_start_view(self):
+            # self.PB_live_start.setEnabled( False )
+            # self.PB_live_stop.setEnabled( True )
+
+    def on_press_start_view(self):
         if self.board.connected:
-            NUM_DFT = int( self.LE_num_dft.text() )
-            num_pts = math.ceil(NUM_DFT/2)
-            xscale = self.sampling / NUM_DFT
-            xs = xscale* np.arange( num_pts )
-            ys = np.zeros_like( xs )
+            if self.PB_live_start.text() == "Live: Start":
+                NUM_DFT = int( self.LE_num_dft.text() )
+                num_pts = math.ceil(NUM_DFT/2)
+                xscale = self.sampling / NUM_DFT
+                xs = xscale* np.arange( num_pts )
+                ys = np.zeros_like( xs )
 
-            self.board.set_num_live_sample( int( self.LE_num_live_sample.text() ) )
-            self.live_plotter.init_plot_board( xs )
+                self.board.set_num_live_sample( int( self.LE_num_live_sample.text() ) )
+                self.live_plotter.init_plot_board( xs )
 
-            self.board.set_acquire_mode( "live" )
-            self.board.set_listening( False )
+                self.board.set_acquire_mode( "live" )
+                self.board.set_listening( False )
+                self.PB_live_start.setText( "Live: Stop")
+                self.group_dev_setting.setEnabled( False )
+            elif self.PB_live_start.text() == "Live: Stop":
+                self.board.set_stop( True )
+                self.PB_live_start.setText( "Live: Start")
+                self.group_dev_setting.setEnabled( True )
 
-    def pressed_stop_view(self):
-        self.board.set_stop( True )
 
     def received_live_data( self, value ):
         volts = np.array(value)
@@ -238,6 +240,13 @@ class MainWindow(QMainWindow):
     def pressed_send(self):
         self.send_command( self.LE_command.text() )
 
+    def on_press_connect(self):
+        # Connect Push Button
+        if self.PB_connect.text() == "Connect":
+            self.connect_device()
+        elif self.PB_connect.text() == "Disconnect":
+            self.disconnect_device()
+
     def connect_device(self):
         self.thread = QThread()
         # Intiate Device Instance
@@ -261,9 +270,8 @@ class MainWindow(QMainWindow):
         self.thread.start()
         self.set_all_gains()
         self.set_sampling()
-        self.PB_connect.setEnabled( False )
-        self.PB_disconnect.setEnabled( True )
         self.PB_send.setEnabled( True )
+        self.PB_connect.setText( "Disconnect" )
 
     def disconnect_device( self ):
         if self.board.connected:
@@ -271,9 +279,8 @@ class MainWindow(QMainWindow):
             self.thread.quit()
 
             self.board.close_board()
-            self.PB_connect.setEnabled( True )
-            self.PB_disconnect.setEnabled( False )
             self.PB_send.setEnabled( False )
+            self.PB_connect.setText( "Connect" )
 
     def dev_changed(self):
         print( "Selected: "+self.dev_list.currentText())
