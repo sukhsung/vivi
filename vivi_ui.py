@@ -49,7 +49,6 @@ class MainWindow(QMainWindow):
         self.PB_connect.pressed.connect( self.on_press_connect )
         layout_dev.addWidget( self.dev_list )
         layout_dev.addWidget( self.PB_connect )
-        # layout_dev.addWidget( self.PB_disconnect )
 
         # Settings Panel
         self.group_dev_setting = QGroupBox()
@@ -110,49 +109,61 @@ class MainWindow(QMainWindow):
 
         layout_right = QVBoxLayout()
 
-        group_live = QGroupBox("Acquisition")
-        group_live.setFixedSize(QSize(790, 200))
-        layout_live = QHBoxLayout()
+        self.group_acquisition = QGroupBox("Acquisition")
+        self.group_acquisition.setFixedSize(QSize(790, 280))
+        layout_acquisition = QHBoxLayout()
+        layout_acquisition_control = QVBoxLayout() 
 
+        self.group_live_control = QGroupBox()
+        self.group_live_control.setFlat( True )
         layout_live_control = QVBoxLayout()
+        self.group_live_control.setLayout( layout_live_control )
         self.PB_live_start = QPushButton( "Live: Start" )
         self.PB_live_start.setEnabled( False )
         self.PB_live_start.pressed.connect( self.on_press_start_view )
-
         layout_num_live_sample = QHBoxLayout()
         label_num_live_sample = QLabel("# Live Sample")
         self.LE_num_live_sample = QLineEdit("512")
         layout_num_live_sample.addWidget( label_num_live_sample )
         layout_num_live_sample.addWidget( self.LE_num_live_sample )
-
         layout_num_dft = QHBoxLayout()
         label_num_dft = QLabel("# DFT")
         self.LE_num_dft = QLineEdit("128")
         layout_num_dft.addWidget( label_num_dft )
         layout_num_dft.addWidget( self.LE_num_dft )
-
-        layout_live_time = QHBoxLayout()
-        label_live_time = QLabel("time (s)")
-        self.LE_live_time = QLineEdit()
-        layout_live_time.addWidget( label_live_time )
-        layout_live_time.addWidget( self.LE_live_time )
-
         layout_live_control.addWidget( self.PB_live_start)
         layout_live_control.addLayout( layout_num_live_sample)
         layout_live_control.addLayout( layout_num_dft)
-        layout_live_control.addLayout( layout_live_time)
+
+        self.group_acquire_control = QGroupBox()
+        self.group_acquire_control.setFlat( True )
+        layout_acquire_control = QVBoxLayout()
+        self.PB_acquire_start = QPushButton( "Acquire: Start" )
+        self.PB_acquire_start.setEnabled( False )
+        self.PB_acquire_start.pressed.connect( self.on_press_start_acquire )
+        layout_acquire_time = QHBoxLayout()
+        label_acquire_time = QLabel("time (s)")
+        self.LE_acquire_time = QLineEdit("3")
+        layout_acquire_time.addWidget( label_acquire_time )
+        layout_acquire_time.addWidget( self.LE_acquire_time )
+        layout_acquire_control.addWidget( self.PB_acquire_start)
+        layout_acquire_control.addLayout( layout_acquire_time)
+        self.group_acquire_control.setLayout( layout_acquire_control )
+        self.group_acquisition.setEnabled( False )
 
         layout_live_view = QVBoxLayout()
         self.PW_live_view = pg.plot(title="Live View")
         layout_live_view.addWidget( self.PW_live_view )
-        layout_live.addLayout( layout_live_control )
-        layout_live.addLayout( layout_live_view )
-        group_live.setLayout( layout_live )
+        layout_acquisition_control.addWidget( self.group_live_control )
+        layout_acquisition_control.addWidget( self.group_acquire_control )
+        layout_acquisition.addLayout( layout_acquisition_control )
+        layout_acquisition.addLayout( layout_live_view )
+        self.group_acquisition.setLayout( layout_acquisition )
         self.live_plotter = vivi_plot.Plotter( self.PW_live_view )
 
         group_viviewer = QGroupBox("Viviewer")
         group_viviewer.setFixedSize(QSize(790, 450))
-        layout_right.addWidget( group_live )
+        layout_right.addWidget( self.group_acquisition )
         layout_right.addWidget( group_viviewer )
 
         layout = QHBoxLayout()
@@ -173,12 +184,44 @@ class MainWindow(QMainWindow):
     def on_status_change( self,value ):
         if value == -1: # Board not Ready
             self.PB_live_start.setEnabled( False )
+            self.PB_acquire_start.setEnabled( False )
         elif value == 0:# Board Ready
             self.PB_live_start.setEnabled( True )
+            self.PB_acquire_start.setEnabled( True )
+            self.PB_acquire_start.setText( "Acquire: Start")
+            self.group_dev_setting.setEnabled( True )
+            self.group_live_control.setEnabled( True )
+
         # elif value == 1:# Board Acquiring
 
             # self.PB_live_start.setEnabled( False )
             # self.PB_live_stop.setEnabled( True )
+
+    def on_press_start_acquire(self):
+        if self.board.connected:
+            if self.PB_acquire_start.text() == "Acquire: Start":
+                acquire_time = int( self.LE_acquire_time.text() )
+                self.board.set_acquire_time( acquire_time )
+
+                NUM_DFT = int( self.LE_num_dft.text() )
+                num_pts = math.ceil(NUM_DFT/2)
+                xscale = self.sampling / NUM_DFT
+                xs = xscale* np.arange( num_pts )
+                ys = np.zeros_like( xs )
+
+                self.live_plotter.init_plot_board( xs )
+
+                self.board.set_acquire_mode( "capture" )
+                self.board.set_listening( False )
+
+                self.PB_acquire_start.setText( "Acquire: Stop")
+                self.group_dev_setting.setEnabled( False )
+                self.group_live_control.setEnabled( False )
+            elif self.PB_acquire_start.text() == "Acquire: Stop":
+                self.board.set_stop( True )
+                self.PB_acquire_start.setText( "Acquire: Start")
+                self.group_dev_setting.setEnabled( True )
+                self.group_live_control.setEnabled( True )
 
     def on_press_start_view(self):
         if self.board.connected:
@@ -196,10 +239,12 @@ class MainWindow(QMainWindow):
                 self.board.set_listening( False )
                 self.PB_live_start.setText( "Live: Stop")
                 self.group_dev_setting.setEnabled( False )
+                self.group_acquire_control.setEnabled( False )
             elif self.PB_live_start.text() == "Live: Stop":
                 self.board.set_stop( True )
                 self.PB_live_start.setText( "Live: Start")
                 self.group_dev_setting.setEnabled( True )
+                self.group_acquire_control.setEnabled( True )
 
 
     def received_live_data( self, value ):
@@ -272,6 +317,7 @@ class MainWindow(QMainWindow):
         self.set_sampling()
         self.PB_send.setEnabled( True )
         self.PB_connect.setText( "Disconnect" )
+        self.group_acquisition.setEnabled( True )
 
     def disconnect_device( self ):
         if self.board.connected:
@@ -281,6 +327,7 @@ class MainWindow(QMainWindow):
             self.board.close_board()
             self.PB_send.setEnabled( False )
             self.PB_connect.setText( "Connect" )
+            self.group_acquisition.setEnabled( False )
 
     def dev_changed(self):
         print( "Selected: "+self.dev_list.currentText())

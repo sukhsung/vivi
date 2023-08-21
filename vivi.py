@@ -2,8 +2,8 @@
 """Program to store continuous data readings from an ADC-8 board."""
 """Based off of adc8-transfer.py and noise-density.py"""
 import serial
-import time
-from PyQt6.QtCore import (Qt, pyqtSignal, QTimer, QObject)
+import time, math
+from PyQt6.QtCore import (Qt, pyqtSignal, QTimer, QObject, QThread)
 from PyQt6.QtWidgets import QWidget
 import struct
 
@@ -27,6 +27,7 @@ def get_port_list():
 
     import serial.tools.list_ports
     return [p for p in serial.tools.list_ports.comports() if p.vid]
+
 
 class Board(QObject):
     status = int
@@ -146,6 +147,10 @@ class Board(QObject):
                 if self.acquire_mode == "live":
                     self.start_live_view() 
                     self.set_listening( True )
+                elif self.acquire_mode == "capture":
+                    self.start_acquire()
+                    self.set_listening( True )
+
 
             if self.connected == False:
                 self.msg_out.emit( "Disconnecting..." )
@@ -187,6 +192,9 @@ class Board(QObject):
     
     def set_sampling(self, sampling):
         self.send_command("s {}".format(sampling))
+
+    def set_acquire_time( self, value ):
+        self.acquire_time = value
     
     def convert_values(self, block, gains, bipolar, num):
         """Convert the 24-bit values in block to floating-point numbers
@@ -208,6 +216,7 @@ class Board(QObject):
     def start_live_view(self):
 
         self.set_status( 1 )
+        self.msg_out.emit("Starting Live View")
 
         self.dev.write(f"b0\n".encode())
         self.dev.timeout = 6
@@ -242,7 +251,6 @@ class Board(QObject):
         total_blocks = 0
         warned = False
 
-        # threading.Thread(target=poll_stdin, daemon=True).start()
         output_data = []
         # Receive and store the data
         cont = True
@@ -271,11 +279,9 @@ class Board(QObject):
                 # Convert the block data to floats and write them out
                 volts = self.convert_values(d[i:i + blocksize], gains, bipolar, num)
                 output_data.append ( volts )
-                # print( len(output_data))
                 if len(output_data) == self.num_live_sample+1:
                     self.live_data.emit( output_data )
                     output_data = []
-                    # self.set_stop( True )
                     break
             
 
@@ -294,6 +300,106 @@ class Board(QObject):
         self.dev.timeout = 0.01
         self.dev.read(1000)		# Flush any extra output
 
+        self.set_status( 0 )
+        self.set_stop( False )
+        return output_data
+    
+    def start_acquire(self):
+
+        self.set_status( 1 )
+        self.msg_out.emit("Acquiring")
+
+        
+
+        self.dev.write(f"b{self.acquire_time}\n".encode())
+        self.dev.timeout = 6
+        self.dev.read_until(b"+")		# Skip initial text
+
+        sig = b""
+        h = self.dev.read(HDR_LEN)
+        if len(h) == HDR_LEN:
+            hdr = struct.unpack(f"<4sHBB {2 * self.NUM_CHANNELS}B", h)
+            sig = hdr[0]		# The signature
+        if sig != b"ADC8":
+            print("Invalid header received, transfer aborted")
+            self.dev.write(b"\n")
+            self.set_status( 0 )
+            return -1
+
+        chans = hdr[4:]			# The ADC channel entries
+        num = 0
+        gains = [chans[2 * i] for i in range(self.NUM_CHANNELS)]
+        bipolar = [chans[2 * i + 1] & self.BIPOLAR for i in range(self.NUM_CHANNELS)]
+        for g in gains:
+            if g > 0:
+                num += 1
+        if num == 0:
+            print("Header shows no active ADCs, transfer aborted")
+            self.dev.write(b"\n")
+            self.set_status( 0 )
+            return -1
+
+        blocksize = num * 3
+
+        total_blocks = 0
+        warned = False
+
+        output_data = []
+        # Receive and store the data
+
+        time_start = time.time()
+        time_counter = 0
+        cont = True
+        while cont:
+            time_cur = time.time()
+            time_elapsed = math.floor(time_cur - time_start)
+            if time_elapsed == time_counter:
+                print(time_elapsed)
+                time_counter += 1
+            n = self.dev.read(1)		# Read the buffer's length byte
+            if len(n) == 0:
+                print("Timeout")
+                break
+            n = n[0]
+            if n == 0:
+                print("End of data")
+                break
+
+            d = self.dev.read(n)		# Read the buffer contents
+            if len(d) < n:
+                print("Short data buffer received")
+                break
+            
+            if n % blocksize != 0:
+                if not warned:
+                    print("Warning: Invalid buffer length", n)
+                    warned = True
+                n -= n % blocksize
+
+            for i in range(0, n, blocksize):
+                # Convert the block data to floats and write them out
+                volts = self.convert_values(d[i:i + blocksize], gains, bipolar, num)
+                output_data.append ( volts )
+
+            
+
+
+            total_blocks += n // blocksize
+
+            if self.stop == True:
+                print("Termination requested")
+                self.set_stop(False)
+                break
+
+        self.dev.write(b"\n")
+        print("Transfer ended")
+        print(total_blocks, "blocks received")
+
+        self.live_data.emit( output_data )
+
+        self.dev.timeout = 0.01
+        self.dev.read(1000)		# Flush any extra output
+        self.set_stop( False )
         self.set_status( 0 )
         return output_data
 
