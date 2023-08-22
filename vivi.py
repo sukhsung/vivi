@@ -38,6 +38,8 @@ class Board(QObject):
 
     msg_out = pyqtSignal( str )
     live_data = pyqtSignal( list )
+    acquire_data = pyqtSignal( list )
+    elapsed_time = pyqtSignal( int )
 
     stop = bool
     listening = bool
@@ -66,8 +68,9 @@ class Board(QObject):
         portname is the name of the board's USB serial port device, 
         which will be opened in exclusive mode.
         """
+        self.msg_out.emit("Connecting...")
         if portname is None:
-            #print("No serial port name specified")
+            #self.msg_out.emit("No serial port name specified")
             self.dev = None
             self.connected = False
             self.set_status( -1 ) 
@@ -79,21 +82,33 @@ class Board(QObject):
             # proper firmware
             msg = self.get_board_id()
             if msg.startswith("ADC-8"):
+                self.set_listening( True )
                 self.connected = True
-                self.listening = True
                 self.set_status( 0 ) 
+                self.dev.write(b'\n')
+
+                boardmsg = "Connected to ADC-8 board: "+ portname +"\n"
+                boardmsg += "    Serial number: "+ self.serial_number+"\n"
+                self.msg_out.emit( boardmsg )
+                
             else:
                 self.dev = None
                 self.connected = False
                 self.listening = False
                 self.set_status( -1 ) 
-                print("Device is not an ADC-8 board")
+                self.msg_out.emit("Device is not an ADC-8 board")
 
     def close_board( self ):
         self.dev.close()
         self.dev = None
         self.connected = False
         self.set_status( -1 ) 
+
+    def init_settings( self ):
+        self.msg_out.emit('Setting Initial Settings')
+        self.set_all_gains( 128 )
+        time.sleep(0.1)
+        self.set_sampling( 400 )
 
     def set_status( self, value ):
         self.status = value
@@ -127,15 +142,14 @@ class Board(QObject):
     
     def start_comm(self):
         counter = 0
-        self.set_listening( True )
         while True:
-            time.sleep(0.3)
+            # print( self.msg_input )
+            # time.sleep(0.3)
             counter += 1
             if self.listening:
-                if self.msg_input == None:
-                    print("{}: Board is Listening".format(counter))
-                elif isinstance( self.msg_input, str ):
-                    print("{}: Board received \n    {}".format(counter, self.msg_input) )
+                if not self.msg_input == None and isinstance( self.msg_input, str ):
+                    
+                    self.msg_out.emit(self.msg_input )
 
                     write_msg = self.msg_input + "\n"
                     self.dev.write( write_msg.encode() )
@@ -163,7 +177,7 @@ class Board(QObject):
         if value == "live" or value == "capture":
             self.acquire_mode = value
         else :
-            print("Invalid Acquire Mode")
+            self.msg_out.emit("Invalid Acquire Mode")
 
     def set_stop(self, value):
         self.stop = value
@@ -185,13 +199,13 @@ class Board(QObject):
         self.send_command("c")
         
     def set_all_gains(self, gain):
-        self.send_command("g 0 {}".format(gain))
+        self.send_command(f"g 0 {gain}")
     
     def set_individual_gain(self, ch, gain):
-        self.send_command("g {} {}".format(ch, gain))
+        self.send_command(f"g {ch} {gain}")
     
     def set_sampling(self, sampling):
-        self.send_command("s {}".format(sampling))
+        self.send_command(f"s {sampling}")
 
     def set_acquire_time( self, value ):
         self.acquire_time = value
@@ -228,7 +242,7 @@ class Board(QObject):
             hdr = struct.unpack(f"<4sHBB {2 * self.NUM_CHANNELS}B", h)
             sig = hdr[0]		# The signature
         if sig != b"ADC8":
-            print("Invalid header received, transfer aborted")
+            self.msg_out.emit("Invalid header received, transfer aborted")
             self.dev.write(b"\n")
             self.set_status( 0 )
             return -1
@@ -241,7 +255,7 @@ class Board(QObject):
             if g > 0:
                 num += 1
         if num == 0:
-            print("Header shows no active ADCs, transfer aborted")
+            self.msg_out.emit("Header shows no active ADCs, transfer aborted")
             self.dev.write(b"\n")
             self.set_status( 0 )
             return -1
@@ -257,21 +271,21 @@ class Board(QObject):
         while cont:
             n = self.dev.read(1)		# Read the buffer's length byte
             if len(n) == 0:
-                print("Timeout")
+                self.msg_out.emit("Timeout")
                 break
             n = n[0]
             if n == 0:
-                print("End of data")
+                self.msg_out.emit("End of data")
                 break
 
             d = self.dev.read(n)		# Read the buffer contents
             if len(d) < n:
-                print("Short data buffer received")
+                self.msg_out.emit("Short data buffer received")
                 break
             
             if n % blocksize != 0:
                 if not warned:
-                    print("Warning: Invalid buffer length", n)
+                    self.msg_out.emit("Warning: Invalid buffer length", n)
                     warned = True
                 n -= n % blocksize
 
@@ -289,13 +303,13 @@ class Board(QObject):
             total_blocks += n // blocksize
 
             if self.stop == True:
-                print("Termination requested")
+                self.msg_out.emit("Termination requested")
                 self.set_stop(False)
                 break
 
         self.dev.write(b"\n")
-        print("Transfer ended")
-        print(total_blocks, "blocks received")
+        self.msg_out.emit("Transfer ended")
+        self.msg_out.emit(f"{total_blocks} blocks received")
 
         self.dev.timeout = 0.01
         self.dev.read(1000)		# Flush any extra output
@@ -305,11 +319,9 @@ class Board(QObject):
         return output_data
     
     def start_acquire(self):
-
+        stop_called = False
         self.set_status( 1 )
         self.msg_out.emit("Acquiring")
-
-        
 
         self.dev.write(f"b{self.acquire_time}\n".encode())
         self.dev.timeout = 6
@@ -321,7 +333,7 @@ class Board(QObject):
             hdr = struct.unpack(f"<4sHBB {2 * self.NUM_CHANNELS}B", h)
             sig = hdr[0]		# The signature
         if sig != b"ADC8":
-            print("Invalid header received, transfer aborted")
+            self.msg_out.emit("Invalid header received, transfer aborted")
             self.dev.write(b"\n")
             self.set_status( 0 )
             return -1
@@ -334,7 +346,7 @@ class Board(QObject):
             if g > 0:
                 num += 1
         if num == 0:
-            print("Header shows no active ADCs, transfer aborted")
+            self.msg_out.emit("Header shows no active ADCs, transfer aborted")
             self.dev.write(b"\n")
             self.set_status( 0 )
             return -1
@@ -354,25 +366,25 @@ class Board(QObject):
             time_cur = time.time()
             time_elapsed = math.floor(time_cur - time_start)
             if time_elapsed == time_counter:
-                print(time_elapsed)
+                self.elapsed_time.emit(time_elapsed)
                 time_counter += 1
             n = self.dev.read(1)		# Read the buffer's length byte
             if len(n) == 0:
-                print("Timeout")
+                self.msg_out.emit("Timeout")
                 break
             n = n[0]
             if n == 0:
-                print("End of data")
+                self.msg_out.emit("End of data")
                 break
 
             d = self.dev.read(n)		# Read the buffer contents
             if len(d) < n:
-                print("Short data buffer received")
+                self.msg_out.emit("Short data buffer received")
                 break
             
             if n % blocksize != 0:
                 if not warned:
-                    print("Warning: Invalid buffer length", n)
+                    self.msg_out.emit("Warning: Invalid buffer length", n)
                     warned = True
                 n -= n % blocksize
 
@@ -387,15 +399,20 @@ class Board(QObject):
             total_blocks += n // blocksize
 
             if self.stop == True:
-                print("Termination requested")
+                self.msg_out.emit("Termination requested")
                 self.set_stop(False)
+                stop_called = True
                 break
 
-        self.dev.write(b"\n")
-        print("Transfer ended")
-        print(total_blocks, "blocks received")
+        if stop_called:     
+            self.dev.write(b"\n")
+            self.acquire_data.emit( [-1] )
+        else:
+            self.dev.write(b"\n")
+            self.msg_out.emit("Transfer ended")
+            self.msg_out.emit(f"{total_blocks} blocks received")
 
-        self.live_data.emit( output_data )
+            self.acquire_data.emit( output_data )
 
         self.dev.timeout = 0.01
         self.dev.read(1000)		# Flush any extra output
@@ -416,7 +433,7 @@ class Board(QObject):
             hdr = struct.unpack(f"<4sHBB {2 * self.NUM_CHANNELS}B", h)
             sig = hdr[0]		# The signature
         if sig != b"ADC8":
-            print("Invalid header received, transfer aborted")
+            self.msg_out.emit("Invalid header received, transfer aborted")
             self.dev.write(b"\n")
             self.set_status( 0 )
             return -1
@@ -429,7 +446,7 @@ class Board(QObject):
             if g > 0:
                 num += 1
         if num == 0:
-            print("Header shows no active ADCs, transfer aborted")
+            self.msg_out.emit("Header shows no active ADCs, transfer aborted")
             self.dev.write(b"\n")
             self.set_status( 0 )
             return -1
@@ -442,28 +459,35 @@ class Board(QObject):
         # threading.Thread(target=poll_stdin, daemon=True).start()
         output_data = []
         # Receive and store the data
+
+        # Set Timer
+        t_start = time.time()
+        t_counter = 0
+
         cont = True
-        counter = 0
         while cont:
-            counter +=1
-            print(counter)
+            t_cur =time.time()
+            if math.floor( t_cur-t_start ) == t_counter:
+                self.elapsed_time.emit( t_counter )
+                t_counter +=1
+
             n = self.dev.read(1)		# Read the buffer's length byte
             if len(n) == 0:
-                print("Timeout")
+                self.msg_out.emit("Timeout")
                 break
             n = n[0]
             if n == 0:
-                print("End of data")
+                self.msg_out.emit("End of data")
                 break
 
             d = self.dev.read(n)		# Read the buffer contents
             if len(d) < n:
-                print("Short data buffer received")
+                self.msg_out.emit("Short data buffer received")
                 break
             
             if n % blocksize != 0:
                 if not warned:
-                    print("Warning: Invalid buffer length", n)
+                    self.msg_out.emit("Warning: Invalid buffer length", n)
                     warned = True
                 n -= n % blocksize
 
@@ -478,13 +502,13 @@ class Board(QObject):
             total_blocks += n // blocksize
 
             if self.stop == True:
-                print("Termination requested")
+                self.msg_out.emit("Termination requested")
                 self.set_stop(False)
                 break
 
         self.dev.write(b"\n")
-        print("Transfer ended")
-        print(total_blocks, "blocks received")
+        self.msg_out.emit("Transfer ended")
+        self.msg_out.emit(total_blocks, "blocks received")
 
         self.dev.timeout = 0.01
         self.dev.read(1000)		# Flush any extra output

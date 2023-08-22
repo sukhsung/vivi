@@ -31,32 +31,49 @@ class MainWindow(QMainWindow):
 
         self.setWindowTitle("Vivi")
         self.setFixedSize(QSize(1280, 700))
-
         self.board = None
 
+        self.make_panel_device()
+        self.make_panel_viewer()
+
+        layout = QHBoxLayout()
+        layout.addWidget( self.group_vivi )
+        layout.addWidget( self.group_viviewer )
+
+        widget = QWidget()
+        widget.setLayout(layout)
+        self.setCentralWidget( widget )
+
+    def make_panel_device( self ):
         # Vivi Device Manager Panel
-        group_vivi = QGroupBox("Vivi")
-        group_vivi.setFixedSize(QSize(450, 680))
+        self.group_vivi = QGroupBox("Vivi")
+        self.group_vivi.setFixedSize(QSize(450, 680))
         layout_vivi = QVBoxLayout()
+        self.group_vivi.setLayout( layout_vivi )
 
         # Serial Port Manager
-        layout_dev = QHBoxLayout()
+        layout_device = QHBoxLayout()
+        layout_device.setContentsMargins( 0,0,0,0 )
         self.dev_list = QComboBox(  )
         self.port_list = vivi.get_port_list()
         self.dev_list.addItems( [p.device for p in self.port_list] )
         self.dev_list.addItems( ["1","2"] )
         self.PB_connect = QPushButton( "Connect" )
         self.PB_connect.pressed.connect( self.on_press_connect )
-        layout_dev.addWidget( self.dev_list )
-        layout_dev.addWidget( self.PB_connect )
+        layout_device.addWidget( self.dev_list )
+        layout_device.addWidget( self.PB_connect )
 
         # Settings Panel
-        self.group_dev_setting = QGroupBox()
+        self.group_device_setting = QGroupBox()
         layout_vivi_setting = QVBoxLayout()
-        self.group_dev_setting.setLayout( layout_vivi_setting )
-        self.group_dev_setting.setFlat( True )
+        # self.group_device_setting.setContentsMargins( 0,0,0,0 )
+        layout_vivi_setting.setContentsMargins( 0,0,0,0 )
+        self.group_device_setting.setLayout( layout_vivi_setting )
+        self.group_device_setting.setFlat( True )
+        self.group_device_setting.setEnabled( False )
+
         # All Channel Settings
-        layout_dev_input = QHBoxLayout()
+        layout_device_input = QHBoxLayout()
         self.CB_allGains = QComboBox()
         self.CB_allGains.addItems( ["128", "64", "32", "16", "8","1"])
         self.CB_allGains.activated.connect( self.set_all_gains )
@@ -67,11 +84,11 @@ class MainWindow(QMainWindow):
         self.TB_sampling.returnPressed.connect( self.set_sampling ) 
         self.PB_getDevStatus = QPushButton( "Status" )
         self.PB_getDevStatus.pressed.connect( self.get_board_status )
-        layout_dev_input.addWidget( QLabel("All Gains:"))
-        layout_dev_input.addWidget( self.CB_allGains)
-        layout_dev_input.addWidget( QLabel("Sampling (Hz):"))
-        layout_dev_input.addWidget( self.TB_sampling)
-        layout_dev_input.addWidget( self.PB_getDevStatus)
+        layout_device_input.addWidget( QLabel("All Gains:"))
+        layout_device_input.addWidget( self.CB_allGains)
+        layout_device_input.addWidget( QLabel("Sampling (Hz):"))
+        layout_device_input.addWidget( self.TB_sampling)
+        layout_device_input.addWidget( self.PB_getDevStatus)
 
         # Individual Gain Channels
         layout_gains = QHBoxLayout()
@@ -83,40 +100,47 @@ class MainWindow(QMainWindow):
             layout_gains.addWidget( QLabel( "Ch {}".format(i+1)) )
             layout_gains.addWidget( self.CB_gains[i] )
 
-        # Device Status
-        layout_dev_status = QHBoxLayout()
-        self.TE_devStatus = QTextEdit( "Connect to an ADC-8 Board to start" )
-        self.TE_devStatus.setReadOnly(True)
-        layout_dev_status.addWidget( self.TE_devStatus )
+        # Device Console
+        layout_device_status = QHBoxLayout()
+        self.TE_deviceStatus = QTextEdit( "Connect to an ADC-8 Board to start" )
+        self.TE_deviceStatus.setReadOnly(True)
+        layout_device_status.addWidget( self.TE_deviceStatus )
 
-        layout_PB_send = QHBoxLayout()
+        layout_command = QHBoxLayout()
         self.LE_command = QLineEdit()
         self.LE_command.returnPressed.connect( self.pressed_send )
         self.PB_send = QPushButton( "Send" )
         self.PB_send.pressed.connect( self.pressed_send )
         self.PB_send.setEnabled( False )
-        layout_PB_send.addWidget( self.LE_command )
-        layout_PB_send.addWidget( self.PB_send )
+        layout_command.addWidget( self.LE_command )
+        layout_command.addWidget( self.PB_send )
 
-        layout_vivi.addLayout( layout_dev )
-        layout_vivi_setting.addLayout( layout_dev_input )
+        layout_vivi_setting.addLayout( layout_device_input )
         layout_vivi_setting.addLayout(layout_gains)
-        layout_vivi_setting.addLayout( layout_dev_status )
-        layout_vivi_setting.addLayout( layout_PB_send )
+        layout_vivi_setting.addLayout( layout_device_status )
+        layout_vivi_setting.addLayout( layout_command )
 
-        layout_vivi.addWidget( self.group_dev_setting)
-        group_vivi.setLayout( layout_vivi )
+        layout_vivi.addLayout( layout_device )
+        layout_vivi.addWidget( self.group_device_setting)
+    
+    def make_panel_viewer( self ):
+        # Acquisition Viewer Panel
+        self.group_viviewer = QGroupBox("Viviewer")
+        layout_viviewer = QVBoxLayout()
+        self.group_viviewer.setLayout( layout_viviewer )
+        self.group_viviewer.setFixedSize(QSize(790, 680))
+        layout_upper = QHBoxLayout()
+        layout_lower = QVBoxLayout()
+        layout_viviewer.addLayout( layout_upper )
+        layout_viviewer.addLayout( layout_lower )
 
-        layout_right = QVBoxLayout()
-
-        self.group_acquisition = QGroupBox("Acquisition")
-        self.group_acquisition.setFixedSize(QSize(790, 280))
-        layout_acquisition = QHBoxLayout()
         layout_acquisition_control = QVBoxLayout() 
-
         self.group_live_control = QGroupBox()
         self.group_live_control.setFlat( True )
         layout_live_control = QVBoxLayout()
+        self.group_live_control.setContentsMargins(0,0,0,0)
+        layout_live_control.setContentsMargins(0,0,0,0)
+        self.group_live_control.setFixedSize( QSize(150, 125))
         self.group_live_control.setLayout( layout_live_control )
         self.PB_live_start = QPushButton( "Live: Start" )
         self.PB_live_start.setEnabled( False )
@@ -126,59 +150,76 @@ class MainWindow(QMainWindow):
         self.LE_num_live_sample = QLineEdit("512")
         layout_num_live_sample.addWidget( label_num_live_sample )
         layout_num_live_sample.addWidget( self.LE_num_live_sample )
-        layout_num_dft = QHBoxLayout()
-        label_num_dft = QLabel("# DFT")
-        self.LE_num_dft = QLineEdit("128")
-        layout_num_dft.addWidget( label_num_dft )
-        layout_num_dft.addWidget( self.LE_num_dft )
+        layout_num_dft_live = QHBoxLayout()
+        label_num_dft_live = QLabel("# DFT")
+        self.LE_num_dft_live = QLineEdit("128")
+        layout_num_dft_live.addWidget( label_num_dft_live )
+        layout_num_dft_live.addWidget( self.LE_num_dft_live )
         layout_live_control.addWidget( self.PB_live_start)
         layout_live_control.addLayout( layout_num_live_sample)
-        layout_live_control.addLayout( layout_num_dft)
+        layout_live_control.addLayout( layout_num_dft_live)
 
         self.group_acquire_control = QGroupBox()
         self.group_acquire_control.setFlat( True )
         layout_acquire_control = QVBoxLayout()
+        self.group_acquire_control.setContentsMargins(0,0,0,0)
+        layout_acquire_control.setContentsMargins(0,0,0,0)
+        self.group_acquire_control.setFixedSize( QSize(150, 125))
+        self.group_acquire_control.setLayout( layout_acquire_control )
         self.PB_acquire_start = QPushButton( "Acquire: Start" )
         self.PB_acquire_start.setEnabled( False )
         self.PB_acquire_start.pressed.connect( self.on_press_start_acquire )
+        layout_num_dft_acquire = QHBoxLayout()
+        label_num_dft_acquire = QLabel("# DFT")
+        self.LE_num_dft_acquire = QLineEdit("1024")
+        layout_num_dft_acquire.addWidget( label_num_dft_acquire )
+        layout_num_dft_acquire.addWidget( self.LE_num_dft_acquire )
         layout_acquire_time = QHBoxLayout()
         label_acquire_time = QLabel("time (s)")
         self.LE_acquire_time = QLineEdit("3")
+        # self.LE_acquire_time.width = 10
+        self.label_elapsed_time = QLabel("0 s")
         layout_acquire_time.addWidget( label_acquire_time )
         layout_acquire_time.addWidget( self.LE_acquire_time )
+        layout_acquire_time.addWidget( self.label_elapsed_time )
         layout_acquire_control.addWidget( self.PB_acquire_start)
+        layout_acquire_control.addLayout( layout_num_dft_acquire)
         layout_acquire_control.addLayout( layout_acquire_time)
-        self.group_acquire_control.setLayout( layout_acquire_control )
-        self.group_acquisition.setEnabled( False )
 
-        layout_live_view = QVBoxLayout()
-        self.PW_live_view = pg.plot(title="Live View")
-        layout_live_view.addWidget( self.PW_live_view )
         layout_acquisition_control.addWidget( self.group_live_control )
         layout_acquisition_control.addWidget( self.group_acquire_control )
-        layout_acquisition.addLayout( layout_acquisition_control )
-        layout_acquisition.addLayout( layout_live_view )
-        self.group_acquisition.setLayout( layout_acquisition )
-        self.live_plotter = vivi_plot.Plotter( self.PW_live_view )
 
-        group_viviewer = QGroupBox("Viviewer")
-        group_viviewer.setFixedSize(QSize(790, 450))
-        layout_right.addWidget( self.group_acquisition )
-        layout_right.addWidget( group_viviewer )
+        group_live_view = QGroupBox("")
+        layout_live_view = QVBoxLayout()
+        group_live_view.setLayout( layout_live_view )
+        group_live_view.setContentsMargins(0,0,0,0)
+        layout_live_view.setContentsMargins(0,0,0,0)
+        group_live_view.setFixedHeight( 250)
+        self.PW_live_view = pg.plot(title="Live View")
+        layout_live_view.addWidget( self.PW_live_view )
 
-        layout = QHBoxLayout()
-        layout.addWidget( group_vivi )
-        layout.addLayout( layout_right )
+        layout_upper.addLayout( layout_acquisition_control )
+        layout_upper.addWidget( group_live_view )
 
-        widget = QWidget()
-        widget.setLayout(layout)
-        self.setCentralWidget( widget )
-    
+        # layout_lower
+        # layout_live_view.setContentsMargins(0,0,0,0)
+        # group_live_view.setFixedHeight( 250)
+
+        tabs_spectrum = QTabWidget()
+        self.PW_spectrum = []
+        for i in range(4):
+            self.PW_spectrum.append( pg.image( img= np.zeros((128,128)) ) )
+            tabs_spectrum.addTab( self.PW_spectrum[i], f"Ch {i+1}" )
+        layout_lower.addWidget( tabs_spectrum ) 
+
+        self.live_plotter = vivi_plot.Plotter( self.PW_live_view, self.PW_spectrum )
+        self.group_viviewer.setEnabled( False )
+
     def on_quit( self ):
         print("Exiting Vivi")
         if not self.board == None:
             self.board.set_stop( True )
-            time.sleep(0.3)
+            time.sleep(0.5)
             self.disconnect_device()
 
     def on_status_change( self,value ):
@@ -189,13 +230,8 @@ class MainWindow(QMainWindow):
             self.PB_live_start.setEnabled( True )
             self.PB_acquire_start.setEnabled( True )
             self.PB_acquire_start.setText( "Acquire: Start")
-            self.group_dev_setting.setEnabled( True )
+            self.group_device_setting.setEnabled( True )
             self.group_live_control.setEnabled( True )
-
-        # elif value == 1:# Board Acquiring
-
-            # self.PB_live_start.setEnabled( False )
-            # self.PB_live_stop.setEnabled( True )
 
     def on_press_start_acquire(self):
         if self.board.connected:
@@ -203,7 +239,7 @@ class MainWindow(QMainWindow):
                 acquire_time = int( self.LE_acquire_time.text() )
                 self.board.set_acquire_time( acquire_time )
 
-                NUM_DFT = int( self.LE_num_dft.text() )
+                NUM_DFT = int( self.LE_num_dft_live.text() )
                 num_pts = math.ceil(NUM_DFT/2)
                 xscale = self.sampling / NUM_DFT
                 xs = xscale* np.arange( num_pts )
@@ -215,18 +251,18 @@ class MainWindow(QMainWindow):
                 self.board.set_listening( False )
 
                 self.PB_acquire_start.setText( "Acquire: Stop")
-                self.group_dev_setting.setEnabled( False )
+                self.group_device_setting.setEnabled( False )
                 self.group_live_control.setEnabled( False )
             elif self.PB_acquire_start.text() == "Acquire: Stop":
                 self.board.set_stop( True )
                 self.PB_acquire_start.setText( "Acquire: Start")
-                self.group_dev_setting.setEnabled( True )
+                self.group_device_setting.setEnabled( True )
                 self.group_live_control.setEnabled( True )
 
     def on_press_start_view(self):
         if self.board.connected:
             if self.PB_live_start.text() == "Live: Start":
-                NUM_DFT = int( self.LE_num_dft.text() )
+                NUM_DFT = int( self.LE_num_dft_live.text() )
                 num_pts = math.ceil(NUM_DFT/2)
                 xscale = self.sampling / NUM_DFT
                 xs = xscale* np.arange( num_pts )
@@ -238,26 +274,39 @@ class MainWindow(QMainWindow):
                 self.board.set_acquire_mode( "live" )
                 self.board.set_listening( False )
                 self.PB_live_start.setText( "Live: Stop")
-                self.group_dev_setting.setEnabled( False )
+                self.group_device_setting.setEnabled( False )
                 self.group_acquire_control.setEnabled( False )
             elif self.PB_live_start.text() == "Live: Stop":
                 self.board.set_stop( True )
                 self.PB_live_start.setText( "Live: Start")
-                self.group_dev_setting.setEnabled( True )
+                self.group_device_setting.setEnabled( True )
                 self.group_acquire_control.setEnabled( True )
+
+    def received_elapsed_time( self, value):
+        self.label_elapsed_time.setText( f"{value} s")
+
+    def received_acquire_data( self, value):
+        if not value==[-1]:
+            volts = np.array(value)
+            NUM_DFT = int( self.LE_num_dft_acquire.text())
+            xs, spectra = self.calc_noise_density( volts, rate=self.sampling, NUM_DFT=NUM_DFT )
+
+            self.live_plotter.update_plot_board( xs, spectra )
 
 
     def received_live_data( self, value ):
         volts = np.array(value)
-        xs, spectra = self.calc_noise_density( volts, rate=self.sampling )
+        NUM_DFT = int( self.LE_num_dft_live.text())
+        xs, spectra = self.calc_noise_density( volts, rate=self.sampling, NUM_DFT=NUM_DFT )
 
         self.live_plotter.update_plot_board( xs, spectra )
+        self.live_plotter.update_spectrum( spectra )
         
         # ymax = np.max(spectrum[1:, :])
         # self.PW_live_view.setYRange( 1e-1, 1e5)
 
     def received_msg( self, value ):
-        self.TE_devStatus.append( value )
+        self.TE_deviceStatus.append( value )
 
     def send_command( self, msg ):      
         # Send Serial Command and Listen
@@ -265,7 +314,7 @@ class MainWindow(QMainWindow):
         if self.board.connected:
             self.board.send_command( msg )
         else:
-            self.TE_devStatus.append( "\nConnect to send a command" )
+            self.TE_deviceStatus.append( "\nConnect to send a command" )
 
     def get_board_status(self):
         self.board.get_board_status()
@@ -293,14 +342,14 @@ class MainWindow(QMainWindow):
             self.disconnect_device()
 
     def connect_device(self):
-        self.thread = QThread()
-        # Intiate Device Instance
-        self.board = vivi.Board( None )
-        self.board.moveToThread(self.thread)
-        self.thread.started.connect( self.board.start_comm )
-        self.board.msg_out.connect( self.received_msg )
-        self.board.status_signal.connect( self.on_status_change )
-        self.board.live_data.connect( self.received_live_data )
+        
+        if self.board == None:
+            self.board = vivi.Board( None )
+            self.board.msg_out.connect( self.received_msg )
+            self.board.status_signal.connect( self.on_status_change )
+            self.board.live_data.connect( self.received_live_data )
+            self.board.acquire_data.connect( self.received_acquire_data )
+            self.board.elapsed_time.connect( self.received_elapsed_time)
 
         if self.board.connected:
             self.board.close_board()
@@ -308,34 +357,37 @@ class MainWindow(QMainWindow):
         portname = self.port_list[self.dev_list.currentIndex()].device
         self.board.connect_board( portname )
 
-        boardmsg = "Connected to ADC-8 board: "+ portname +"\n"
-        boardmsg += "    Serial number: "+ self.board.serial_number
-        self.TE_devStatus.setText( boardmsg )
-
+        self.thread = QThread()
+        self.board.moveToThread(self.thread)
+        self.thread.started.connect( self.board.start_comm )
         self.thread.start()
-        self.set_all_gains()
-        self.set_sampling()
+
         self.PB_send.setEnabled( True )
         self.PB_connect.setText( "Disconnect" )
-        self.group_acquisition.setEnabled( True )
+        self.group_device_setting.setEnabled( True )
+        self.group_viviewer.setEnabled( True )
+
+        self.board.init_settings()
+
 
     def disconnect_device( self ):
         if self.board.connected:
+            self.board.set_stop( True )
+            time.sleep(0.5)
             self.board.set_connected( False )
             self.thread.quit()
-
             self.board.close_board()
             self.PB_send.setEnabled( False )
             self.PB_connect.setText( "Connect" )
-            self.group_acquisition.setEnabled( False )
+            self.group_device_setting.setEnabled( False )
+            self.group_viviewer.setEnabled( False )
 
     def dev_changed(self):
         print( "Selected: "+self.dev_list.currentText())
         self.connect_device(  )
     
     """Program to compute noise spectral density in nV / sqrt(Hz) for ADC-8 data."""
-    def calc_noise_density( self, data, rate ):
-        NUM_DFT = int( self.LE_num_dft.text() )
+    def calc_noise_density( self, data, rate, NUM_DFT ):
         rate = float(rate)
         nchans = 4
         

@@ -10,11 +10,15 @@ import numpy as np
 class Plotter(QObject):
 
     """Represent a single Plot Board"""
-    def __init__(self, plot_widget):
+    def __init__(self, plot_widget,spectrum_widget):
         super().__init__() #Inherit QObject
 
         self.NUM_CHANNELS = 4
         self.Plot_Widget = plot_widget
+        self.Spectrum_Widget = spectrum_widget
+        self.Spectrum_image = []
+        for i in range(4):
+            self.Spectrum_image.append( np.zeros( (65, 65)) )
 
         self.Plot_Widget.setBackground((57, 57, 57))
         self.Plot_Objs = []
@@ -41,3 +45,12 @@ class Plotter(QObject):
         for i in range(4):
             self.Plot_Objs[i].setData( xs, data[:,i])
         self.Plot_Widget.setLogMode(False, True)
+
+    def update_spectrum( self, data ):
+
+        for i in range(4):
+            self.Spectrum_image[i] = np.roll( self.Spectrum_image[i], (0,1))
+            data[0,:] = 0
+            self.Spectrum_image[i][:,0] = np.log10(1+data[:,i])
+            self.Spectrum_Widget[i].setImage(self.Spectrum_image[i])
+
