@@ -11,7 +11,8 @@ from PyQt6.QtWidgets import (
     QWidget,
     QGroupBox,
     QComboBox,
-    QTextEdit
+    QTextEdit,
+    QFileDialog
 )
 from PyQt6.QtGui import QPalette, QColor, QFont, QFontDatabase
 
@@ -24,6 +25,7 @@ import vivi, vivi_plot
 import numpy as np
 from functools import partial 
 import math, time
+from datetime import datetime
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -130,8 +132,10 @@ class MainWindow(QMainWindow):
         self.group_viviewer.setLayout( layout_viviewer )
         self.group_viviewer.setFixedSize(QSize(790, 680))
         layout_upper = QHBoxLayout()
+        layout_middle = QHBoxLayout()
         layout_lower = QVBoxLayout()
         layout_viviewer.addLayout( layout_upper )
+        layout_viviewer.addLayout( layout_middle )
         layout_viviewer.addLayout( layout_lower )
 
         layout_acquisition_control = QVBoxLayout() 
@@ -201,19 +205,54 @@ class MainWindow(QMainWindow):
         layout_upper.addLayout( layout_acquisition_control )
         layout_upper.addWidget( group_live_view )
 
-        # layout_lower
-        # layout_live_view.setContentsMargins(0,0,0,0)
-        # group_live_view.setFixedHeight( 250)
+        # Save Control
+        self.group_save_control = QGroupBox("")
+        #self.group_save_control.setFlat( True )
+        layout_save_control = QHBoxLayout()
+        self.group_save_control.setLayout( layout_save_control )
+        label_save_control = QLabel("Save Path:")
+        today = datetime.today().strftime('%Y-%m-%d')# Get Today
+        self.LE_save_path = QLineEdit(f"{os.getcwd()}/results/{today}")
+        self.LE_save_path.returnPressed.connect( self.on_save_path_change )
+        self.LE_save_browse = QPushButton( "Browse" )
+        self.LE_save_browse.pressed.connect( self.on_press_browse )
+        self.save_status = QLabel("")
+        layout_save_control.addWidget( label_save_control )
+        layout_save_control.addWidget( self.LE_save_path )
+        layout_save_control.addWidget( self.LE_save_browse )
+        layout_save_control.addWidget( self.save_status )
+        layout_middle.addWidget( self.group_save_control )
+        self.on_save_path_change()
 
         tabs_spectrum = QTabWidget()
         self.PW_spectrum = []
         for i in range(4):
             self.PW_spectrum.append( pg.image( img= np.zeros((128,128)) ) )
+            self.PW_spectrum[i].view.setBackgroundColor( (57,57,57))
+            self.PW_spectrum[i].view.setDefaultPadding( 0 )
             tabs_spectrum.addTab( self.PW_spectrum[i], f"Ch {i+1}" )
         layout_lower.addWidget( tabs_spectrum ) 
 
         self.live_plotter = vivi_plot.Plotter( self.PW_live_view, self.PW_spectrum )
         self.group_viviewer.setEnabled( False )
+
+    def on_save_path_change( self ):
+        folderpath= self.LE_save_path.text(  )
+        if not os.path.isdir( folderpath ):
+            try:
+                os.makedirs( folderpath )
+                self.save_status.setText( "Folder Path Created")
+            except:
+                self.save_status.setText( "Folder Path Not Set")
+        else :
+            self.save_status.setText( "Folder Path Set")
+
+
+    def on_press_browse( self ):
+        folderpath = QFileDialog.getExistingDirectory(self, 'Select Folder')
+        self.LE_save_path.setText( folderpath )
+        self.save_status.setText( "Folder Path Set")
+
 
     def on_quit( self ):
         print("Exiting Vivi")
@@ -236,12 +275,26 @@ class MainWindow(QMainWindow):
     def on_press_start_acquire(self):
         if self.board.connected:
             if self.PB_acquire_start.text() == "Acquire: Start":
+                # Acq Param
                 acquire_time = int( self.LE_acquire_time.text() )
+                sampling = self.sampling
+                gains = []
+                for i in range(4):
+                    gains.append( int(self.CB_gains[i].currentText()) )
+
+                if gains[0] == gains[1] and gains[0] == gains[2] and gains[0] == gains[3]:
+                    gains = gains[0]
+
+                # Start Saving Sequence Early
+                self.timestamp = time.strftime( "%H%M", time.localtime())
+                fname = f"{self.timestamp}_Acquire_{acquire_time}s_Sampling_{sampling}Hz_Gain_{gains}"
+                self.fpath = os.path.join(self.LE_save_path.text(), fname)
+
                 self.board.set_acquire_time( acquire_time )
 
                 NUM_DFT = int( self.LE_num_dft_live.text() )
                 num_pts = math.ceil(NUM_DFT/2)
-                xscale = self.sampling / NUM_DFT
+                xscale = sampling / NUM_DFT
                 xs = xscale* np.arange( num_pts )
                 ys = np.zeros_like( xs )
 
@@ -253,34 +306,46 @@ class MainWindow(QMainWindow):
                 self.PB_acquire_start.setText( "Acquire: Stop")
                 self.group_device_setting.setEnabled( False )
                 self.group_live_control.setEnabled( False )
+                self.LE_num_dft_acquire.setEnabled( False )
+                self.LE_acquire_time.setEnabled( False )
+
             elif self.PB_acquire_start.text() == "Acquire: Stop":
                 self.board.set_stop( True )
                 self.PB_acquire_start.setText( "Acquire: Start")
                 self.group_device_setting.setEnabled( True )
                 self.group_live_control.setEnabled( True )
+                self.LE_num_dft_acquire.setEnabled( True )
+                self.LE_acquire_time.setEnabled( True )
 
     def on_press_start_view(self):
         if self.board.connected:
             if self.PB_live_start.text() == "Live: Start":
                 NUM_DFT = int( self.LE_num_dft_live.text() )
-                num_pts = math.ceil(NUM_DFT/2)
+                if NUM_DFT % 2 == 0: #If is Even
+                    num_pts = int( (NUM_DFT/2)+1 ) -1
+                else:
+                    num_pts = int( (NUM_DFT+1)/2 ) -1
                 xscale = self.sampling / NUM_DFT
                 xs = xscale* np.arange( num_pts )
-                ys = np.zeros_like( xs )
 
                 self.board.set_num_live_sample( int( self.LE_num_live_sample.text() ) )
                 self.live_plotter.init_plot_board( xs )
+                self.live_plotter.init_spectrum( num_pts )
 
                 self.board.set_acquire_mode( "live" )
                 self.board.set_listening( False )
                 self.PB_live_start.setText( "Live: Stop")
                 self.group_device_setting.setEnabled( False )
                 self.group_acquire_control.setEnabled( False )
+                self.LE_num_dft_live.setEnabled( False )
+                self.LE_num_live_sample.setEnabled( False )
             elif self.PB_live_start.text() == "Live: Stop":
                 self.board.set_stop( True )
                 self.PB_live_start.setText( "Live: Start")
                 self.group_device_setting.setEnabled( True )
                 self.group_acquire_control.setEnabled( True )
+                self.LE_num_dft_live.setEnabled( True )
+                self.LE_num_live_sample.setEnabled( True )
 
     def received_elapsed_time( self, value):
         self.label_elapsed_time.setText( f"{value} s")
@@ -292,6 +357,16 @@ class MainWindow(QMainWindow):
             xs, spectra = self.calc_noise_density( volts, rate=self.sampling, NUM_DFT=NUM_DFT )
 
             self.live_plotter.update_plot_board( xs, spectra )
+
+            with open(self.fpath, "w") as txt_file:
+                for line in value:
+                    txt_file.write(f"{line[0]}, {line[1]}, {line[2]}, {line[3]}\n") # works with any number of elements in a line
+
+            self.save_status.setText( f"File Saved time stamp: {self.timestamp}")
+
+        
+        self.LE_num_dft_acquire.setEnabled( True )
+        self.LE_acquire_time.setEnabled( True )
 
 
     def received_live_data( self, value ):

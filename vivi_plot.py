@@ -17,8 +17,6 @@ class Plotter(QObject):
         self.Plot_Widget = plot_widget
         self.Spectrum_Widget = spectrum_widget
         self.Spectrum_image = []
-        for i in range(4):
-            self.Spectrum_image.append( np.zeros( (65, 65)) )
 
         self.Plot_Widget.setBackground((57, 57, 57))
         self.Plot_Objs = []
@@ -33,7 +31,6 @@ class Plotter(QObject):
 
     def init_plot_board(self, xs ):
         self.xs = xs
-
         ys = np.zeros_like( xs )
         for p in self.Plot_Objs:
             p.clear()
@@ -46,11 +43,18 @@ class Plotter(QObject):
             self.Plot_Objs[i].setData( xs, data[:,i])
         self.Plot_Widget.setLogMode(False, True)
 
+    def init_spectrum( self, num_pts):
+        # for p in self.spectrum_widget:
+        #     p.clear()
+        self.Spectrum_image = []
+        for i in range(4):
+            self.Spectrum_image.append( np.zeros( (num_pts, num_pts)) )
+
+
     def update_spectrum( self, data ):
 
         for i in range(4):
             self.Spectrum_image[i] = np.roll( self.Spectrum_image[i], (0,1))
-            data[0,:] = 0
-            self.Spectrum_image[i][:,0] = np.log10(1+data[:,i])
+            self.Spectrum_image[i][:,0] = np.log10(1+data[1:,i])
             self.Spectrum_Widget[i].setImage(self.Spectrum_image[i])
 
