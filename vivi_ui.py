@@ -12,7 +12,8 @@ from PyQt6.QtWidgets import (
     QGroupBox,
     QComboBox,
     QTextEdit,
-    QFileDialog
+    QFileDialog,
+    QCheckBox
 )
 from PyQt6.QtGui import QPalette, QColor, QFont, QFontDatabase
 
@@ -59,9 +60,9 @@ class MainWindow(QMainWindow):
         self.dev_list = QComboBox(  )
         self.port_list = vivi.get_port_list()
         self.dev_list.addItems( [p.device for p in self.port_list] )
-        self.dev_list.addItems( ["1","2"] )
+        # self.dev_list.addItems( ["1","2"] )
         self.PB_connect = QPushButton( "Connect" )
-        self.PB_connect.pressed.connect( self.on_press_connect )
+        self.PB_connect.clicked.connect( self.on_click_connect )
         layout_device.addWidget( self.dev_list )
         layout_device.addWidget( self.PB_connect )
 
@@ -79,13 +80,14 @@ class MainWindow(QMainWindow):
         self.CB_allGains = QComboBox()
         self.CB_allGains.addItems( ["128", "64", "32", "16", "8","1"])
         self.CB_allGains.activated.connect( self.set_all_gains )
-        self.TB_sampling = QLineEdit("400")
+        self.TB_sampling = QLineEdit("400.00")
         self.sampling = 400
-        self.TB_sampling.setMaxLength(4)
-        self.TB_sampling.setFixedWidth( 50 )
+        self.TB_sampling.setMaxLength(7)
+        self.TB_sampling.setFixedWidth( 55 )
         self.TB_sampling.returnPressed.connect( self.set_sampling ) 
         self.PB_getDevStatus = QPushButton( "Status" )
-        self.PB_getDevStatus.pressed.connect( self.get_board_status )
+        self.PB_getDevStatus.clicked.connect( self.get_board_status )
+        self.listening_for_sampling = True
         layout_device_input.addWidget( QLabel("All Gains:"))
         layout_device_input.addWidget( self.CB_allGains)
         layout_device_input.addWidget( QLabel("Sampling (Hz):"))
@@ -110,12 +112,15 @@ class MainWindow(QMainWindow):
 
         layout_command = QHBoxLayout()
         self.LE_command = QLineEdit()
-        self.LE_command.returnPressed.connect( self.pressed_send )
+        self.LE_command.returnPressed.connect( self.on_click_send )
         self.PB_send = QPushButton( "Send" )
-        self.PB_send.pressed.connect( self.pressed_send )
-        self.PB_send.setEnabled( False )
+        self.PB_send.clicked.connect( self.on_click_send )
+        self.PB_clear = QPushButton( "Clear" )
+        self.PB_clear.clicked.connect( self.on_click_clear )
+
         layout_command.addWidget( self.LE_command )
         layout_command.addWidget( self.PB_send )
+        layout_command.addWidget( self.PB_clear )
 
         layout_vivi_setting.addLayout( layout_device_input )
         layout_vivi_setting.addLayout(layout_gains)
@@ -144,11 +149,11 @@ class MainWindow(QMainWindow):
         layout_live_control = QVBoxLayout()
         self.group_live_control.setContentsMargins(0,0,0,0)
         layout_live_control.setContentsMargins(0,0,0,0)
-        self.group_live_control.setFixedSize( QSize(150, 125))
+        self.group_live_control.setFixedSize( QSize(150, 130))
         self.group_live_control.setLayout( layout_live_control )
         self.PB_live_start = QPushButton( "Live: Start" )
         self.PB_live_start.setEnabled( False )
-        self.PB_live_start.pressed.connect( self.on_press_start_view )
+        self.PB_live_start.clicked.connect( self.on_click_start_view )
         layout_num_live_sample = QHBoxLayout()
         label_num_live_sample = QLabel("# Live Sample")
         self.LE_num_live_sample = QLineEdit("512")
@@ -157,22 +162,26 @@ class MainWindow(QMainWindow):
         layout_num_dft_live = QHBoxLayout()
         label_num_dft_live = QLabel("# DFT")
         self.LE_num_dft_live = QLineEdit("128")
+        self.CheckBox_average =QCheckBox("Show Average")
+        self.CheckBox_average.setChecked( True )
+        self.CheckBox_average.stateChanged.connect( self.on_checked_average )
         layout_num_dft_live.addWidget( label_num_dft_live )
         layout_num_dft_live.addWidget( self.LE_num_dft_live )
         layout_live_control.addWidget( self.PB_live_start)
         layout_live_control.addLayout( layout_num_live_sample)
         layout_live_control.addLayout( layout_num_dft_live)
+        layout_live_control.addWidget( self.CheckBox_average )
 
         self.group_acquire_control = QGroupBox()
         self.group_acquire_control.setFlat( True )
         layout_acquire_control = QVBoxLayout()
         self.group_acquire_control.setContentsMargins(0,0,0,0)
         layout_acquire_control.setContentsMargins(0,0,0,0)
-        self.group_acquire_control.setFixedSize( QSize(150, 125))
+        self.group_acquire_control.setFixedSize( QSize(150, 100))
         self.group_acquire_control.setLayout( layout_acquire_control )
         self.PB_acquire_start = QPushButton( "Acquire: Start" )
         self.PB_acquire_start.setEnabled( False )
-        self.PB_acquire_start.pressed.connect( self.on_press_start_acquire )
+        self.PB_acquire_start.clicked.connect( self.on_click_start_acquire )
         layout_num_dft_acquire = QHBoxLayout()
         label_num_dft_acquire = QLabel("# DFT")
         self.LE_num_dft_acquire = QLineEdit("1024")
@@ -207,15 +216,17 @@ class MainWindow(QMainWindow):
 
         # Save Control
         self.group_save_control = QGroupBox("")
-        #self.group_save_control.setFlat( True )
+        self.group_save_control.setFlat( True )
         layout_save_control = QHBoxLayout()
         self.group_save_control.setLayout( layout_save_control )
+        self.group_save_control.setContentsMargins(0,0,0,0)
+        layout_save_control.setContentsMargins(0,0,0,0)
         label_save_control = QLabel("Save Path:")
         today = datetime.today().strftime('%Y-%m-%d')# Get Today
         self.LE_save_path = QLineEdit(f"{os.getcwd()}/results/{today}")
         self.LE_save_path.returnPressed.connect( self.on_save_path_change )
         self.LE_save_browse = QPushButton( "Browse" )
-        self.LE_save_browse.pressed.connect( self.on_press_browse )
+        self.LE_save_browse.clicked.connect( self.on_click_browse )
         self.save_status = QLabel("")
         layout_save_control.addWidget( label_save_control )
         layout_save_control.addWidget( self.LE_save_path )
@@ -225,15 +236,22 @@ class MainWindow(QMainWindow):
         self.on_save_path_change()
 
         tabs_spectrum = QTabWidget()
+        tab_item = [];
         self.PW_spectrum = []
+        self.II_spectrum = []
+        self.PW_spectrum_colorbar = []
         for i in range(4):
-            self.PW_spectrum.append( pg.image( img= np.zeros((128,128)) ) )
-            self.PW_spectrum[i].view.setBackgroundColor( (57,57,57))
-            self.PW_spectrum[i].view.setDefaultPadding( 0 )
+            self.PW_spectrum.append( pg.plot() )
+            self.II_spectrum.append( pg.ImageItem(img= np.zeros((128,64))) )
+            self.PW_spectrum[i].getPlotItem().addItem(self.II_spectrum[i])
+            self.PW_spectrum_colorbar.append( pg.ColorBarItem( values=(1,10), colorMap=pg.colormap.get('inferno') ))
+            self.PW_spectrum_colorbar[i].setImageItem( self.II_spectrum[i], insert_in=self.PW_spectrum[i].getPlotItem())
+            
+            self.PW_spectrum[i].setBackground( (62,62,62))
             tabs_spectrum.addTab( self.PW_spectrum[i], f"Ch {i+1}" )
         layout_lower.addWidget( tabs_spectrum ) 
 
-        self.live_plotter = vivi_plot.Plotter( self.PW_live_view, self.PW_spectrum )
+        self.live_plotter = vivi_plot.Plotter( self.PW_live_view, self.PW_spectrum, self.II_spectrum )
         self.group_viviewer.setEnabled( False )
 
     def on_save_path_change( self ):
@@ -247,8 +265,10 @@ class MainWindow(QMainWindow):
         else :
             self.save_status.setText( "Folder Path Set")
 
+    def on_checked_average( self ):
+        self.live_plotter.set_plot_average( self.CheckBox_average.isChecked() )
 
-    def on_press_browse( self ):
+    def on_click_browse( self ):
         folderpath = QFileDialog.getExistingDirectory(self, 'Select Folder')
         self.LE_save_path.setText( folderpath )
         self.save_status.setText( "Folder Path Set")
@@ -272,7 +292,7 @@ class MainWindow(QMainWindow):
             self.group_device_setting.setEnabled( True )
             self.group_live_control.setEnabled( True )
 
-    def on_press_start_acquire(self):
+    def on_click_start_acquire(self):
         if self.board.connected:
             if self.PB_acquire_start.text() == "Acquire: Start":
                 # Acq Param
@@ -285,7 +305,6 @@ class MainWindow(QMainWindow):
                 if gains[0] == gains[1] and gains[0] == gains[2] and gains[0] == gains[3]:
                     gains = gains[0]
 
-                # Start Saving Sequence Early
                 self.timestamp = time.strftime( "%H%M", time.localtime())
                 fname = f"{self.timestamp}_Acquire_{acquire_time}s_Sampling_{sampling}Hz_Gain_{gains}"
                 self.fpath = os.path.join(self.LE_save_path.text(), fname)
@@ -317,9 +336,28 @@ class MainWindow(QMainWindow):
                 self.LE_num_dft_acquire.setEnabled( True )
                 self.LE_acquire_time.setEnabled( True )
 
-    def on_press_start_view(self):
+    def on_click_start_view(self):
         if self.board.connected:
             if self.PB_live_start.text() == "Live: Start":
+                
+                # Acq Param
+                sampling = self.sampling
+                self.live_plotter.sampling = sampling
+
+                gains = []
+                for i in range(4):
+                    gains.append( int(self.CB_gains[i].currentText()) )
+
+                if gains[0] == gains[1] and gains[0] == gains[2] and gains[0] == gains[3]:
+                    gains = gains[0]
+
+                self.timestamp = time.strftime( "%H%M", time.localtime())
+                fname = f"{self.timestamp}_Live_Sampling_{sampling}Hz_Gain_{gains}"
+                self.fpath = os.path.join(self.LE_save_path.text(), fname)
+                self.live_file = open( self.fpath, 'w')
+
+
+                # Pre-set dft
                 NUM_DFT = int( self.LE_num_dft_live.text() )
                 if NUM_DFT % 2 == 0: #If is Even
                     num_pts = int( (NUM_DFT/2)+1 ) -1
@@ -329,6 +367,7 @@ class MainWindow(QMainWindow):
                 xs = xscale* np.arange( num_pts )
 
                 self.board.set_num_live_sample( int( self.LE_num_live_sample.text() ) )
+                self.live_plotter.num_sample = int( self.LE_num_live_sample.text() )
                 self.live_plotter.init_plot_board( xs )
                 self.live_plotter.init_spectrum( num_pts )
 
@@ -339,6 +378,7 @@ class MainWindow(QMainWindow):
                 self.group_acquire_control.setEnabled( False )
                 self.LE_num_dft_live.setEnabled( False )
                 self.LE_num_live_sample.setEnabled( False )
+                self.CheckBox_average.setEnabled( False )
             elif self.PB_live_start.text() == "Live: Stop":
                 self.board.set_stop( True )
                 self.PB_live_start.setText( "Live: Start")
@@ -346,6 +386,10 @@ class MainWindow(QMainWindow):
                 self.group_acquire_control.setEnabled( True )
                 self.LE_num_dft_live.setEnabled( True )
                 self.LE_num_live_sample.setEnabled( True )
+                self.CheckBox_average.setEnabled( True )
+                self.live_file.close()
+
+                self.save_status.setText( f"File Saved time stamp: {self.timestamp}")
 
     def received_elapsed_time( self, value):
         self.label_elapsed_time.setText( f"{value} s")
@@ -358,9 +402,10 @@ class MainWindow(QMainWindow):
 
             self.live_plotter.update_plot_board( xs, spectra )
 
-            with open(self.fpath, "w") as txt_file:
-                for line in value:
-                    txt_file.write(f"{line[0]}, {line[1]}, {line[2]}, {line[3]}\n") # works with any number of elements in a line
+            acquire_file = open(self.fpath, 'w')
+            for line in value:
+                acquire_file.write(f"{line[0]}, {line[1]}, {line[2]}, {line[3]}\n") # works with any number of elements in a line
+            acquire_file.close()
 
             self.save_status.setText( f"File Saved time stamp: {self.timestamp}")
 
@@ -377,12 +422,15 @@ class MainWindow(QMainWindow):
         self.live_plotter.update_plot_board( xs, spectra )
         self.live_plotter.update_spectrum( spectra )
         
-        # ymax = np.max(spectrum[1:, :])
-        # self.PW_live_view.setYRange( 1e-1, 1e5)
+        for line in value:
+            self.live_file.write(f"{line[0]}, {line[1]}, {line[2]}, {line[3]}\n") 
 
     def received_msg( self, value ):
         self.TE_deviceStatus.append( value )
-
+        if value.startswith("Sampling rate "):
+            parts = value.split(' ')
+            self.sampling = float(parts[4])
+            self.TB_sampling.setText( f"{self.sampling:.2f}" )
     def send_command( self, msg ):      
         # Send Serial Command and Listen
         # Post result to Text Board
@@ -404,12 +452,15 @@ class MainWindow(QMainWindow):
 
     def set_sampling( self ):
         self.board.set_sampling(self.TB_sampling.text())
-        self.sampling = int( self.TB_sampling.text() )
+        self.sampling = float( self.TB_sampling.text() )
 
-    def pressed_send(self):
+    def on_click_send(self):
         self.send_command( self.LE_command.text() )
 
-    def on_press_connect(self):
+    def on_click_clear(self):
+        self.TE_deviceStatus.setText("")
+
+    def on_click_connect(self):
         # Connect Push Button
         if self.PB_connect.text() == "Connect":
             self.connect_device()
@@ -429,20 +480,21 @@ class MainWindow(QMainWindow):
         if self.board.connected:
             self.board.close_board()
 
-        portname = self.port_list[self.dev_list.currentIndex()].device
-        self.board.connect_board( portname )
+        if len(self.port_list) > 0:
+            portname = self.port_list[self.dev_list.currentIndex()].device
+            self.board.connect_board( portname )
 
-        self.thread = QThread()
-        self.board.moveToThread(self.thread)
-        self.thread.started.connect( self.board.start_comm )
-        self.thread.start()
+            self.thread = QThread()
+            self.board.moveToThread(self.thread)
+            self.thread.started.connect( self.board.start_comm )
+            self.thread.start()
 
-        self.PB_send.setEnabled( True )
-        self.PB_connect.setText( "Disconnect" )
-        self.group_device_setting.setEnabled( True )
-        self.group_viviewer.setEnabled( True )
+            self.PB_send.setEnabled( True )
+            self.PB_connect.setText( "Disconnect" )
+            self.group_device_setting.setEnabled( True )
+            self.group_viviewer.setEnabled( True )
 
-        self.board.init_settings()
+            self.board.init_settings()
 
 
     def disconnect_device( self ):
@@ -489,37 +541,12 @@ class MainWindow(QMainWindow):
 
         xscale = rate / NUM_DFT
         xs = xscale* np.arange( f.shape[0] )
-        # for i, row in enumerate(f):
-        #     print(i * xscale, *row)
 
         return xs, f
-
-        # if bool_plot:
-        #     import matplotlib.pyplot as plt
-
-        #     x = np.linspace(0., rate * 0.5, NUM_DFT // 2 + 1)
-        #     fig, ax = plt.subplots(figsize=(7,3))
-        #     ax.set_xlim(x[0], x[-1])
-        #     ymax = np.max(f[1:, :])
-        #     ax.set_ylim(1e-1, 2. * ymax)
-        #     ax.grid(True, "both")
-        #     colors = ['r','b','tomato','deepskyblue']
-        #     for i in range(f.shape[1]):
-        #             ax.semilogy(x, f[:,i], c=colors[i],label=f"Channel {i+1}")
-        #     ax.set_xlabel("Frequency (Hz)")
-        #     ax.set_ylabel("nV/sqrt(Hz)")
-        #     fig.tight_layout()
-        #     ax.legend()
-        #     plt.show()
-
         
 
 
 app = QApplication(sys.argv)
-# import serial.tools.list_ports
-# ports =  vivi.get_port_list()
-# for p in ports:
-#     print( p.device )
 
 window = MainWindow()
 window.show()
