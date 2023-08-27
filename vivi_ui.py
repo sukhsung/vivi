@@ -1,4 +1,4 @@
-from PyQt6.QtCore import QSize, Qt, QThread
+from PyQt6.QtCore import QSize, QThread
 from PyQt6.QtWidgets import (
     QApplication,
     QVBoxLayout,
@@ -15,7 +15,6 @@ from PyQt6.QtWidgets import (
     QFileDialog,
     QCheckBox
 )
-from PyQt6.QtGui import QPalette, QColor, QFont, QFontDatabase
 
 from pyqtgraph import PlotWidget, plot
 import pyqtgraph as pg
@@ -27,6 +26,8 @@ import numpy as np
 from functools import partial 
 import math, time
 from datetime import datetime
+
+
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -58,13 +59,15 @@ class MainWindow(QMainWindow):
         layout_device = QHBoxLayout()
         layout_device.setContentsMargins( 0,0,0,0 )
         self.dev_list = QComboBox(  )
-        self.port_list = vivi.get_port_list()
-        self.dev_list.addItems( [p.device for p in self.port_list] )
-        # self.dev_list.addItems( ["1","2"] )
         self.PB_connect = QPushButton( "Connect" )
         self.PB_connect.clicked.connect( self.on_click_connect )
+        self.PB_refresh = QPushButton( "Refresh" )
+        self.PB_refresh.clicked.connect( self.update_port_list )
         layout_device.addWidget( self.dev_list )
         layout_device.addWidget( self.PB_connect )
+        layout_device.addWidget( self.PB_refresh )
+
+        self.update_port_list()
 
         # Settings Panel
         self.group_device_setting = QGroupBox()
@@ -152,7 +155,6 @@ class MainWindow(QMainWindow):
         self.group_live_control.setFixedSize( QSize(150, 130))
         self.group_live_control.setLayout( layout_live_control )
         self.PB_live_start = QPushButton( "Live: Start" )
-        self.PB_live_start.setEnabled( False )
         self.PB_live_start.clicked.connect( self.on_click_start_view )
         layout_num_live_sample = QHBoxLayout()
         label_num_live_sample = QLabel("# Live Sample")
@@ -164,7 +166,6 @@ class MainWindow(QMainWindow):
         self.LE_num_dft_live = QLineEdit("128")
         self.CheckBox_average =QCheckBox("Show Average")
         self.CheckBox_average.setChecked( True )
-        self.CheckBox_average.stateChanged.connect( self.on_checked_average )
         layout_num_dft_live.addWidget( label_num_dft_live )
         layout_num_dft_live.addWidget( self.LE_num_dft_live )
         layout_live_control.addWidget( self.PB_live_start)
@@ -180,7 +181,6 @@ class MainWindow(QMainWindow):
         self.group_acquire_control.setFixedSize( QSize(150, 100))
         self.group_acquire_control.setLayout( layout_acquire_control )
         self.PB_acquire_start = QPushButton( "Acquire: Start" )
-        self.PB_acquire_start.setEnabled( False )
         self.PB_acquire_start.clicked.connect( self.on_click_start_acquire )
         layout_num_dft_acquire = QHBoxLayout()
         label_num_dft_acquire = QLabel("# DFT")
@@ -254,6 +254,7 @@ class MainWindow(QMainWindow):
         self.live_plotter = vivi_plot.Plotter( self.PW_live_view, self.PW_spectrum, self.II_spectrum )
         self.group_viviewer.setEnabled( False )
 
+    ### Save Related
     def on_save_path_change( self ):
         folderpath= self.LE_save_path.text(  )
         if not os.path.isdir( folderpath ):
@@ -265,131 +266,123 @@ class MainWindow(QMainWindow):
         else :
             self.save_status.setText( "Folder Path Set")
 
-    def on_checked_average( self ):
-        self.live_plotter.set_plot_average( self.CheckBox_average.isChecked() )
-
     def on_click_browse( self ):
         folderpath = QFileDialog.getExistingDirectory(self, 'Select Folder')
         self.LE_save_path.setText( folderpath )
         self.save_status.setText( "Folder Path Set")
+    ### #Save Realted
 
-
-    def on_quit( self ):
-        print("Exiting Vivi")
-        if not self.board == None:
-            self.board.set_stop( True )
-            time.sleep(0.5)
-            self.disconnect_device()
-
-    def on_status_change( self,value ):
-        if value == -1: # Board not Ready
-            self.PB_live_start.setEnabled( False )
-            self.PB_acquire_start.setEnabled( False )
-        elif value == 0:# Board Ready
+    def on_status_change( self,status ):
+        if status == "NOT-READY": # Board not Ready
+            self.group_device_setting.setEnabled( False )
+            self.group_viviewer.setEnabled( False )
+        elif status == "LISTENING":# Board Ready
+            self.group_device_setting.setEnabled( True )
+            self.group_viviewer.setEnabled( True )
             self.PB_live_start.setEnabled( True )
             self.PB_acquire_start.setEnabled( True )
+        elif status == "LIVE":
+            self.PB_live_start.setEnabled( True )
+            self.PB_acquire_start.setEnabled( False )
+            # self.PB_acquire_start.setText( "Acquire: Start")
+        elif status == "ACQUIRE":
+            self.PB_live_start.setEnabled( False )
+            self.PB_acquire_start.setEnabled( True )
+
+
+    def prepare_acquisition(self, mode ):
+        self.live_plotter.sampling = self.sampling
+        gains = []
+        for i in range(4):
+            gains.append( int(self.CB_gains[i].currentText()) )
+
+        if gains[0] == gains[1] and gains[0] == gains[2] and gains[0] == gains[3]:
+            gains = gains[0]
+
+        self.timestamp = time.strftime( "%H%M", time.localtime())
+
+        if mode == "live":
+            self.live_plotter.set_plot_average( self.CheckBox_average.isChecked() )
+            # Pre-set dft
+            NUM_DFT = int( self.LE_num_dft_live.text() )
+            if NUM_DFT % 2 == 0: #If is Even
+                num_pts = int( (NUM_DFT/2)+1 ) -1
+            else:
+                num_pts = int( (NUM_DFT+1)/2 ) -1
+            xscale = self.sampling / NUM_DFT
+            xs = xscale* np.arange( num_pts )
+            self.board.set_num_live_sample( int( self.LE_num_live_sample.text() ) )
+            self.live_plotter.num_sample = int( self.LE_num_live_sample.text() )
+            self.live_plotter.init_spectrum( num_pts )
+
+            fname = f"{self.timestamp}_Live_Sampling_{self.sampling}Hz_Gain_{gains}"
+            self.fpath = os.path.join(self.LE_save_path.text(), fname)
+
+        elif mode == "acquire":
+            acquire_time = int( self.LE_acquire_time.text() )
+            self.board.set_acquire_time( acquire_time )
+            self.live_plotter.set_plot_average( False )
+
+            NUM_DFT = int( self.LE_num_dft_acquire.text() )
+            if NUM_DFT % 2 == 0: #If is Even
+                num_pts = int( (NUM_DFT/2)+1 ) -1
+            else:
+                num_pts = int( (NUM_DFT+1)/2 ) -1
+            xscale = self.sampling / NUM_DFT
+            xs = xscale* np.arange( num_pts )
+
+            self.timestamp = time.strftime( "%H%M", time.localtime())
+            fname = f"{self.timestamp}_Acquire_{acquire_time}s_Sampling_{self.sampling}Hz_Gain_{gains}"
+            self.fpath = os.path.join(self.LE_save_path.text(), fname)
+
+        
+        self.live_plotter.init_plot_board( xs )
+        
+        
+        
+    def on_click_start_acquire(self):
+        if self.PB_acquire_start.text() == "Acquire: Start":
+            self.prepare_acquisition("acquire")
+            self.board.set_status("ACQUIRE")
+
+            self.PB_acquire_start.setText( "Acquire: Stop")
+            self.group_device_setting.setEnabled( False )
+            self.group_live_control.setEnabled( False )
+            self.LE_num_dft_acquire.setEnabled( False )
+            self.LE_acquire_time.setEnabled( False )
+
+        elif self.PB_acquire_start.text() == "Acquire: Stop":
+            self.board.set_status( "STOPPING" )
             self.PB_acquire_start.setText( "Acquire: Start")
             self.group_device_setting.setEnabled( True )
             self.group_live_control.setEnabled( True )
-
-    def on_click_start_acquire(self):
-        if self.board.connected:
-            if self.PB_acquire_start.text() == "Acquire: Start":
-                # Acq Param
-                acquire_time = int( self.LE_acquire_time.text() )
-                sampling = self.sampling
-                gains = []
-                for i in range(4):
-                    gains.append( int(self.CB_gains[i].currentText()) )
-
-                if gains[0] == gains[1] and gains[0] == gains[2] and gains[0] == gains[3]:
-                    gains = gains[0]
-
-                self.timestamp = time.strftime( "%H%M", time.localtime())
-                fname = f"{self.timestamp}_Acquire_{acquire_time}s_Sampling_{sampling}Hz_Gain_{gains}"
-                self.fpath = os.path.join(self.LE_save_path.text(), fname)
-
-                self.board.set_acquire_time( acquire_time )
-
-                NUM_DFT = int( self.LE_num_dft_live.text() )
-                num_pts = math.ceil(NUM_DFT/2)
-                xscale = sampling / NUM_DFT
-                xs = xscale* np.arange( num_pts )
-                ys = np.zeros_like( xs )
-
-                self.live_plotter.init_plot_board( xs )
-
-                self.board.set_acquire_mode( "capture" )
-                self.board.set_listening( False )
-
-                self.PB_acquire_start.setText( "Acquire: Stop")
-                self.group_device_setting.setEnabled( False )
-                self.group_live_control.setEnabled( False )
-                self.LE_num_dft_acquire.setEnabled( False )
-                self.LE_acquire_time.setEnabled( False )
-
-            elif self.PB_acquire_start.text() == "Acquire: Stop":
-                self.board.set_stop( True )
-                self.PB_acquire_start.setText( "Acquire: Start")
-                self.group_device_setting.setEnabled( True )
-                self.group_live_control.setEnabled( True )
-                self.LE_num_dft_acquire.setEnabled( True )
-                self.LE_acquire_time.setEnabled( True )
+            self.LE_num_dft_acquire.setEnabled( True )
+            self.LE_acquire_time.setEnabled( True )
 
     def on_click_start_view(self):
-        if self.board.connected:
-            if self.PB_live_start.text() == "Live: Start":
-                
-                # Acq Param
-                sampling = self.sampling
-                self.live_plotter.sampling = sampling
+        if self.PB_live_start.text() == "Live: Start":
+            self.prepare_acquisition("live")
+            self.live_file = open( self.fpath, 'w')
+            self.board.set_status( "LIVE" )
 
-                gains = []
-                for i in range(4):
-                    gains.append( int(self.CB_gains[i].currentText()) )
+            self.PB_live_start.setText( "Live: Stop")
+            self.group_device_setting.setEnabled( False )
+            self.group_acquire_control.setEnabled( False )
+            self.LE_num_dft_live.setEnabled( False )
+            self.LE_num_live_sample.setEnabled( False )
+            self.CheckBox_average.setEnabled( False )
+        elif self.PB_live_start.text() == "Live: Stop":
+            self.board.set_status( "STOPPING" )
 
-                if gains[0] == gains[1] and gains[0] == gains[2] and gains[0] == gains[3]:
-                    gains = gains[0]
+            self.PB_live_start.setText( "Live: Start")
+            self.group_device_setting.setEnabled( True )
+            self.group_acquire_control.setEnabled( True )
+            self.LE_num_dft_live.setEnabled( True )
+            self.LE_num_live_sample.setEnabled( True )
+            self.CheckBox_average.setEnabled( True )
+            self.live_file.close()
 
-                self.timestamp = time.strftime( "%H%M", time.localtime())
-                fname = f"{self.timestamp}_Live_Sampling_{sampling}Hz_Gain_{gains}"
-                self.fpath = os.path.join(self.LE_save_path.text(), fname)
-                self.live_file = open( self.fpath, 'w')
-
-
-                # Pre-set dft
-                NUM_DFT = int( self.LE_num_dft_live.text() )
-                if NUM_DFT % 2 == 0: #If is Even
-                    num_pts = int( (NUM_DFT/2)+1 ) -1
-                else:
-                    num_pts = int( (NUM_DFT+1)/2 ) -1
-                xscale = self.sampling / NUM_DFT
-                xs = xscale* np.arange( num_pts )
-
-                self.board.set_num_live_sample( int( self.LE_num_live_sample.text() ) )
-                self.live_plotter.num_sample = int( self.LE_num_live_sample.text() )
-                self.live_plotter.init_plot_board( xs )
-                self.live_plotter.init_spectrum( num_pts )
-
-                self.board.set_acquire_mode( "live" )
-                self.board.set_listening( False )
-                self.PB_live_start.setText( "Live: Stop")
-                self.group_device_setting.setEnabled( False )
-                self.group_acquire_control.setEnabled( False )
-                self.LE_num_dft_live.setEnabled( False )
-                self.LE_num_live_sample.setEnabled( False )
-                self.CheckBox_average.setEnabled( False )
-            elif self.PB_live_start.text() == "Live: Stop":
-                self.board.set_stop( True )
-                self.PB_live_start.setText( "Live: Start")
-                self.group_device_setting.setEnabled( True )
-                self.group_acquire_control.setEnabled( True )
-                self.LE_num_dft_live.setEnabled( True )
-                self.LE_num_live_sample.setEnabled( True )
-                self.CheckBox_average.setEnabled( True )
-                self.live_file.close()
-
-                self.save_status.setText( f"File Saved time stamp: {self.timestamp}")
+            self.save_status.setText( f"File Saved time stamp: {self.timestamp}")
 
     def received_elapsed_time( self, value):
         self.label_elapsed_time.setText( f"{value} s")
@@ -425,20 +418,7 @@ class MainWindow(QMainWindow):
         for line in value:
             self.live_file.write(f"{line[0]}, {line[1]}, {line[2]}, {line[3]}\n") 
 
-    def received_msg( self, value ):
-        self.TE_deviceStatus.append( value )
-        if value.startswith("Sampling rate "):
-            parts = value.split(' ')
-            self.sampling = float(parts[4])
-            self.TB_sampling.setText( f"{self.sampling:.2f}" )
-    def send_command( self, msg ):      
-        # Send Serial Command and Listen
-        # Post result to Text Board
-        if self.board.connected:
-            self.board.send_command( msg )
-        else:
-            self.TE_deviceStatus.append( "\nConnect to send a command" )
-
+    ### ADC Setting Related
     def get_board_status(self):
         self.board.get_board_status()
 
@@ -453,13 +433,29 @@ class MainWindow(QMainWindow):
     def set_sampling( self ):
         self.board.set_sampling(self.TB_sampling.text())
         self.sampling = float( self.TB_sampling.text() )
+    ###
+
+    ### Terminal Related    
+    def received_msg( self, value ):
+        self.TE_deviceStatus.append( value )
+        print( value )
+        if value.startswith("Sampling rate "):
+            parts = value.split(' ')
+            self.sampling = float(parts[4])
+            self.TB_sampling.setText( f"{self.sampling:.2f}" )
+
+    def send_command( self, msg ):      
+        # Send Serial Command and Listen
+        self.board.send_command( msg )
 
     def on_click_send(self):
         self.send_command( self.LE_command.text() )
 
     def on_click_clear(self):
         self.TE_deviceStatus.setText("")
+    ###
 
+    ### Device management Related
     def on_click_connect(self):
         # Connect Push Button
         if self.PB_connect.text() == "Connect":
@@ -467,17 +463,43 @@ class MainWindow(QMainWindow):
         elif self.PB_connect.text() == "Disconnect":
             self.disconnect_device()
 
+    def get_port_list(self):
+        """\
+        Return a list of USB serial port devices.
+
+        Entries in the list are ListPortInfo objects from the
+        serial.tools.list_ports module.  Fields of interest include:
+
+            device:  The device's full path name.
+            vid:     The device's USB vendor ID value.
+            pid:     The device's USB product ID value.
+        """
+        import serial.tools.list_ports
+        self.port_list = [p for p in serial.tools.list_ports.comports() if p.vid]
+
+    def update_port_list(self):
+        # Remove Current List
+        for i in range(self.dev_list.count()):
+            self.dev_list.removeItem(0)
+
+        # Update Port List
+        self.get_port_list()
+        if len(self.port_list) > 0:
+            self.dev_list.addItems( [p.device for p in self.port_list] )
+            self.PB_connect.setEnabled( True )
+        elif len(self.port_list) == 0:
+            self.PB_connect.setEnabled( False )
+
     def connect_device(self):
-        
-        if self.board == None:
+
+        if self.board == None: # Initialize board object if it doesn't exisit
             self.board = vivi.Board( None )
             self.board.msg_out.connect( self.received_msg )
             self.board.status_signal.connect( self.on_status_change )
             self.board.live_data.connect( self.received_live_data )
             self.board.acquire_data.connect( self.received_acquire_data )
             self.board.elapsed_time.connect( self.received_elapsed_time)
-
-        if self.board.connected:
+        else: # Close Current Connection if board exists
             self.board.close_board()
 
         if len(self.port_list) > 0:
@@ -491,27 +513,22 @@ class MainWindow(QMainWindow):
 
             self.PB_send.setEnabled( True )
             self.PB_connect.setText( "Disconnect" )
-            self.group_device_setting.setEnabled( True )
-            self.group_viviewer.setEnabled( True )
 
             self.board.init_settings()
 
-
     def disconnect_device( self ):
-        if self.board.connected:
-            self.board.set_stop( True )
-            time.sleep(0.5)
-            self.board.set_connected( False )
-            self.thread.quit()
+        if not self.board == None:
             self.board.close_board()
+            self.thread.quit()
             self.PB_send.setEnabled( False )
             self.PB_connect.setText( "Connect" )
             self.group_device_setting.setEnabled( False )
             self.group_viviewer.setEnabled( False )
 
-    def dev_changed(self):
-        print( "Selected: "+self.dev_list.currentText())
-        self.connect_device(  )
+    def on_quit( self ):
+        print("Exiting Vivi")
+        self.disconnect_device()
+    ###
     
     """Program to compute noise spectral density in nV / sqrt(Hz) for ADC-8 data."""
     def calc_noise_density( self, data, rate, NUM_DFT ):

@@ -7,34 +7,11 @@ from PyQt6.QtCore import (Qt, pyqtSignal, QTimer, QObject, QThread)
 from PyQt6.QtWidgets import QWidget
 import struct
 
-NUM_CHANNELS = 4
-HDR_LEN = 16
-BIPOLAR = 2
-SCALE_24 = 1.0 / (1 << 24)
-VREF = 2.5 * 1.02		# Include 2% correction factor
-
-def get_port_list():
-    """\
-    Return a list of USB serial port devices.
-
-    Entries in the list are ListPortInfo objects from the
-    serial.tools.list_ports module.  Fields of interest include:
-
-        device:  The device's full path name.
-        vid:     The device's USB vendor ID value.
-        pid:     The device's USB product ID value.
-    """
-
-    import serial.tools.list_ports
-    return [p for p in serial.tools.list_ports.comports() if p.vid]
-
 
 class Board(QObject):
-    status = int
-    status_signal = pyqtSignal(int)
-    # -1 = Board is not Ready
-    # 0 = Board is Ready
-    # 1 = Board is Acquiring
+    status = str
+    status_signal = pyqtSignal(str)
+    # "NOT-READY", "LISTENING", "LIVE", "ACQUIRE", "STOPPING", "DISCONNECT"
 
     msg_out = pyqtSignal( str )
     live_data = pyqtSignal( list )
@@ -58,10 +35,9 @@ class Board(QObject):
         self.VREF = 2.5 * 1.02		# Include 2% correction factor
 
         self.dev = None
-        self.connected = False
-        self.listening = False
         self.msg_input = None
-        self.stop = False
+
+        self.status = "DISCONNECT"
 
     def connect_board( self, portname ):
         """  
@@ -72,9 +48,7 @@ class Board(QObject):
         if portname is None:
             #self.msg_out.emit("No serial port name specified")
             self.dev = None
-            self.connected = False
-            self.set_status( -1 ) 
-            self.listening = False
+            self.set_status( "NOT-READY" ) 
         else :
             self.dev = serial.Serial(portname, exclusive=True)
             time.sleep(0.8)
@@ -82,27 +56,25 @@ class Board(QObject):
             # proper firmware
             msg = self.get_board_id()
             if msg.startswith("ADC-8"):
-                self.set_listening( True )
-                self.connected = True
-                self.set_status( 0 ) 
                 self.dev.write(b'\n')
 
                 boardmsg = "Connected to ADC-8 board: "+ portname +"\n"
                 boardmsg += "    Serial number: "+ self.serial_number+"\n"
                 self.msg_out.emit( boardmsg )
-                
+
+                self.set_status( "LISTENING" ) 
             else:
                 self.dev = None
-                self.connected = False
-                self.listening = False
-                self.set_status( -1 ) 
                 self.msg_out.emit("Device is not an ADC-8 board")
+                self.set_status( "NOT-READY" ) 
 
     def close_board( self ):
+        if self.status == "LIVE" or self.status == "ACQUIRE":
+            self.set_status( "STOPPING" )
+
+        self.set_status( "DISCONNECT")
         self.dev.close()
         self.dev = None
-        self.connected = False
-        self.set_status( -1 ) 
 
     def init_settings( self ):
         self.msg_out.emit('Setting Initial Settings')
@@ -111,8 +83,11 @@ class Board(QObject):
         self.set_sampling( 400 )
 
     def set_status( self, value ):
-        self.status = value
-        self.status_signal.emit( value )
+        if not (value=="LISTENING" or value=="NOT-READY" or value=="STOPPING" or value=="LIVE" or value=="ACQUIRE" or value=="DISCONNECT"):
+            print( "INVALID STATUS SIGNAL")
+        else:
+            self.status = value
+            self.status_signal.emit( value )
 
     def __repr__(self):
         """String representation of adc8 Board."""
@@ -143,10 +118,8 @@ class Board(QObject):
     def start_comm(self):
         counter = 0
         while True:
-            # print( self.msg_input )
-            # time.sleep(0.3)
             counter += 1
-            if self.listening:
+            if self.status == "LISTENING":
                 if not self.msg_input == None and isinstance( self.msg_input, str ):
                     
                     self.msg_out.emit(self.msg_input )
@@ -156,41 +129,22 @@ class Board(QObject):
                     ans_msg = self.dev.read(1500)
                     self.msg_out.emit( ans_msg.decode() )
                     self.msg_input = None
-
-            else:
-                if self.acquire_mode == "live":
-                    self.start_live_view() 
-                    self.set_listening( True )
-                elif self.acquire_mode == "capture":
-                    self.start_acquire()
-                    self.set_listening( True )
-
-
-            if self.connected == False:
+            elif self.status == "LIVE":
+                self.start_live_view()
+            elif self.status == "ACQUIRE":
+                self.start_acquire()
+            elif self.status == "DISCONNECT":
                 self.msg_out.emit( "Disconnecting..." )
                 break
+
+        self.set_status( "NOT-READY" ) 
             
     def set_num_live_sample(self, value):
         self.num_live_sample = value
 
-    def set_acquire_mode(self, value):
-        if value == "live" or value == "capture":
-            self.acquire_mode = value
-        else :
-            self.msg_out.emit("Invalid Acquire Mode")
-
-    def set_stop(self, value):
-        self.stop = value
-
-    def set_listening(self, value):
-        self.listening = value
-
-    def set_connected(self, value):
-        self.connected = value
-    
     def send_command(self, msg):
         # Send Serial Command and Listen
-        if self.connected:
+        if self.status == "LISTENING":
             self.msg_input = msg
         else:
             self.msg_out = "\nConnect an ADC-8 Board to Start"
@@ -219,17 +173,15 @@ class Board(QObject):
         for i, g in enumerate(gains):
             if g == 0:
                 continue
-            x = (block[j] + (block[j+1] << 8) + (block[j+2] << 16)) * SCALE_24
+            x = (block[j] + (block[j+1] << 8) + (block[j+2] << 16)) * self.SCALE_24
             if bipolar[i]:
                 x = 2. * x - 1.
-            volts[v] = round(x * VREF / g, 9)
+            volts[v] = round(x * self.VREF / g, 9)
             j += 3
             v += 1
         return volts
     
     def start_live_view(self):
-
-        self.set_status( 1 )
         self.msg_out.emit("Starting Live View")
 
         self.dev.write(f"b0\n".encode())
@@ -237,14 +189,14 @@ class Board(QObject):
         self.dev.read_until(b"+")		# Skip initial text
 
         sig = b""
-        h = self.dev.read(HDR_LEN)
-        if len(h) == HDR_LEN:
+        h = self.dev.read(self.HDR_LEN)
+        if len(h) == self.HDR_LEN:
             hdr = struct.unpack(f"<4sHBB {2 * self.NUM_CHANNELS}B", h)
             sig = hdr[0]		# The signature
         if sig != b"ADC8":
             self.msg_out.emit("Invalid header received, transfer aborted")
             self.dev.write(b"\n")
-            self.set_status( 0 )
+            self.set_status( "LISTENING" )
             return -1
 
         chans = hdr[4:]			# The ADC channel entries
@@ -257,7 +209,7 @@ class Board(QObject):
         if num == 0:
             self.msg_out.emit("Header shows no active ADCs, transfer aborted")
             self.dev.write(b"\n")
-            self.set_status( 0 )
+            self.set_status( "LISTENING" )
             return -1
 
         blocksize = num * 3
@@ -268,7 +220,7 @@ class Board(QObject):
         output_data = []
         # Receive and store the data
         cont = True
-        while cont:
+        while cont:   
             n = self.dev.read(1)		# Read the buffer's length byte
             if len(n) == 0:
                 self.msg_out.emit("Timeout")
@@ -302,9 +254,8 @@ class Board(QObject):
 
             total_blocks += n // blocksize
 
-            if self.stop == True:
+            if self.status == "STOPPING":
                 self.msg_out.emit("Termination requested")
-                self.set_stop(False)
                 break
 
         self.dev.write(b"\n")
@@ -314,13 +265,10 @@ class Board(QObject):
         self.dev.timeout = 0.01
         self.dev.read(1000)		# Flush any extra output
 
-        self.set_status( 0 )
-        self.set_stop( False )
+        self.set_status( "LISTENING" )
         return output_data
     
     def start_acquire(self):
-        stop_called = False
-        self.set_status( 1 )
         self.msg_out.emit("Acquiring")
 
         self.dev.write(f"b{self.acquire_time}\n".encode())
@@ -328,14 +276,14 @@ class Board(QObject):
         self.dev.read_until(b"+")		# Skip initial text
 
         sig = b""
-        h = self.dev.read(HDR_LEN)
-        if len(h) == HDR_LEN:
+        h = self.dev.read(self.HDR_LEN)
+        if len(h) == self.HDR_LEN:
             hdr = struct.unpack(f"<4sHBB {2 * self.NUM_CHANNELS}B", h)
             sig = hdr[0]		# The signature
         if sig != b"ADC8":
             self.msg_out.emit("Invalid header received, transfer aborted")
             self.dev.write(b"\n")
-            self.set_status( 0 )
+            self.set_status( "LISTENING" )
             return -1
 
         chans = hdr[4:]			# The ADC channel entries
@@ -348,7 +296,7 @@ class Board(QObject):
         if num == 0:
             self.msg_out.emit("Header shows no active ADCs, transfer aborted")
             self.dev.write(b"\n")
-            self.set_status( 0 )
+            self.set_status( "LISTENING" )
             return -1
 
         blocksize = num * 3
@@ -393,18 +341,13 @@ class Board(QObject):
                 volts = self.convert_values(d[i:i + blocksize], gains, bipolar, num)
                 output_data.append ( volts )
 
-            
-
-
             total_blocks += n // blocksize
 
-            if self.stop == True:
+            if self.status == "STOPPING":
                 self.msg_out.emit("Termination requested")
-                self.set_stop(False)
-                stop_called = True
                 break
 
-        if stop_called:     
+        if self.status == "STOPPING":     
             self.dev.write(b"\n")
             self.acquire_data.emit( [-1] )
         else:
@@ -416,103 +359,5 @@ class Board(QObject):
 
         self.dev.timeout = 0.01
         self.dev.read(1000)		# Flush any extra output
-        self.set_stop( False )
-        self.set_status( 0 )
-        return output_data
-
-    def start_transfer(self, acq_time=4):
-        self.set_status( 1 )
-
-        self.dev.write(f"b{acq_time}\n".encode())
-        self.dev.timeout = 6
-        self.dev.read_until(b"+")		# Skip initial text
-
-        sig = b""
-        h = self.dev.read(HDR_LEN)
-        if len(h) == HDR_LEN:
-            hdr = struct.unpack(f"<4sHBB {2 * self.NUM_CHANNELS}B", h)
-            sig = hdr[0]		# The signature
-        if sig != b"ADC8":
-            self.msg_out.emit("Invalid header received, transfer aborted")
-            self.dev.write(b"\n")
-            self.set_status( 0 )
-            return -1
-
-        chans = hdr[4:]			# The ADC channel entries
-        num = 0
-        gains = [chans[2 * i] for i in range(self.NUM_CHANNELS)]
-        bipolar = [chans[2 * i + 1] & self.BIPOLAR for i in range(self.NUM_CHANNELS)]
-        for g in gains:
-            if g > 0:
-                num += 1
-        if num == 0:
-            self.msg_out.emit("Header shows no active ADCs, transfer aborted")
-            self.dev.write(b"\n")
-            self.set_status( 0 )
-            return -1
-
-        blocksize = num * 3
-
-        total_blocks = 0
-        warned = False
-
-        # threading.Thread(target=poll_stdin, daemon=True).start()
-        output_data = []
-        # Receive and store the data
-
-        # Set Timer
-        t_start = time.time()
-        t_counter = 0
-
-        cont = True
-        while cont:
-            t_cur =time.time()
-            if math.floor( t_cur-t_start ) == t_counter:
-                self.elapsed_time.emit( t_counter )
-                t_counter +=1
-
-            n = self.dev.read(1)		# Read the buffer's length byte
-            if len(n) == 0:
-                self.msg_out.emit("Timeout")
-                break
-            n = n[0]
-            if n == 0:
-                self.msg_out.emit("End of data")
-                break
-
-            d = self.dev.read(n)		# Read the buffer contents
-            if len(d) < n:
-                self.msg_out.emit("Short data buffer received")
-                break
-            
-            if n % blocksize != 0:
-                if not warned:
-                    self.msg_out.emit("Warning: Invalid buffer length", n)
-                    warned = True
-                n -= n % blocksize
-
-
-            for i in range(0, n, blocksize):
-                # Convert the block data to floats and write them out
-                volts = self.convert_values(d[i:i + blocksize], gains, bipolar, num)
-                output_data.append ( volts )
-            
-
-
-            total_blocks += n // blocksize
-
-            if self.stop == True:
-                self.msg_out.emit("Termination requested")
-                self.set_stop(False)
-                break
-
-        self.dev.write(b"\n")
-        self.msg_out.emit("Transfer ended")
-        self.msg_out.emit(total_blocks, "blocks received")
-
-        self.dev.timeout = 0.01
-        self.dev.read(1000)		# Flush any extra output
-
-        self.set_status( 2 )
-        self.set_status( 0 )
+        self.set_status( "LISTENING" )
         return output_data

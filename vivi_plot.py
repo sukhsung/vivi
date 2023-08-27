@@ -74,7 +74,6 @@ class Plotter(QObject):
             self.y_sum[i] += data[1:,i]
             self.Plot_Objs[i].setData( xs[1:], data[1:,i])
 
-
             if self.plot_average:
                 if self.y_counter < 2*self.num_pts:
                     y_mean = np.mean( self.Spectrum_image[i][:self.y_counter],0 )
