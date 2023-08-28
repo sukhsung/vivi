@@ -66,13 +66,20 @@ class Board(QObject):
                 self.msg_out.emit("Device is not an ADC-8 board")
                 self.set_status( "NOT-READY" ) 
 
+    def returnThreadToMain( self, main_thread ):
+        self.moveToThread( main_thread )
+
+
     def close_board( self ):
         if self.status == "LIVE" or self.status == "ACQUIRE":
             self.set_status( "STOPPING" )
-
+            while self.status == "STOPPING":
+                time.sleep(0.01)
+        
         self.set_status( "DISCONNECT")
         self.dev.close()
         self.dev = None
+        
 
     def init_settings( self ):
         self.msg_out.emit('Setting Initial Settings')
@@ -136,7 +143,10 @@ class Board(QObject):
                 self.msg_out.emit( "Disconnecting..." )
                 break
 
+        # self.dev.read(1000)		# Flush any extra output
         self.set_status( "NOT-READY" ) 
+        # Return Board to main thread before finishing
+        self.moveToThread( self.thread_main )
 
     def parse_answer(self, msg):
         if msg.startswith("Sampling rate set to "):

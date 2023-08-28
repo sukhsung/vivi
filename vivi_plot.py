@@ -1,132 +1,184 @@
-# vivi-plot.py
+# vivi_plot.py
 # Manage Plotting Aspects
-import time
-from PyQt6.QtCore import (Qt, pyqtSignal, QTimer, QObject)
-from PyQt6.QtWidgets import QWidget
+from PyQt6.QtCore import (QObject)
+# from PyQt6.QtWidgets import QWidget
 import pyqtgraph as pg
 import numpy as np
+from math import sqrt
 
 class Plotter(QObject):
-
-    """Represent a single Plot Board"""
-    def __init__(self, plot_widget, PW_spectrum, spectrum_widget):
+    def __init__(self):
         super().__init__() #Inherit QObject
 
-        self.NUM_CHANNELS = 4
-        self.Plot_Widget = plot_widget
-        self.PW_spectrum = PW_spectrum
-        self.Spectrum_Widget = spectrum_widget
-        self.Spectrum_image = []
+        # Spectrum
+        self.PW_spectrum = pg.plot()
+        self.PW_spectrum.setBackground((57, 57, 57))
+        self.legend = self.PW_spectrum.addLegend()
+        
+        # Spectrograph
+        self.PW_spectrogram = [pg.plot() for i in range(4)]
+        self.II_spectrogram = [pg.ImageItem(img= np.zeros((128,64))) for i in range(4)]
+        for i in range(4):
+            self.PW_spectrogram[i].getPlotItem().addItem(self.II_spectrogram[i])
+            colorbar = ( pg.ColorBarItem( values=(1,10), colorMap=pg.colormap.get('inferno') ))
+            colorbar.setImageItem( self.II_spectrogram[i], insert_in=self.PW_spectrogram[i].getPlotItem())
+            self.PW_spectrogram[i].setBackground( (62,62,62))
 
-        self.Plot_Widget.setBackground((57, 57, 57))
-        self.Plot_Objs = []
-        self.Plot_Ave_Objs = []
-        self.legend = self.Plot_Widget.addLegend()
+        # Integrated Intensity
+        self.PW_integrated = pg.plot()
+        self.PW_integrated.setBackground((57, 57, 57))
 
-        self.pen = []
-        self.pen.append( pg.mkPen((239,48,89), width=2))
-        self.pen.append( pg.mkPen((255,248,238), width=2))
-        self.pen.append( pg.mkPen((242,132,68),  width=2))
-        self.pen.append( pg.mkPen((29,188,82), width=2))
+        colors = [(239,48,90), (255, 248, 238), (242,132,68), (29,188,82)]
+        self.pen = [ pg.mkPen( colors[i], width=2) for i in range(4)]
+        self.pen_ave = [ pg.mkPen( colors[i], width=4) for i in range(4)]
 
-        self.pen_ave = []
-        self.pen_ave.append( pg.mkPen((239,48,89), width=4))
-        self.pen_ave.append( pg.mkPen((255,248,238), width=4))
-        self.pen_ave.append( pg.mkPen((242,132,68),  width=4))
-        self.pen_ave.append( pg.mkPen((29,188,82), width=4))
+        self.Image_spectrogram = []
+        self.plot_spectrum = []
+        self.plot_spectrum_ave = []
+        self.plot_integrated = []
 
 
-        self.sampling = None
-        self.num_sample = None
+        self.sampling = 0
+        self.num_sample = 0
+        self.num_dft = 0
         self.plot_average = True
 
+        self.fs = []
 
-    def init_plot_board(self, xs ):
-        self.xs = xs
-        ys = np.zeros_like( xs )
-        for p in self.Plot_Objs:
-            p.clear()
-        for p in self.Plot_Ave_Objs:
-            p.clear()
-        self.legend.clear()# = self.Plot_Widget.addLegend()
-        self.Plot_Objs = []
-        self.Plot_Ave_Objs = []
+    def init_all(self):
+        # Set Axes
+        if self.num_dft % 2 == 0: #If is Even
+            self.num_fs = int( (self.num_dft/2)+1 ) -1
+        else:
+            self.num_fs = int( (self.num_dft+1)/2 ) -1
+        self.fscale = self.sampling / self.num_dft
+        self.fs = self.fscale* np.arange( self.num_fs )
+        self.fmax = self.fs[-1]
 
-        self.y_sum = []
+        self.num_ts = 2*self.num_fs
+        self.tscale = self.num_sample/self.sampling
+        self.ts= self.tscale*np.arange(self.num_ts)
+        self.tmax = self.ts[-1]
+
+    def init_spectrum(self):
+        for p in self.plot_spectrum:
+            p.clear()
+        for p in self.plot_spectrum_ave:
+            p.clear()
+        self.legend.clear()
+
+        ys = np.zeros_like( self.fs )
+        self.plot_spectrum = [self.PW_spectrum.plot( self.fs, ys+1, pen=self.pen[i], name="Ch. {}".format(i+1)) for i in range(4)]
+        if self.plot_average:
+            self.plot_spectrum_ave = [self.PW_spectrum.plot( self.fs, ys+1, pen=self.pen_ave[i] ) for i in range(4)]
+
         self.y_counter = 0
-        for i in range(4):
-            self.y_sum.append( ys+1 )
-            self.Plot_Objs.append(self.Plot_Widget.plot( xs, ys+1, pen=self.pen[i], name="Ch. {}".format(i+1)) )
-            
-            if self.plot_average:
-                self.Plot_Ave_Objs.append(self.Plot_Widget.plot( xs, ys+1, pen=self.pen_ave[i] ))
-        
-        self.Plot_Widget.setLogMode(False, True)
-        self.Plot_Widget.setLimits( yMin=0, yMax=12, xMin=0, xMax=self.sampling/2)
-        self.Plot_Widget.setRange( yRange=(0, 7), disableAutoRange=True)
-
-        self.Plot_Widget.getAxis('bottom').setLabel(text="Frequency", units="Hz",unitPrefix=None)
-
-    def update_plot_board(self, xs, data):
-        self.y_counter += 1
-        for i in range(4):
-            self.y_sum[i] += data[1:,i]
-            self.Plot_Objs[i].setData( xs[1:], data[1:,i])
-
-            if self.plot_average:
-                if self.y_counter < 2*self.num_pts:
-                    y_mean = np.mean( self.Spectrum_image[i][:self.y_counter],0 )
-                else:
-                    y_mean = np.mean( self.Spectrum_image[i],0 )
-
-                self.Plot_Ave_Objs[i].setData( xs[1:], y_mean)
-            
-            
-
-    def init_spectrum( self, num_pts):
-        # for p in self.spectrum_widget:
-        #     p.clear()
-        # self.counter = np.random.rand( 64,64 )
-        self.num_pts= num_pts
-        xticks_pos = np.linspace(0, num_pts, 5)
+        self.PW_spectrum.setLogMode(False, True)
+        self.PW_spectrum.setLimits( yMin=0, yMax=12, xMin=0, xMax=self.fmax)
+        self.PW_spectrum.setRange( yRange=(0, 7), disableAutoRange=True)
+        self.PW_spectrum.getAxis('bottom').setLabel(text="Frequency", units="Hz",unitPrefix=None)
+           
+    def init_spectrogram( self ):
+        fticks_pos = np.linspace(0, self.num_fs, 5)
         fs = np.linspace(0, self.sampling/2, 5)
         major_ticks = []
         for i in range(5):
-            major_ticks.append( (xticks_pos[i], f"{fs[i]:.2f}") )
-        xticks = [ major_ticks, [] ]
+            major_ticks.append( (fticks_pos[i], f"{fs[i]:.2f}") )
+        fticks = [ major_ticks, [] ]
 
         t_step = self.num_sample/self.sampling
-        yticks_pos = np.linspace(0, 2*num_pts, 11)
-        ts= np.linspace(0, t_step*2*num_pts, 11)
+        yticks_pos = np.linspace(0, self.num_ts, 11)
+        ts= np.linspace(0, t_step*self.num_ts, 11)
         major_ticks = []
         for i in range(11):
             major_ticks.append( (yticks_pos[i], f"{ts[i]:.1f}") )
-        yticks = [ major_ticks, [] ]
+        tticks = [ major_ticks, [] ]
 
-
-        self.Spectrum_image = []
-        self.Spectrum_image_log = []
+        self.Image_spectrogram = [np.zeros( (self.num_ts, self.num_fs)) for i in range(4)]
+        self.Image_spectrogram_log = [np.zeros( (self.num_ts, self.num_fs)) for i in range(4)]
         for i in range(4):
-            self.Spectrum_image.append( np.zeros( (2*num_pts, num_pts)) )
-            self.Spectrum_image_log.append( np.zeros( (2*num_pts, num_pts)) )
-            # self.Spectrum_Widget[i].addColorBar( colormap='viridis')
-            self.PW_spectrum[i].setYRange( 0, num_pts, padding=0 )
-            self.PW_spectrum[i].setXRange( 0, 2*num_pts, padding=0 )
-            self.PW_spectrum[i].setLimits( xMin=0, xMax=2*num_pts, yMin=0, yMax= (num_pts*1.05) )
-            axX = self.PW_spectrum[i].getAxis('left')
-            axX.setLabel(text="Frequency", units="Hz",unitPrefix=None)
-            axX.setTicks( xticks )
-            axY = self.PW_spectrum[i].getAxis('bottom')
-            axY.setLabel(text="Time", units="s",unitPrefix=None)
-            axY.setTicks( yticks )
+            self.PW_spectrogram[i].setYRange( 0, self.num_fs, padding=0 )
+            self.PW_spectrogram[i].setXRange( 0, self.num_ts, padding=0 )
+            self.PW_spectrogram[i].setLimits( xMin=0, xMax=self.num_ts, yMin=0, yMax= (self.num_fs*1.00) )
+            axX = self.PW_spectrogram[i].getAxis('left')
+            axX.setLabel(text="Frequency", units="Hz", unitPrefix=None)
+            axX.setTicks( fticks )
+            axY = self.PW_spectrogram[i].getAxis('bottom')
+            axY.setLabel(text="Time", units="s", unitPrefix=None)
+            axY.setTicks( tticks )
 
-    def update_spectrum( self, data ):
+    def init_integrated( self ):
+        for p in self.plot_integrated:
+            p.clear()
+
+        ys = np.zeros_like( self.ts )
+        self.plot_integrated = [self.PW_integrated.plot( self.ts, ys+1, pen=self.pen[i], name="Ch. {}".format(i+1)) for i in range(4)]
+        
+        # self.y_counter = 0
+        self.PW_integrated.setLogMode(False, True)
+        self.PW_integrated.setLimits( yMin=0, yMax=12, xMin=0, xMax=self.tmax)
+        self.PW_integrated.setRange( yRange=(0, 7), disableAutoRange=True)
+        self.PW_integrated.getAxis('bottom').setLabel(text="Time", units="s", unitPrefix=None)
+
+    def update_all(self, volts, spectrogram):
+        spectra = self.calc_noise_density( volts, rate=self.sampling, NUM_DFT=self.num_dft )
+
+        self.update_spectrum( spectra )
+        if spectrogram:
+            self.update_spectrogram( spectra )
+            self.update_integrated()
+
+    def update_spectrum(self, data):
+        self.y_counter += 1
         for i in range(4):
-            self.Spectrum_image[i] = np.roll( self.Spectrum_image[i], 1, axis=(0))
-            self.Spectrum_image_log[i] = np.roll( self.Spectrum_image_log[i], 1, axis=(0))
-            self.Spectrum_image[i][0,:] = data[1:,i]
-            self.Spectrum_image_log[i][0,:] = np.log10(1+data[1:,i])
-            self.Spectrum_Widget[i].setImage(self.Spectrum_image_log[i],autoLevels=False )
+            self.plot_spectrum[i].setData( self.fs, data[1:,i])
+
+            if self.plot_average:
+                if self.y_counter < self.num_ts:
+                    y_mean = np.mean( self.Image_spectrogram[i][:self.y_counter],0 )
+                else:
+                    y_mean = np.mean( self.Image_spectrogram[i],0 )
+
+                self.plot_spectrum_ave[i].setData( self.fs, y_mean)
+
+    def update_spectrogram( self, data ):
+        for i in range(4):
+            self.Image_spectrogram[i] = np.roll( self.Image_spectrogram[i], 1, axis=(0))
+            self.Image_spectrogram_log[i] = np.roll( self.Image_spectrogram_log[i], 1, axis=(0))
+            self.Image_spectrogram[i][0,:] = data[1:,i]
+            self.Image_spectrogram_log[i][0,:] = np.log10(1+data[1:,i])
+            self.II_spectrogram[i].setImage(self.Image_spectrogram_log[i],autoLevels=False )
+
+    def update_integrated( self ):
+        for i in range(4):
+            self.plot_integrated[i].setData( self.ts, np.mean(self.Image_spectrogram[i], axis=1 ))
 
     def set_plot_average( self, value ):
         self.plot_average = value
+
+    """Program to compute noise spectral density in nV / sqrt(Hz) for ADC-8 data."""
+    def calc_noise_density( self, data, rate, NUM_DFT ):
+        rate = float(rate)
+        nchans = 4
+        
+        nsamples = data.shape[0]
+        
+        total_power = np.zeros((NUM_DFT // 2 + 1, nchans))
+        navg = 0
+
+        for i in range(0, nsamples - NUM_DFT, NUM_DFT):
+            f = np.fft.rfft(data[i:, :], NUM_DFT, axis=0)		# Noise spectrum
+            f = np.square(np.real(f)) + np.square(np.imag(f))	# Power spectrum
+            total_power += f
+            navg += 1
+
+
+        f = np.sqrt(total_power / navg)
+
+        # Normalize and convert to nV / sqrt(Hz)
+        f *= 1.0e9 / sqrt(NUM_DFT * 0.5 * rate)
+
+        # Round off to a reasonable number of decimals
+        f = f.round(6)
+
+        return f

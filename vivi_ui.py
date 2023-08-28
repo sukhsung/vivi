@@ -24,7 +24,7 @@ import os
 import vivi, vivi_plot
 import numpy as np
 from functools import partial 
-import math, time
+import time
 from datetime import datetime
 
 
@@ -133,6 +133,10 @@ class MainWindow(QMainWindow):
         layout_vivi.addWidget( self.group_device_setting)
     
     def make_panel_viewer( self ):
+        
+        # Load Plot Manager
+        self.plotter = vivi_plot.Plotter(  )
+
         # Acquisition Viewer Panel
         self.group_viviewer = QGroupBox("Viviewer")
         layout_viviewer = QVBoxLayout()
@@ -201,17 +205,16 @@ class MainWindow(QMainWindow):
         layout_acquisition_control.addWidget( self.group_live_control )
         layout_acquisition_control.addWidget( self.group_acquire_control )
 
-        group_live_view = QGroupBox("")
-        layout_live_view = QVBoxLayout()
-        group_live_view.setLayout( layout_live_view )
-        group_live_view.setContentsMargins(0,0,0,0)
-        layout_live_view.setContentsMargins(0,0,0,0)
-        group_live_view.setFixedHeight( 250)
-        self.PW_live_view = pg.plot(title="Live View")
-        layout_live_view.addWidget( self.PW_live_view )
+        group_spectrum = QGroupBox("")
+        layout_spectrum = QVBoxLayout()
+        group_spectrum.setLayout( layout_spectrum )
+        group_spectrum.setContentsMargins(0,0,0,0)
+        layout_spectrum.setContentsMargins(0,0,0,0)
+        group_spectrum.setFixedHeight( 250)
+        layout_spectrum.addWidget( self.plotter.PW_spectrum )
 
         layout_upper.addLayout( layout_acquisition_control )
-        layout_upper.addWidget( group_live_view )
+        layout_upper.addWidget( group_spectrum )
 
         # Save Control
         self.group_save_control = QGroupBox("")
@@ -234,23 +237,14 @@ class MainWindow(QMainWindow):
         layout_middle.addWidget( self.group_save_control )
         self.on_save_path_change()
 
-        tabs_spectrum = QTabWidget()
-        tab_item = [];
-        self.PW_spectrum = []
-        self.II_spectrum = []
-        self.PW_spectrum_colorbar = []
+        tabs_spectrogram = QTabWidget()
         for i in range(4):
-            self.PW_spectrum.append( pg.plot() )
-            self.II_spectrum.append( pg.ImageItem(img= np.zeros((128,64))) )
-            self.PW_spectrum[i].getPlotItem().addItem(self.II_spectrum[i])
-            self.PW_spectrum_colorbar.append( pg.ColorBarItem( values=(1,10), colorMap=pg.colormap.get('inferno') ))
-            self.PW_spectrum_colorbar[i].setImageItem( self.II_spectrum[i], insert_in=self.PW_spectrum[i].getPlotItem())
-            
-            self.PW_spectrum[i].setBackground( (62,62,62))
-            tabs_spectrum.addTab( self.PW_spectrum[i], f"Ch {i+1}" )
-        layout_lower.addWidget( tabs_spectrum ) 
+            tabs_spectrogram.addTab( self.plotter.PW_spectrogram[i], f"Ch {i+1}" )
+        tabs_spectrogram.addTab( self.plotter.PW_integrated, "Integrated Power")
 
-        self.live_plotter = vivi_plot.Plotter( self.PW_live_view, self.PW_spectrum, self.II_spectrum )
+        layout_lower.addWidget( tabs_spectrogram ) 
+
+        # self.plotter.initialize()
         self.group_viviewer.setEnabled( False )
 
     ### Save Related
@@ -290,22 +284,20 @@ class MainWindow(QMainWindow):
 
 
     def prepare_acquisition(self, mode ):
-        self.live_plotter.sampling = self.board.sampling
+        self.plotter.sampling = self.board.sampling
         self.timestamp = time.strftime( "%H%M", time.localtime())
 
         if mode == "live":
-            self.live_plotter.set_plot_average( self.CheckBox_average.isChecked() )
-            # Pre-set dft
-            NUM_DFT = int( self.LE_num_dft_live.text() )
-            if NUM_DFT % 2 == 0: #If is Even
-                num_pts = int( (NUM_DFT/2)+1 ) -1
-            else:
-                num_pts = int( (NUM_DFT+1)/2 ) -1
-            xscale = self.board.sampling / NUM_DFT
-            xs = xscale* np.arange( num_pts )
             self.board.set_num_live_sample( int( self.LE_num_live_sample.text() ) )
-            self.live_plotter.num_sample = int( self.LE_num_live_sample.text() )
-            self.live_plotter.init_spectrum( num_pts )
+            
+            self.plotter.num_dft = int( self.LE_num_dft_live.text() )
+            self.plotter.num_sample = int( self.LE_num_live_sample.text() )
+            self.plotter.set_plot_average( self.CheckBox_average.isChecked() )
+
+            self.plotter.init_all()
+            self.plotter.init_spectrum()
+            self.plotter.init_spectrogram()
+            self.plotter.init_integrated()
 
             fname = f"{self.timestamp}_Live_Sampling_{self.board.sampling}Hz_Gain_{self.board.gains}"
             self.fpath = os.path.join(self.LE_save_path.text(), fname)
@@ -313,7 +305,7 @@ class MainWindow(QMainWindow):
         elif mode == "acquire":
             acquire_time = int( self.LE_acquire_time.text() )
             self.board.set_acquire_time( acquire_time )
-            self.live_plotter.set_plot_average( False )
+            self.plotter.set_plot_average( False )
 
             NUM_DFT = int( self.LE_num_dft_acquire.text() )
             if NUM_DFT % 2 == 0: #If is Even
@@ -328,7 +320,7 @@ class MainWindow(QMainWindow):
             self.fpath = os.path.join(self.LE_save_path.text(), fname)
 
         
-        self.live_plotter.init_plot_board( xs )
+        # self.plotter.init_spectrum( xs )
         
         
         
@@ -382,16 +374,13 @@ class MainWindow(QMainWindow):
     def received_acquire_data( self, value):
         if not value==[-1]:
             volts = np.array(value)
-            NUM_DFT = int( self.LE_num_dft_acquire.text())
-            xs, spectra = self.calc_noise_density( volts, rate=self.board.sampling, NUM_DFT=NUM_DFT )
+            self.plotter.update_all( volts, spectrogram=False )
 
-            self.live_plotter.update_plot_board( xs, spectra )
-
+            ## Save Data
             acquire_file = open(self.fpath, 'w')
             for line in value:
                 acquire_file.write(f"{line[0]}, {line[1]}, {line[2]}, {line[3]}\n") # works with any number of elements in a line
             acquire_file.close()
-
             self.save_status.setText( f"File Saved time stamp: {self.timestamp}")
 
         
@@ -401,11 +390,8 @@ class MainWindow(QMainWindow):
 
     def received_live_data( self, value ):
         volts = np.array(value)
-        NUM_DFT = int( self.LE_num_dft_live.text())
-        xs, spectra = self.calc_noise_density( volts, rate=self.board.sampling, NUM_DFT=NUM_DFT )
 
-        self.live_plotter.update_plot_board( xs, spectra )
-        self.live_plotter.update_spectrum( spectra )
+        self.plotter.update_all( volts, spectrogram=True)
         
         for line in value:
             self.live_file.write(f"{line[0]}, {line[1]}, {line[2]}, {line[3]}\n") 
@@ -413,7 +399,7 @@ class MainWindow(QMainWindow):
     ### ADC Setting Related
     def get_board_status(self):
         self.board.get_board_status()
-
+                                                                                                                                                                                                                                                                                          
     def set_all_gains( self ):
         self.board.set_all_gains( self.CB_allGains.currentText() )
         for i in range( len(self.CB_gains) ):
@@ -500,27 +486,36 @@ class MainWindow(QMainWindow):
             self.board.acquire_data.connect( self.received_acquire_data )
             self.board.elapsed_time.connect( self.received_elapsed_time)
             self.board.setting_changed.connect( self.received_setting_changed )
-        else: # Close Current Connection if board exists
-            self.board.close_board()
+        # else: # Close Current Connection if board exists
+        #     self.board.close_board()
 
         if len(self.port_list) > 0:
             portname = self.port_list[self.dev_list.currentIndex()].device
             self.board.connect_board( portname )
 
-            self.thread = QThread()
-            self.board.moveToThread(self.thread)
-            self.thread.started.connect( self.board.start_comm )
-            self.thread.start()
+            self.thread_board = QThread()
+            self.thread_main = QThread.currentThread() 
+            self.board.thread_main = self.thread_main
+            self.board.moveToThread(self.thread_board)
+            self.thread_board.started.connect( self.board.start_comm )
+            self.thread_board.finished.connect( self.thread_board.deleteLater() )
+            self.thread_board.start()
+
 
             self.PB_send.setEnabled( True )
             self.PB_connect.setText( "Disconnect" )
 
             self.board.init_settings()
+        
 
     def disconnect_device( self ):
-        if not self.board == None:
+        if self.board == None:
+            return
+        elif self.board.status == "DISCONNECT" or self.board.status == "NOT-READY":
+            return
+        else:
             self.board.close_board()
-            self.thread.quit()
+            self.thread_board.quit()
             self.PB_send.setEnabled( False )
             self.PB_connect.setText( "Connect" )
             self.group_device_setting.setEnabled( False )
@@ -531,36 +526,6 @@ class MainWindow(QMainWindow):
         self.disconnect_device()
     ###
     
-    """Program to compute noise spectral density in nV / sqrt(Hz) for ADC-8 data."""
-    def calc_noise_density( self, data, rate, NUM_DFT ):
-        rate = float(rate)
-        nchans = 4
-        
-        nsamples = data.shape[0]
-        
-        total_power = np.zeros((NUM_DFT // 2 + 1, nchans))
-        navg = 0
-
-        for i in range(0, nsamples - NUM_DFT, NUM_DFT):
-            f = np.fft.rfft(data[i:, :], NUM_DFT, axis=0)		# Noise spectrum
-            f = np.square(np.real(f)) + np.square(np.imag(f))	# Power spectrum
-            total_power += f
-            navg += 1
-
-
-        f = np.sqrt(total_power / navg)
-
-        # Normalize and convert to nV / sqrt(Hz)
-        f *= 1.0e9 / math.sqrt(NUM_DFT * 0.5 * rate)
-
-        # Round off to a reasonable number of decimals
-        f = f.round(6)
-
-
-        xscale = rate / NUM_DFT
-        xs = xscale* np.arange( f.shape[0] )
-
-        return xs, f
         
 
 
