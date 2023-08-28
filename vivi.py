@@ -1,11 +1,8 @@
 # auto-transfer.py
 """Program to store continuous data readings from an ADC-8 board."""
 """Based off of adc8-transfer.py and noise-density.py"""
-import serial
-import time, math
-from PyQt6.QtCore import (Qt, pyqtSignal, QTimer, QObject, QThread)
-from PyQt6.QtWidgets import QWidget
-import struct
+import serial, math, time, struct
+from PyQt6.QtCore import (pyqtSignal, QObject)
 
 
 class Board(QObject):
@@ -17,12 +14,13 @@ class Board(QObject):
     live_data = pyqtSignal( list )
     acquire_data = pyqtSignal( list )
     elapsed_time = pyqtSignal( int )
+    setting_changed = pyqtSignal()
 
     stop = bool
     listening = bool
     acquire_mode = str
     """Represent a single ADC-8 board."""
-    def __init__(self, portname=None):
+    def __init__(self):
         """
         Initialize an ADC-8 Board object.
         """
@@ -36,7 +34,6 @@ class Board(QObject):
 
         self.dev = None
         self.msg_input = None
-
         self.status = "DISCONNECT"
 
     def connect_board( self, portname ):
@@ -61,7 +58,8 @@ class Board(QObject):
                 boardmsg = "Connected to ADC-8 board: "+ portname +"\n"
                 boardmsg += "    Serial number: "+ self.serial_number+"\n"
                 self.msg_out.emit( boardmsg )
-
+                self.gains = [128, 128, 128, 128]
+                self.sampling = 400
                 self.set_status( "LISTENING" ) 
             else:
                 self.dev = None
@@ -121,13 +119,14 @@ class Board(QObject):
             counter += 1
             if self.status == "LISTENING":
                 if not self.msg_input == None and isinstance( self.msg_input, str ):
-                    
-                    self.msg_out.emit(self.msg_input )
-
+                    self.msg_out.emit( self.msg_input )
                     write_msg = self.msg_input + "\n"
                     self.dev.write( write_msg.encode() )
-                    ans_msg = self.dev.read(1500)
-                    self.msg_out.emit( ans_msg.decode() )
+                    ans_msg = self.dev.read(1500).decode()
+
+                    self.parse_answer( ans_msg )
+
+                    self.msg_out.emit( ans_msg )
                     self.msg_input = None
             elif self.status == "LIVE":
                 self.start_live_view()
@@ -138,6 +137,25 @@ class Board(QObject):
                 break
 
         self.set_status( "NOT-READY" ) 
+
+    def parse_answer(self, msg):
+        if msg.startswith("Sampling rate set to "):
+            parts = msg.split(' ')
+            self.sampling = float(parts[4])
+            self.setting_changed.emit()
+        elif msg.startswith("All ADCs set to gain "):
+            parts = msg.split(' ')
+            gain = int(parts[5][:-1])
+            self.gains = [gain for i in range(4) ]
+            self.setting_changed.emit()
+        elif msg.startswith("ADC "):
+            parts = msg.split(' ')
+            ch = int(parts[1])
+            gain = int(parts[5][:-1])
+            self.gains[ch-1] = gain
+            self.setting_changed.emit()
+
+
             
     def set_num_live_sample(self, value):
         self.num_live_sample = value
@@ -163,6 +181,7 @@ class Board(QObject):
 
     def set_acquire_time( self, value ):
         self.acquire_time = value
+
     
     def convert_values(self, block, gains, bipolar, num):
         """Convert the 24-bit values in block to floating-point numbers

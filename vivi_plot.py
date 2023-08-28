@@ -4,7 +4,6 @@ import time
 from PyQt6.QtCore import (Qt, pyqtSignal, QTimer, QObject)
 from PyQt6.QtWidgets import QWidget
 import pyqtgraph as pg
-import struct
 import numpy as np
 
 class Plotter(QObject):

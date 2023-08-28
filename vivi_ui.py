@@ -84,7 +84,6 @@ class MainWindow(QMainWindow):
         self.CB_allGains.addItems( ["128", "64", "32", "16", "8","1"])
         self.CB_allGains.activated.connect( self.set_all_gains )
         self.TB_sampling = QLineEdit("400.00")
-        self.sampling = 400
         self.TB_sampling.setMaxLength(7)
         self.TB_sampling.setFixedWidth( 55 )
         self.TB_sampling.returnPressed.connect( self.set_sampling ) 
@@ -291,14 +290,7 @@ class MainWindow(QMainWindow):
 
 
     def prepare_acquisition(self, mode ):
-        self.live_plotter.sampling = self.sampling
-        gains = []
-        for i in range(4):
-            gains.append( int(self.CB_gains[i].currentText()) )
-
-        if gains[0] == gains[1] and gains[0] == gains[2] and gains[0] == gains[3]:
-            gains = gains[0]
-
+        self.live_plotter.sampling = self.board.sampling
         self.timestamp = time.strftime( "%H%M", time.localtime())
 
         if mode == "live":
@@ -309,13 +301,13 @@ class MainWindow(QMainWindow):
                 num_pts = int( (NUM_DFT/2)+1 ) -1
             else:
                 num_pts = int( (NUM_DFT+1)/2 ) -1
-            xscale = self.sampling / NUM_DFT
+            xscale = self.board.sampling / NUM_DFT
             xs = xscale* np.arange( num_pts )
             self.board.set_num_live_sample( int( self.LE_num_live_sample.text() ) )
             self.live_plotter.num_sample = int( self.LE_num_live_sample.text() )
             self.live_plotter.init_spectrum( num_pts )
 
-            fname = f"{self.timestamp}_Live_Sampling_{self.sampling}Hz_Gain_{gains}"
+            fname = f"{self.timestamp}_Live_Sampling_{self.board.sampling}Hz_Gain_{self.board.gains}"
             self.fpath = os.path.join(self.LE_save_path.text(), fname)
 
         elif mode == "acquire":
@@ -328,11 +320,11 @@ class MainWindow(QMainWindow):
                 num_pts = int( (NUM_DFT/2)+1 ) -1
             else:
                 num_pts = int( (NUM_DFT+1)/2 ) -1
-            xscale = self.sampling / NUM_DFT
+            xscale = self.board.sampling / NUM_DFT
             xs = xscale* np.arange( num_pts )
 
             self.timestamp = time.strftime( "%H%M", time.localtime())
-            fname = f"{self.timestamp}_Acquire_{acquire_time}s_Sampling_{self.sampling}Hz_Gain_{gains}"
+            fname = f"{self.timestamp}_Acquire_{acquire_time}s_Sampling_{self.board.sampling}Hz_Gain_{self.board.gains}"
             self.fpath = os.path.join(self.LE_save_path.text(), fname)
 
         
@@ -391,7 +383,7 @@ class MainWindow(QMainWindow):
         if not value==[-1]:
             volts = np.array(value)
             NUM_DFT = int( self.LE_num_dft_acquire.text())
-            xs, spectra = self.calc_noise_density( volts, rate=self.sampling, NUM_DFT=NUM_DFT )
+            xs, spectra = self.calc_noise_density( volts, rate=self.board.sampling, NUM_DFT=NUM_DFT )
 
             self.live_plotter.update_plot_board( xs, spectra )
 
@@ -410,7 +402,7 @@ class MainWindow(QMainWindow):
     def received_live_data( self, value ):
         volts = np.array(value)
         NUM_DFT = int( self.LE_num_dft_live.text())
-        xs, spectra = self.calc_noise_density( volts, rate=self.sampling, NUM_DFT=NUM_DFT )
+        xs, spectra = self.calc_noise_density( volts, rate=self.board.sampling, NUM_DFT=NUM_DFT )
 
         self.live_plotter.update_plot_board( xs, spectra )
         self.live_plotter.update_spectrum( spectra )
@@ -432,17 +424,26 @@ class MainWindow(QMainWindow):
 
     def set_sampling( self ):
         self.board.set_sampling(self.TB_sampling.text())
-        self.sampling = float( self.TB_sampling.text() )
+        self.board.sampling = float( self.TB_sampling.text() )
     ###
 
     ### Terminal Related    
     def received_msg( self, value ):
         self.TE_deviceStatus.append( value )
-        print( value )
-        if value.startswith("Sampling rate "):
-            parts = value.split(' ')
-            self.sampling = float(parts[4])
-            self.TB_sampling.setText( f"{self.sampling:.2f}" )
+
+    def received_setting_changed( self ):
+        # Update Sampling UIs
+        self.TB_sampling.setText( f"{self.board.sampling:.2f}" )
+        # Update Gain UIs
+        bool_all_gain = True
+        for i in range(4):
+            ind = ["128", "64", "32", "16", "8","1"].index(str(self.board.gains[i]))
+            self.CB_gains[i].setCurrentIndex(ind)
+            bool_all_gain = bool_all_gain and self.board.gains[i] == self.board.gains[0]
+
+        if bool_all_gain:
+            self.CB_allGains.setCurrentIndex(ind)
+
 
     def send_command( self, msg ):      
         # Send Serial Command and Listen
@@ -491,14 +492,14 @@ class MainWindow(QMainWindow):
             self.PB_connect.setEnabled( False )
 
     def connect_device(self):
-
         if self.board == None: # Initialize board object if it doesn't exisit
-            self.board = vivi.Board( None )
+            self.board = vivi.Board( )
             self.board.msg_out.connect( self.received_msg )
             self.board.status_signal.connect( self.on_status_change )
             self.board.live_data.connect( self.received_live_data )
             self.board.acquire_data.connect( self.received_acquire_data )
             self.board.elapsed_time.connect( self.received_elapsed_time)
+            self.board.setting_changed.connect( self.received_setting_changed )
         else: # Close Current Connection if board exists
             self.board.close_board()
 
