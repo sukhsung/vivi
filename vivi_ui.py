@@ -1,4 +1,4 @@
-from PyQt6.QtCore import QSize, QThread
+from PyQt6.QtCore import QSize, QThread, Qt
 from PyQt6.QtWidgets import (
     QApplication,
     QVBoxLayout,
@@ -13,44 +13,47 @@ from PyQt6.QtWidgets import (
     QComboBox,
     QTextEdit,
     QFileDialog,
-    QCheckBox
+    QCheckBox,
+    QProgressBar,
+    QSpacerItem
 )
+from PyQt6.QtGui import QFont, QFontDatabase
+from PyQt6 import QtSvgWidgets
 
-from pyqtgraph import PlotWidget, plot
-import pyqtgraph as pg
-
-import sys
-import os
+import sys, os, time
 import vivi, vivi_plot
 import numpy as np
-from functools import partial 
-import time
+from functools import partial
 from datetime import datetime
-
-
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
         self.setWindowTitle("Vivi")
-        self.setFixedSize(QSize(1280, 700))
+        self.setFixedSize(QSize(1280, 780))
+        self.main_widget = QWidget()
+        layout_main = QVBoxLayout()
+        self.main_widget.setLayout(layout_main)
         self.board = None
 
         self.make_panel_device()
         self.make_panel_viewer()
+        self.make_panel_banner()
 
-        layout = QHBoxLayout()
-        layout.addWidget( self.group_vivi )
-        layout.addWidget( self.group_viviewer )
+        layout_UI = QHBoxLayout()
+        layout_UI.addWidget( self.group_vivi )
+        layout_UI.addWidget( self.group_viviewer )
 
-        widget = QWidget()
-        widget.setLayout(layout)
-        self.setCentralWidget( widget )
+        layout_main.addLayout( layout_UI )
+        layout_main.addWidget( self.group_logo )
+        self.main_widget.setStyleSheet( "background-color:393939")
+
+        self.setCentralWidget( self.main_widget )
 
     def make_panel_device( self ):
         # Vivi Device Manager Panel
-        self.group_vivi = QGroupBox("Vivi")
+        self.group_vivi = QGroupBox("")
         self.group_vivi.setFixedSize(QSize(450, 680))
         layout_vivi = QVBoxLayout()
         self.group_vivi.setLayout( layout_vivi )
@@ -98,9 +101,8 @@ class MainWindow(QMainWindow):
 
         # Individual Gain Channels
         layout_gains = QHBoxLayout()
-        self.CB_gains = []
+        self.CB_gains = [QComboBox() for i in range(4)]
         for i in range(4):
-            self.CB_gains.append( QComboBox() )
             self.CB_gains[i].addItems( ["128", "64", "32", "16", "8","1"])
             self.CB_gains[i].activated.connect( partial(self.set_individual_gain,i) )
             layout_gains.addWidget( QLabel( "Ch {}".format(i+1)) )
@@ -133,12 +135,11 @@ class MainWindow(QMainWindow):
         layout_vivi.addWidget( self.group_device_setting)
     
     def make_panel_viewer( self ):
-        
         # Load Plot Manager
         self.plotter = vivi_plot.Plotter(  )
 
         # Acquisition Viewer Panel
-        self.group_viviewer = QGroupBox("Viviewer")
+        self.group_viviewer = QGroupBox("")
         layout_viviewer = QVBoxLayout()
         self.group_viviewer.setLayout( layout_viviewer )
         self.group_viviewer.setFixedSize(QSize(790, 680))
@@ -181,7 +182,7 @@ class MainWindow(QMainWindow):
         layout_acquire_control = QVBoxLayout()
         self.group_acquire_control.setContentsMargins(0,0,0,0)
         layout_acquire_control.setContentsMargins(0,0,0,0)
-        self.group_acquire_control.setFixedSize( QSize(150, 100))
+        self.group_acquire_control.setFixedSize( QSize(150, 130))
         self.group_acquire_control.setLayout( layout_acquire_control )
         self.PB_acquire_start = QPushButton( "Acquire: Start" )
         self.PB_acquire_start.clicked.connect( self.on_click_start_acquire )
@@ -193,14 +194,16 @@ class MainWindow(QMainWindow):
         layout_acquire_time = QHBoxLayout()
         label_acquire_time = QLabel("time (s)")
         self.LE_acquire_time = QLineEdit("3")
-        # self.LE_acquire_time.width = 10
         self.label_elapsed_time = QLabel("0 s")
+        self.Progress_Acquistion = QProgressBar()
+        self.Progress_Acquistion.setValue(0)
         layout_acquire_time.addWidget( label_acquire_time )
         layout_acquire_time.addWidget( self.LE_acquire_time )
         layout_acquire_time.addWidget( self.label_elapsed_time )
         layout_acquire_control.addWidget( self.PB_acquire_start)
         layout_acquire_control.addLayout( layout_num_dft_acquire)
         layout_acquire_control.addLayout( layout_acquire_time)
+        layout_acquire_control.addWidget( self.Progress_Acquistion)
 
         layout_acquisition_control.addWidget( self.group_live_control )
         layout_acquisition_control.addWidget( self.group_acquire_control )
@@ -227,12 +230,15 @@ class MainWindow(QMainWindow):
         today = datetime.today().strftime('%Y-%m-%d')# Get Today
         self.LE_save_path = QLineEdit(f"{os.getcwd()}/results/{today}")
         self.LE_save_path.returnPressed.connect( self.on_save_path_change )
-        self.LE_save_browse = QPushButton( "Browse" )
-        self.LE_save_browse.clicked.connect( self.on_click_browse )
+        self.PB_browse = QPushButton( "Browse" )
+        self.PB_browse.clicked.connect( self.on_click_browse )
+        self.PB_open = QPushButton( "Open" )
+        self.PB_open.clicked.connect( self.on_click_open )
         self.save_status = QLabel("")
         layout_save_control.addWidget( label_save_control )
         layout_save_control.addWidget( self.LE_save_path )
-        layout_save_control.addWidget( self.LE_save_browse )
+        layout_save_control.addWidget( self.PB_browse )
+        layout_save_control.addWidget( self.PB_open )
         layout_save_control.addWidget( self.save_status )
         layout_middle.addWidget( self.group_save_control )
         self.on_save_path_change()
@@ -247,6 +253,32 @@ class MainWindow(QMainWindow):
         # self.plotter.initialize()
         self.group_viviewer.setEnabled( False )
 
+    def make_panel_banner( self ):
+        self.group_logo = QGroupBox("")
+        self.group_logo.setFlat( True )
+        self.group_logo.setFixedHeight(70)
+
+        # Loading SVG
+        svg_logo_left = QtSvgWidgets.QSvgWidget('assets/vivi-logo-left.svg', parent=self.group_logo)
+        svg_logo_left.renderer().setAspectRatioMode(Qt.AspectRatioMode.KeepAspectRatio)
+        svg_logo_left.setContentsMargins( 0,0,0,0 )
+        svg_logo_left.move(5, -75)
+        svg_logo_left.resize(220,220)
+
+        svg_logo_right = QtSvgWidgets.QSvgWidget('assets/vivi-logo-right.svg', parent=self.group_logo)
+        svg_logo_right.renderer().setAspectRatioMode(Qt.AspectRatioMode.KeepAspectRatio)
+        # svg_logo_right.renderer().viewBox().setWidth( 5000)
+        svg_logo_right.setContentsMargins( 0,0,0,0 )
+        svg_logo_right.move(825, -175)
+        svg_logo_right.resize(420,420)
+
+        # layout_logo.addSpacing(50)
+        # layout_logo.addWidget(svg_logo_left)
+        # layout_logo.addSpacing(500)
+        # layout_logo.addWidget(svg_logo_right)
+        # layout_logo.addSpacing(50)
+
+
     ### Save Related
     def on_save_path_change( self ):
         folderpath= self.LE_save_path.text(  )
@@ -259,6 +291,12 @@ class MainWindow(QMainWindow):
         else :
             self.save_status.setText( "Folder Path Set")
 
+    def on_click_open( self ):
+        try:
+            os.system("open "+self.LE_save_path.text() )
+        except:
+            self.PB_open.setEnabled( False )
+        #     os.startfile(self.LE_save_path.text())
     def on_click_browse( self ):
         folderpath = QFileDialog.getExistingDirectory(self, 'Select Folder')
         self.LE_save_path.setText( folderpath )
@@ -307,22 +345,16 @@ class MainWindow(QMainWindow):
             self.board.set_acquire_time( acquire_time )
             self.plotter.set_plot_average( False )
 
-            NUM_DFT = int( self.LE_num_dft_acquire.text() )
-            if NUM_DFT % 2 == 0: #If is Even
-                num_pts = int( (NUM_DFT/2)+1 ) -1
-            else:
-                num_pts = int( (NUM_DFT+1)/2 ) -1
-            xscale = self.board.sampling / NUM_DFT
-            xs = xscale* np.arange( num_pts )
+            self.plotter.num_dft = int( self.LE_num_dft_acquire.text() )
+            self.plotter.num_sample = self.plotter.num_dft
+            self.plotter.set_plot_average( False )
+
+            self.plotter.init_all()
+            self.plotter.init_spectrum()
 
             self.timestamp = time.strftime( "%H%M", time.localtime())
             fname = f"{self.timestamp}_Acquire_{acquire_time}s_Sampling_{self.board.sampling}Hz_Gain_{self.board.gains}"
             self.fpath = os.path.join(self.LE_save_path.text(), fname)
-
-        
-        # self.plotter.init_spectrum( xs )
-        
-        
         
     def on_click_start_acquire(self):
         if self.PB_acquire_start.text() == "Acquire: Start":
@@ -334,6 +366,7 @@ class MainWindow(QMainWindow):
             self.group_live_control.setEnabled( False )
             self.LE_num_dft_acquire.setEnabled( False )
             self.LE_acquire_time.setEnabled( False )
+            self.Progress_Acquistion.setValue(0)
 
         elif self.PB_acquire_start.text() == "Acquire: Stop":
             self.board.set_status( "STOPPING" )
@@ -370,9 +403,12 @@ class MainWindow(QMainWindow):
 
     def received_elapsed_time( self, value):
         self.label_elapsed_time.setText( f"{value} s")
+        self.Progress_Acquistion.setValue( int( 100*float(value)/float(self.LE_acquire_time.text())))
 
     def received_acquire_data( self, value):
         if not value==[-1]:
+            self.Progress_Acquistion.setValue(100)
+            self.label_elapsed_time.setText( f"{self.LE_acquire_time.text()} s" )
             volts = np.array(value)
             self.plotter.update_all( volts, spectrogram=False )
 
@@ -437,6 +473,7 @@ class MainWindow(QMainWindow):
 
     def on_click_send(self):
         self.send_command( self.LE_command.text() )
+        self.LE_command.setText("")
 
     def on_click_clear(self):
         self.TE_deviceStatus.setText("")
@@ -498,12 +535,12 @@ class MainWindow(QMainWindow):
             self.board.thread_main = self.thread_main
             self.board.moveToThread(self.thread_board)
             self.thread_board.started.connect( self.board.start_comm )
-            self.thread_board.finished.connect( self.thread_board.deleteLater() )
+            self.thread_board.finished.connect( self.thread_board.deleteLater )
             self.thread_board.start()
-
 
             self.PB_send.setEnabled( True )
             self.PB_connect.setText( "Disconnect" )
+            self.PB_refresh.setEnabled( False )
 
             self.board.init_settings()
         
@@ -516,6 +553,7 @@ class MainWindow(QMainWindow):
         else:
             self.board.close_board()
             self.thread_board.quit()
+            self.PB_refresh.setEnabled( True )
             self.PB_send.setEnabled( False )
             self.PB_connect.setText( "Connect" )
             self.group_device_setting.setEnabled( False )
@@ -530,6 +568,13 @@ class MainWindow(QMainWindow):
 
 
 app = QApplication(sys.argv)
+
+with open("assets/style.css","r") as fh:
+    app.setStyleSheet(fh.read())
+# app.setStyleSheet( "assets/style.css")
+# font = QFontDatabase.font("Lato","Regular",13)
+# app.setFont(font)
+
 
 window = MainWindow()
 window.show()

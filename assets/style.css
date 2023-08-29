@@ -1,0 +1,13 @@
+QWidget {
+    /* background-color: #101026; */
+}
+QPushButton {
+     /* border-style: outset; */
+     /* border-width: 1px;
+     border-color: beige;
+     border-radius: 10%; */
+}
+QGroupBox{
+    /* background-color: #393939; */
+    /* border: none */
+}

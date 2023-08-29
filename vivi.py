@@ -75,11 +75,9 @@ class Board(QObject):
             self.set_status( "STOPPING" )
             while self.status == "STOPPING":
                 time.sleep(0.01)
-        
         self.set_status( "DISCONNECT")
         self.dev.close()
         self.dev = None
-        
 
     def init_settings( self ):
         self.msg_out.emit('Setting Initial Settings')
