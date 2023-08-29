@@ -121,30 +121,49 @@ class Board(QObject):
     def start_comm(self):
         counter = 0
         while True:
+            # try:
+            #     if not self.status == "DISCONNECT":
+            #         self.dev.read().decode() 
+            # except:
+            #     self.run_emergency()
+            #     return
+
             counter += 1
-            if self.status == "LISTENING":
-                if not self.msg_input == None and isinstance( self.msg_input, str ):
-                    self.msg_out.emit( self.msg_input )
-                    write_msg = self.msg_input + "\n"
-                    self.dev.write( write_msg.encode() )
-                    ans_msg = self.dev.read(1500).decode()
+            cur_status = self.status
+            try:
+                if cur_status == "LISTENING":
+                    if not self.msg_input == None and isinstance( self.msg_input, str ):
+                        self.msg_out.emit( self.msg_input )
+                        write_msg = self.msg_input + "\n"
 
-                    self.parse_answer( ans_msg )
-
-                    self.msg_out.emit( ans_msg )
-                    self.msg_input = None
-            elif self.status == "LIVE":
-                self.start_live_view()
-            elif self.status == "ACQUIRE":
-                self.start_acquire()
-            elif self.status == "DISCONNECT":
+                        self.dev.write( write_msg.encode() )
+                        ans_msg = self.dev.read(1500).decode()
+                        self.parse_answer( ans_msg )
+                        self.msg_out.emit( ans_msg )
+                        self.msg_input = None
+                elif cur_status == "LIVE":
+                    self.start_live_view()
+                elif cur_status == "ACQUIRE":
+                    self.start_acquire()
+            except:
+                self.run_emergency()
+                return
+                        
+            
+            if cur_status == "DISCONNECT":
                 self.msg_out.emit( "Disconnecting..." )
                 break
-
-        # self.dev.read(1000)		# Flush any extra output
-        self.set_status( "NOT-READY" ) 
+        
+        self.set_status( "NOT-READY" )
         # Return Board to main thread before finishing
         self.moveToThread( self.thread_main )
+
+    def run_emergency(self):
+        print("Something Wrong, closing board")
+        self.dev.close()
+        self.dev = None
+        self.moveToThread( self.thread_main )
+        self.set_status("DISCONNECT")
 
     def parse_answer(self, msg):
         if msg.startswith("Sampling rate set to "):

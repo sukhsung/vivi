@@ -1,5 +1,8 @@
-QWidget {
-    /* background-color: #101026; */
+window{
+    background-color: #393939;
+}
+QWidget #main_widget {
+    background-color: #393939;
 }
 QPushButton {
      /* border-style: outset; */
@@ -7,7 +10,22 @@ QPushButton {
      border-color: beige;
      border-radius: 10%; */
 }
-QGroupBox{
+QGroupBox[flat="false"] {
+    border: 1px solid #555555;
+    border-radius: 10px;
     /* background-color: #393939; */
-    /* border: none */
+    /* border-width: 3px; */
+    /* border: #FFFFFF */
+}
+
+QTabWidget::pane {
+    /* background-color: #393939; */
+    border: 1px solid #555555;
+    border-radius: 10px;
+    padding: 5px;
+}
+
+
+#Test {
+    background-color: #FFFFFF;
 }

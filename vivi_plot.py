@@ -9,10 +9,11 @@ from math import sqrt
 class Plotter(QObject):
     def __init__(self):
         super().__init__() #Inherit QObject
-
+        pg.setConfigOption('background', "#393939")
+        pg.setConfigOption('foreground', "#FFFFFF")
+        
         # Spectrum
         self.PW_spectrum = pg.plot()
-        self.PW_spectrum.setBackground((57, 57, 57))
         self.legend = self.PW_spectrum.addLegend()
         
         # Spectrograph
@@ -22,7 +23,7 @@ class Plotter(QObject):
             self.PW_spectrogram[i].getPlotItem().addItem(self.II_spectrogram[i])
             colorbar = ( pg.ColorBarItem( values=(1,10), colorMap=pg.colormap.get('inferno') ))
             colorbar.setImageItem( self.II_spectrogram[i], insert_in=self.PW_spectrogram[i].getPlotItem())
-            self.PW_spectrogram[i].setBackground( (62,62,62))
+            # self.PW_spectrogram[i].setBackground( (62,62,62))
 
         # Integrated Intensity
         self.PW_integrated = pg.plot()

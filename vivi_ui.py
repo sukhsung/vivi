@@ -14,10 +14,9 @@ from PyQt6.QtWidgets import (
     QTextEdit,
     QFileDialog,
     QCheckBox,
-    QProgressBar,
-    QSpacerItem
+    QProgressBar
 )
-from PyQt6.QtGui import QFont, QFontDatabase
+from PyQt6.QtGui import QFont, QFontDatabase,QIcon
 from PyQt6 import QtSvgWidgets
 
 import sys, os, time
@@ -33,6 +32,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Vivi")
         self.setFixedSize(QSize(1280, 780))
         self.main_widget = QWidget()
+        self.main_widget.setObjectName( "main_widget")
         layout_main = QVBoxLayout()
         self.main_widget.setLayout(layout_main)
         self.board = None
@@ -47,7 +47,7 @@ class MainWindow(QMainWindow):
 
         layout_main.addLayout( layout_UI )
         layout_main.addWidget( self.group_logo )
-        self.main_widget.setStyleSheet( "background-color:393939")
+        # self.main_widget.setStyleSheet( "background-color:393939")
 
         self.setCentralWidget( self.main_widget )
 
@@ -209,6 +209,7 @@ class MainWindow(QMainWindow):
         layout_acquisition_control.addWidget( self.group_acquire_control )
 
         group_spectrum = QGroupBox("")
+        group_spectrum.setFlat( True )
         layout_spectrum = QVBoxLayout()
         group_spectrum.setLayout( layout_spectrum )
         group_spectrum.setContentsMargins(0,0,0,0)
@@ -244,9 +245,15 @@ class MainWindow(QMainWindow):
         self.on_save_path_change()
 
         tabs_spectrogram = QTabWidget()
+        test_widget = QWidget()
+        # test_widget.setObjectName( "Test")
+        # tabs_spectrogram.addTab( test_widget, "Test")
+        # tabs_spectrogram.setAutoFillBackground( True )
         for i in range(4):
             tabs_spectrogram.addTab( self.plotter.PW_spectrogram[i], f"Ch {i+1}" )
+            # self.plotter.PW_spectrogram[i].setBackground( (60, 60, 60))
         tabs_spectrogram.addTab( self.plotter.PW_integrated, "Integrated Power")
+        # self.plotter.PW_integrated.setBackground( (60, 60, 60))
 
         layout_lower.addWidget( tabs_spectrogram ) 
 
@@ -310,15 +317,28 @@ class MainWindow(QMainWindow):
         elif status == "LISTENING":# Board Ready
             self.group_device_setting.setEnabled( True )
             self.group_viviewer.setEnabled( True )
-            self.PB_live_start.setEnabled( True )
-            self.PB_acquire_start.setEnabled( True )
+            self.group_acquire_control.setEnabled( True )
+            self.group_live_control.setEnabled( True )
+            self.group_save_control.setEnabled( True )
+            self.PB_acquire_start.setText( "Acquire: Start")
+            self.PB_live_start.setText( "Live: Start")
         elif status == "LIVE":
-            self.PB_live_start.setEnabled( True )
-            self.PB_acquire_start.setEnabled( False )
-            # self.PB_acquire_start.setText( "Acquire: Start")
+            self.group_acquire_control.setEnabled( False )
+            self.group_save_control.setEnabled( False )
         elif status == "ACQUIRE":
-            self.PB_live_start.setEnabled( False )
-            self.PB_acquire_start.setEnabled( True )
+            self.group_live_control.setEnabled( False )
+            self.group_save_control.setEnabled( False )
+        elif status == "DISCONNECT":
+            print("Disconnecting")
+            self.disconnect_device()
+            self.thread_board.quit()
+
+            self.PB_refresh.setEnabled( True )
+            self.PB_send.setEnabled( False )
+            self.PB_connect.setText( "Connect" )
+            self.group_device_setting.setEnabled( False )
+            self.group_viviewer.setEnabled( False )
+            self.update_port_list()
 
 
     def prepare_acquisition(self, mode ):
@@ -361,9 +381,11 @@ class MainWindow(QMainWindow):
             self.prepare_acquisition("acquire")
             self.board.set_status("ACQUIRE")
 
-            self.PB_acquire_start.setText( "Acquire: Stop")
+
             self.group_device_setting.setEnabled( False )
             self.group_live_control.setEnabled( False )
+
+            self.PB_acquire_start.setText( "Acquire: Stop")
             self.LE_num_dft_acquire.setEnabled( False )
             self.LE_acquire_time.setEnabled( False )
             self.Progress_Acquistion.setValue(0)
@@ -542,13 +564,20 @@ class MainWindow(QMainWindow):
             self.PB_connect.setText( "Disconnect" )
             self.PB_refresh.setEnabled( False )
 
+            self.group_acquire_control.setEnabled( True )
+            self.group_live_control.setEnabled( True )
+            # self.group_save_control.setEnabled( True )
+
+
             self.board.init_settings()
         
 
     def disconnect_device( self ):
         if self.board == None:
             return
-        elif self.board.status == "DISCONNECT" or self.board.status == "NOT-READY":
+        elif self.board.status == "DISCONNECT":
+            return
+        elif self.board.status == "NOT-READY":
             return
         else:
             self.board.close_board()
@@ -575,7 +604,7 @@ with open("assets/style.css","r") as fh:
 # font = QFontDatabase.font("Lato","Regular",13)
 # app.setFont(font)
 
-
+app.setWindowIcon(QIcon("assets/vivi-icon.png"))
 window = MainWindow()
 window.show()
 
