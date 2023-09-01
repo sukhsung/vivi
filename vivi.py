@@ -75,6 +75,8 @@ class Board(QObject):
             self.set_status( "STOPPING" )
             while self.status == "STOPPING":
                 time.sleep(0.01)
+        self.send_command( "q" )
+        time.sleep(0.01)
         self.set_status( "DISCONNECT")
         self.dev.close()
         self.dev = None
@@ -138,7 +140,8 @@ class Board(QObject):
                     self.start_live_view()
                 elif cur_status == "ACQUIRE":
                     self.start_acquire()
-            except:
+            except Exception as e:
+                print(e)
                 self.run_emergency()
                 return
                         
@@ -302,7 +305,7 @@ class Board(QObject):
 
         self.dev.timeout = 0.01
         self.dev.read(1000)		# Flush any extra output
-
+        
         self.set_status( "LISTENING" )
         return output_data
     
