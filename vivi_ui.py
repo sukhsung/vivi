@@ -24,6 +24,7 @@ import vivi, vivi_plot
 import numpy as np
 from functools import partial
 from datetime import datetime
+import serial.tools.list_ports
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -505,7 +506,13 @@ class MainWindow(QMainWindow):
     def on_click_connect(self):
         # Connect Push Button
         if self.PB_connect.text() == "Connect":
-            self.connect_device()
+            # Check if port list needs update:
+            cur_port_list = self.port_list
+            new_port_list = self.get_port_list()
+            if not cur_port_list == new_port_list:
+                self.update_port_list()
+            else:
+                self.connect_device()
         elif self.PB_connect.text() == "Disconnect":
             self.disconnect_device()
 
@@ -520,8 +527,7 @@ class MainWindow(QMainWindow):
             vid:     The device's USB vendor ID value.
             pid:     The device's USB product ID value.
         """
-        import serial.tools.list_ports
-        self.port_list = [p for p in serial.tools.list_ports.comports() if p.vid]
+        return [p for p in serial.tools.list_ports.comports() if p.vid]
 
     def update_port_list(self):
         # Remove Current List
@@ -529,7 +535,7 @@ class MainWindow(QMainWindow):
             self.dev_list.removeItem(0)
 
         # Update Port List
-        self.get_port_list()
+        self.port_list = self.get_port_list()
         if len(self.port_list) > 0:
             self.dev_list.addItems( [p.device for p in self.port_list] )
             self.PB_connect.setEnabled( True )
@@ -545,31 +551,28 @@ class MainWindow(QMainWindow):
             self.board.acquire_data.connect( self.received_acquire_data )
             self.board.elapsed_time.connect( self.received_elapsed_time)
             self.board.setting_changed.connect( self.received_setting_changed )
-        # else: # Close Current Connection if board exists
-        #     self.board.close_board()
 
         if len(self.port_list) > 0:
             portname = self.port_list[self.dev_list.currentIndex()].device
-            self.board.connect_board( portname )
+            connected = self.board.connect_board( portname )
+            if connected:
+                self.thread_board = QThread()
+                self.thread_main = QThread.currentThread() 
+                self.board.thread_main = self.thread_main
+                self.board.moveToThread(self.thread_board)
+                self.thread_board.started.connect( self.board.start_comm )
+                self.thread_board.finished.connect( self.thread_board.deleteLater )
+                self.thread_board.start()
 
-            self.thread_board = QThread()
-            self.thread_main = QThread.currentThread() 
-            self.board.thread_main = self.thread_main
-            self.board.moveToThread(self.thread_board)
-            self.thread_board.started.connect( self.board.start_comm )
-            self.thread_board.finished.connect( self.thread_board.deleteLater )
-            self.thread_board.start()
+                self.PB_send.setEnabled( True )
+                self.PB_connect.setText( "Disconnect" )
+                self.PB_refresh.setEnabled( False )
 
-            self.PB_send.setEnabled( True )
-            self.PB_connect.setText( "Disconnect" )
-            self.PB_refresh.setEnabled( False )
+                self.group_acquire_control.setEnabled( True )
+                self.group_live_control.setEnabled( True )
+                # self.group_save_control.setEnabled( True )
 
-            self.group_acquire_control.setEnabled( True )
-            self.group_live_control.setEnabled( True )
-            # self.group_save_control.setEnabled( True )
-
-
-            self.board.init_settings()
+                self.board.init_settings()
         
 
     def disconnect_device( self ):
@@ -601,7 +604,10 @@ app = QApplication(sys.argv)
 with open("assets/style.css","r") as fh:
     app.setStyleSheet(fh.read())
 # app.setStyleSheet( "assets/style.css")
-# font = QFontDatabase.font("Lato","Regular",13)
+ 
+# font = QFontDatabase.addApplicationFont("Arial")
+# font =QFont("Arial")
+# print(font)
 # app.setFont(font)
 
 app.setWindowIcon(QIcon("assets/vivi-icon.png"))

@@ -16,9 +16,6 @@ class Board(QObject):
     elapsed_time = pyqtSignal( int )
     setting_changed = pyqtSignal()
 
-    stop = bool
-    listening = bool
-    acquire_mode = str
     """Represent a single ADC-8 board."""
     def __init__(self):
         """
@@ -46,6 +43,7 @@ class Board(QObject):
             #self.msg_out.emit("No serial port name specified")
             self.dev = None
             self.set_status( "NOT-READY" ) 
+            return False
         else :
             self.dev = serial.Serial(portname, exclusive=True)
             time.sleep(0.8)
@@ -61,10 +59,12 @@ class Board(QObject):
                 self.gains = [128, 128, 128, 128]
                 self.sampling = 400
                 self.set_status( "LISTENING" ) 
+                return True
             else:
                 self.dev = None
                 self.msg_out.emit("Device is not an ADC-8 board")
                 self.set_status( "NOT-READY" ) 
+                return False
 
     def returnThreadToMain( self, main_thread ):
         self.moveToThread( main_thread )
@@ -121,13 +121,6 @@ class Board(QObject):
     def start_comm(self):
         counter = 0
         while True:
-            # try:
-            #     if not self.status == "DISCONNECT":
-            #         self.dev.read().decode() 
-            # except:
-            #     self.run_emergency()
-            #     return
-
             counter += 1
             cur_status = self.status
             try:
@@ -149,7 +142,6 @@ class Board(QObject):
                 self.run_emergency()
                 return
                         
-            
             if cur_status == "DISCONNECT":
                 self.msg_out.emit( "Disconnecting..." )
                 break
