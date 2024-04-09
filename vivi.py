@@ -2,7 +2,7 @@
 """Program to store continuous data readings from an ADC-8 board."""
 """Based off of adc8-transfer.py and noise-density.py"""
 import serial, math, time, struct
-from PyQt6.QtCore import (pyqtSignal, QObject)
+from PyQt5.QtCore import (pyqtSignal, QObject)
 
 
 class Board(QObject):
@@ -75,8 +75,6 @@ class Board(QObject):
             self.set_status( "STOPPING" )
             while self.status == "STOPPING":
                 time.sleep(0.01)
-        self.send_command( "q" )
-        time.sleep(0.01)
         self.set_status( "DISCONNECT")
         self.dev.close()
         self.dev = None
@@ -140,8 +138,7 @@ class Board(QObject):
                     self.start_live_view()
                 elif cur_status == "ACQUIRE":
                     self.start_acquire()
-            except Exception as e:
-                print(e)
+            except:
                 self.run_emergency()
                 return
                         
@@ -305,7 +302,7 @@ class Board(QObject):
 
         self.dev.timeout = 0.01
         self.dev.read(1000)		# Flush any extra output
-        
+
         self.set_status( "LISTENING" )
         return output_data
     
