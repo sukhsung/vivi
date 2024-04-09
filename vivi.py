@@ -2,7 +2,7 @@
 """Program to store continuous data readings from an ADC-8 board."""
 """Based off of adc8-transfer.py and noise-density.py"""
 import serial, math, time, struct
-from PyQt6.QtCore import (pyqtSignal, QObject)
+from PyQt5.QtCore import (pyqtSignal, QObject)
 
 
 class Board(QObject):
