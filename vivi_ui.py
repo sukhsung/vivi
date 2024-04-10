@@ -101,14 +101,29 @@ class MainWindow(QMainWindow):
         layout_device_input.addWidget( self.PB_getDevStatus)
 
         # Individual Gain Channels
-        layout_gains = QHBoxLayout()
-        self.CB_gains = [QComboBox() for i in range(4)]
-        for i in range(4):
+        layout_gains = QVBoxLayout()
+        layout_gains_1 = QHBoxLayout()
+        layout_gains_2 = QHBoxLayout()
+        self.CB_gains = [QComboBox() for i in range(8)]
+        self.CB_gains_labels = []
+        for i in range(8):
             self.CB_gains[i].addItems( ["128", "64", "32", "16", "8","1"])
             self.CB_gains[i].activated.connect( partial(self.set_individual_gain,i) )
-            layout_gains.addWidget( QLabel( "Ch {}".format(i+1)) )
-            layout_gains.addWidget( self.CB_gains[i] )
+            self.CB_gains_labels.append(QLabel( "Ch {}".format(i+1)))
 
+            if i < 4:
+                layout_gains_1.addWidget( self.CB_gains_labels[i])
+                layout_gains_1.addWidget( self.CB_gains[i])
+            else:
+                layout_gains_2.addWidget( self.CB_gains_labels[i])
+                layout_gains_2.addWidget( self.CB_gains[i])
+
+            self.CB_gains[i].setHidden( True )
+            self.CB_gains_labels[i].setHidden( True )
+
+
+        layout_gains.addLayout( layout_gains_1 )
+        layout_gains.addLayout( layout_gains_2 )
         # Device Console
         layout_device_status = QHBoxLayout()
         self.TE_deviceStatus = QTextEdit( "Connect to an ADC-8 Board to start" )
@@ -250,7 +265,7 @@ class MainWindow(QMainWindow):
         # test_widget.setObjectName( "Test")
         # tabs_spectrogram.addTab( test_widget, "Test")
         # tabs_spectrogram.setAutoFillBackground( True )
-        for i in range(4):
+        for i in range( 8 ):
             tabs_spectrogram.addTab( self.plotter.PW_spectrogram[i], f"Ch {i+1}" )
             # self.plotter.PW_spectrogram[i].setBackground( (60, 60, 60))
         tabs_spectrogram.addTab( self.plotter.PW_integrated, "Integrated Power")
@@ -437,8 +452,13 @@ class MainWindow(QMainWindow):
 
             ## Save Data
             acquire_file = open(self.fpath, 'w')
+
             for line in value:
-                acquire_file.write(f"{line[0]}, {line[1]}, {line[2]}, {line[3]}\n") # works with any number of elements in a line
+                str_out = ""
+                for i in range(self.board.NUM_CHANNELS):
+                    str_out += f"{line[i]} "
+                str_out += "\n"
+                acquire_file.write(str_out) # works with any number of elements in a line
             acquire_file.close()
             self.save_status.setText( f"File Saved time stamp: {self.timestamp}")
 
@@ -481,7 +501,7 @@ class MainWindow(QMainWindow):
         self.TB_sampling.setText( f"{self.board.sampling:.2f}" )
         # Update Gain UIs
         bool_all_gain = True
-        for i in range(4):
+        for i in range(8):
             ind = ["128", "64", "32", "16", "8","1"].index(str(self.board.gains[i]))
             self.CB_gains[i].setCurrentIndex(ind)
             bool_all_gain = bool_all_gain and self.board.gains[i] == self.board.gains[0]
@@ -571,6 +591,15 @@ class MainWindow(QMainWindow):
                 self.group_acquire_control.setEnabled( True )
                 self.group_live_control.setEnabled( True )
                 # self.group_save_control.setEnabled( True )
+
+                for i in range(8):
+                    self.CB_gains[i].setHidden( True )
+                    self.CB_gains_labels[i].setHidden( True )
+
+                for i in range(self.board.NUM_CHANNELS):
+                    self.CB_gains[i].setHidden( False )
+                    self.CB_gains_labels[i].setHidden( False )
+                self.plotter.nchans = self.board.NUM_CHANNELS
 
                 self.board.init_settings()
         

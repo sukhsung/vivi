@@ -12,14 +12,16 @@ class Plotter(QObject):
         pg.setConfigOption('background', "#393939")
         pg.setConfigOption('foreground', "#FFFFFF")
         
+        self.nchans = 8
+
         # Spectrum
         self.PW_spectrum = pg.plot()
         self.legend = self.PW_spectrum.addLegend()
         
         # Spectrograph
-        self.PW_spectrogram = [pg.plot() for i in range(4)]
-        self.II_spectrogram = [pg.ImageItem(img= np.zeros((128,64))) for i in range(4)]
-        for i in range(4):
+        self.PW_spectrogram = [pg.plot() for i in range(8)]
+        self.II_spectrogram = [pg.ImageItem(img= np.zeros((128,64))) for i in range(8)]
+        for i in range(8):
             self.PW_spectrogram[i].getPlotItem().addItem(self.II_spectrogram[i])
             colorbar = ( pg.ColorBarItem( values=(1,10), colorMap=pg.colormap.get('inferno') ))
             colorbar.setImageItem( self.II_spectrogram[i], insert_in=self.PW_spectrogram[i].getPlotItem())
@@ -29,9 +31,9 @@ class Plotter(QObject):
         self.PW_integrated = pg.plot()
         self.PW_integrated.setBackground((57, 57, 57))
 
-        colors = [(239,48,90), (255, 248, 238), (242,132,68), (29,188,82)]
-        self.pen = [ pg.mkPen( colors[i], width=2) for i in range(4)]
-        self.pen_ave = [ pg.mkPen( colors[i], width=4) for i in range(4)]
+        colors = [(239,48,90), (255, 248, 238), (242,132,68), (29,188,82), (29,188,82), (29,188,82), (29,188,82), (29,188,82)]
+        self.pen = [ pg.mkPen( colors[i], width=2) for i in range(8)]
+        self.pen_ave = [ pg.mkPen( colors[i], width=4) for i in range(8)]
 
         self.Image_spectrogram = []
         self.plot_spectrum = []
@@ -69,9 +71,9 @@ class Plotter(QObject):
         self.legend.clear()
 
         ys = np.zeros_like( self.fs )
-        self.plot_spectrum = [self.PW_spectrum.plot( self.fs, ys+1, pen=self.pen[i], name="Ch. {}".format(i+1)) for i in range(4)]
+        self.plot_spectrum = [self.PW_spectrum.plot( self.fs, ys+1, pen=self.pen[i], name="Ch. {}".format(i+1)) for i in range(8)]
         if self.plot_average:
-            self.plot_spectrum_ave = [self.PW_spectrum.plot( self.fs, ys+1, pen=self.pen_ave[i] ) for i in range(4)]
+            self.plot_spectrum_ave = [self.PW_spectrum.plot( self.fs, ys+1, pen=self.pen_ave[i] ) for i in range(8)]
 
         self.y_counter = 0
         self.PW_spectrum.setLogMode(False, True)
@@ -95,9 +97,9 @@ class Plotter(QObject):
             major_ticks.append( (yticks_pos[i], f"{ts[i]:.1f}") )
         tticks = [ major_ticks, [] ]
 
-        self.Image_spectrogram = [np.zeros( (self.num_ts, self.num_fs)) for i in range(4)]
-        self.Image_spectrogram_log = [np.zeros( (self.num_ts, self.num_fs)) for i in range(4)]
-        for i in range(4):
+        self.Image_spectrogram = [np.zeros( (self.num_ts, self.num_fs)) for i in range(8)]
+        self.Image_spectrogram_log = [np.zeros( (self.num_ts, self.num_fs)) for i in range(8)]
+        for i in range(8):
             self.PW_spectrogram[i].setYRange( 0, self.num_fs, padding=0 )
             self.PW_spectrogram[i].setXRange( 0, self.num_ts, padding=0 )
             self.PW_spectrogram[i].setLimits( xMin=0, xMax=self.num_ts, yMin=0, yMax= (self.num_fs*1.00) )
@@ -113,7 +115,7 @@ class Plotter(QObject):
             p.clear()
 
         ys = np.zeros_like( self.ts )
-        self.plot_integrated = [self.PW_integrated.plot( self.ts, ys+1, pen=self.pen[i], name="Ch. {}".format(i+1)) for i in range(4)]
+        self.plot_integrated = [self.PW_integrated.plot( self.ts, ys+1, pen=self.pen[i], name="Ch. {}".format(i+1)) for i in range(8)]
         
         # self.y_counter = 0
         self.PW_integrated.setLogMode(False, True)
@@ -122,7 +124,7 @@ class Plotter(QObject):
         self.PW_integrated.getAxis('bottom').setLabel(text="Time", units="s", unitPrefix=None)
 
     def update_all(self, volts, spectrogram):
-        spectra = self.calc_noise_density( volts, rate=self.sampling, NUM_DFT=self.num_dft )
+        spectra = self.calc_noise_density( volts, rate=self.sampling, NUM_DFT=self.num_dft, nchans=self.nchans )
 
         self.update_spectrum( spectra )
         if spectrogram:
@@ -131,7 +133,7 @@ class Plotter(QObject):
 
     def update_spectrum(self, data):
         self.y_counter += 1
-        for i in range(4):
+        for i in range(8):
             self.plot_spectrum[i].setData( self.fs, data[1:,i])
 
             if self.plot_average:
@@ -143,7 +145,7 @@ class Plotter(QObject):
                 self.plot_spectrum_ave[i].setData( self.fs, y_mean)
 
     def update_spectrogram( self, data ):
-        for i in range(4):
+        for i in range(8):
             self.Image_spectrogram[i] = np.roll( self.Image_spectrogram[i], 1, axis=(0))
             self.Image_spectrogram_log[i] = np.roll( self.Image_spectrogram_log[i], 1, axis=(0))
             self.Image_spectrogram[i][0,:] = data[1:,i]
@@ -151,16 +153,15 @@ class Plotter(QObject):
             self.II_spectrogram[i].setImage(self.Image_spectrogram_log[i],autoLevels=False )
 
     def update_integrated( self ):
-        for i in range(4):
+        for i in range(8):
             self.plot_integrated[i].setData( self.ts, np.mean(self.Image_spectrogram[i], axis=1 ))
 
     def set_plot_average( self, value ):
         self.plot_average = value
 
     """Program to compute noise spectral density in nV / sqrt(Hz) for ADC-8 data."""
-    def calc_noise_density( self, data, rate, NUM_DFT ):
+    def calc_noise_density( self, data, rate, NUM_DFT, nchans ):
         rate = float(rate)
-        nchans = 4
         
         nsamples = data.shape[0]
         

@@ -23,11 +23,7 @@ class Board(QObject):
         """
         super().__init__() #Inherit QObject
 
-        self.NUM_CHANNELS = 4
-        self.HDR_LEN = 16
-        self.BIPOLAR = 2
-        self.SCALE_24 = 1.0 / (1 << 24)
-        self.VREF = 2.5 * 1.02		# Include 2% correction factor
+        self.set_board_type()
 
         self.dev = None
         self.msg_input = None
@@ -50,21 +46,55 @@ class Board(QObject):
             # Verify that the device is an ADC-8 board running the
             # proper firmware
             msg = self.get_board_id()
-            if msg.startswith("ADC-8"):
+            if msg.startswith("ADC-8x"):
+                self.set_board_type("ADC-8x")
+                self.dev.write(b'\n')
+
+                boardmsg = "Connected to ADC-8x board: "+ portname +"\n"
+                # boardmsg += "    Serial number: "+ self.serial_number+"\n"
+                self.msg_out.emit( boardmsg )
+                self.gains = [128, 128, 128, 128, 128, 128, 128, 128]
+                self.sampling = 400
+                self.set_status( "LISTENING" ) 
+                return True
+            elif msg.startswith("ADC-8"):
+                self.set_board_type("ADC-8")
                 self.dev.write(b'\n')
 
                 boardmsg = "Connected to ADC-8 board: "+ portname +"\n"
-                boardmsg += "    Serial number: "+ self.serial_number+"\n"
+                # boardmsg += "    Serial number: "+ self.serial_number+"\n"
                 self.msg_out.emit( boardmsg )
                 self.gains = [128, 128, 128, 128]
                 self.sampling = 400
                 self.set_status( "LISTENING" ) 
                 return True
             else:
+                print( msg)
                 self.dev = None
                 self.msg_out.emit("Device is not an ADC-8 board")
                 self.set_status( "NOT-READY" ) 
                 return False
+            
+    def set_board_type( self, board_type=None ):
+        self.board_type = board_type
+        if board_type == "ADC-8x":
+            self.NUM_CHANNELS = 8
+            self.HDR_LEN = 10 + self.NUM_CHANNELS * 2
+            self.BIPOLAR = 2
+            self.SCALE_24 = 1.0 / (1 << 24)
+            self.VREF = 2.5 * 1.02		# Include 2% correction factor
+        elif board_type == "ADC-8":
+            self.NUM_CHANNELS = 4
+            self.HDR_LEN = 16
+            self.BIPOLAR = 2
+            self.SCALE_24 = 1.0 / (1 << 24)
+            self.VREF = 2.5 * 1.02		# Include 2% correction factor
+        elif board_type is None:
+            self.NUM_CHANNELS = 0
+            self.HDR_LEN = 0
+            self.BIPOLAR = 20
+            self.SCALE_24 = 0
+            self.VREF = 0
 
     def returnThreadToMain( self, main_thread ):
         self.moveToThread( main_thread )
@@ -228,19 +258,27 @@ class Board(QObject):
         self.dev.write(f"b0\n".encode())
         self.dev.timeout = 6
         self.dev.read_until(b"+")		# Skip initial text
-
         sig = b""
         h = self.dev.read(self.HDR_LEN)
+        
         if len(h) == self.HDR_LEN:
-            hdr = struct.unpack(f"<4sHBB {2 * self.NUM_CHANNELS}B", h)
+            if self.board_type == 'ADC-8':
+                fmt = f"<4sHBB {2 * self.NUM_CHANNELS}B"
+            elif self.board_type == 'ADC-8x':
+                fmt = f"<8sH {2 * self.NUM_CHANNELS}B"
+            hdr = struct.unpack(fmt, h)
             sig = hdr[0]		# The signature
-        if sig != b"ADC8":
+         
+        if sig == b"ADC8":
+            chans = hdr[4:]			# The ADC channel entries
+        elif sig == b"ADC8x-1.":
+            chans = hdr[2:]			# The ADC channel entries
+        else:
             self.msg_out.emit("Invalid header received, transfer aborted")
             self.dev.write(b"\n")
             self.set_status( "LISTENING" )
             return -1
 
-        chans = hdr[4:]			# The ADC channel entries
         num = 0
         gains = [chans[2 * i] for i in range(self.NUM_CHANNELS)]
         bipolar = [chans[2 * i + 1] & self.BIPOLAR for i in range(self.NUM_CHANNELS)]
@@ -318,16 +356,25 @@ class Board(QObject):
 
         sig = b""
         h = self.dev.read(self.HDR_LEN)
+        
         if len(h) == self.HDR_LEN:
-            hdr = struct.unpack(f"<4sHBB {2 * self.NUM_CHANNELS}B", h)
+            if self.board_type == 'ADC-8':
+                fmt = f"<4sHBB {2 * self.NUM_CHANNELS}B"
+            elif self.board_type == 'ADC-8x':
+                fmt = f"<8sH {2 * self.NUM_CHANNELS}B"
+            hdr = struct.unpack(fmt, h)
             sig = hdr[0]		# The signature
-        if sig != b"ADC8":
+         
+        if sig == b"ADC8":
+            chans = hdr[4:]			# The ADC channel entries
+        elif sig == b"ADC8x-1.":
+            chans = hdr[2:]			# The ADC channel entries
+        else:
             self.msg_out.emit("Invalid header received, transfer aborted")
             self.dev.write(b"\n")
             self.set_status( "LISTENING" )
             return -1
-
-        chans = hdr[4:]			# The ADC channel entries
+        
         num = 0
         gains = [chans[2 * i] for i in range(self.NUM_CHANNELS)]
         bipolar = [chans[2 * i + 1] & self.BIPOLAR for i in range(self.NUM_CHANNELS)]
