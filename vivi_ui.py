@@ -1,5 +1,5 @@
-from PyQt6.QtCore import QSize, QThread, Qt
-from PyQt6.QtWidgets import (
+from PyQt5.QtCore import QSize, QThread, Qt
+from PyQt5.QtWidgets import (
     QApplication,
     QVBoxLayout,
     QHBoxLayout,
@@ -16,8 +16,8 @@ from PyQt6.QtWidgets import (
     QCheckBox,
     QProgressBar
 )
-from PyQt6.QtGui import QFont, QFontDatabase,QIcon
-from PyQt6 import QtSvgWidgets
+from PyQt5.QtGui import QFont, QFontDatabase,QIcon
+from PyQt5.QtSvg import QSvgWidget
 
 import sys, os, time
 import vivi, vivi_plot
@@ -276,13 +276,13 @@ class MainWindow(QMainWindow):
         self.group_logo.setFixedHeight(70)
 
         # Loading SVG
-        svg_logo_left = QtSvgWidgets.QSvgWidget('assets/vivi-logo-left.svg', parent=self.group_logo)
+        svg_logo_left = QSvgWidget('assets/vivi-logo-left.svg', parent=self.group_logo)
         svg_logo_left.renderer().setAspectRatioMode(Qt.AspectRatioMode.KeepAspectRatio)
         svg_logo_left.setContentsMargins( 0,0,0,0 )
         svg_logo_left.move(5, -75)
         svg_logo_left.resize(220,220)
 
-        svg_logo_right = QtSvgWidgets.QSvgWidget('assets/vivi-logo-right.svg', parent=self.group_logo)
+        svg_logo_right = QSvgWidget('assets/vivi-logo-right.svg', parent=self.group_logo)
         svg_logo_right.renderer().setAspectRatioMode(Qt.AspectRatioMode.KeepAspectRatio)
         # svg_logo_right.renderer().viewBox().setWidth( 5000)
         svg_logo_right.setContentsMargins( 0,0,0,0 )
