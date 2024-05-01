@@ -53,7 +53,8 @@ class Board(QObject):
                 boardmsg = "Connected to ADC-8x board: "+ portname +"\n"
                 # boardmsg += "    Serial number: "+ self.serial_number+"\n"
                 self.msg_out.emit( boardmsg )
-                self.gains = [128, 128, 128, 128, 128, 128, 128, 128]
+
+                self.gains = [128 for x in range( self.NUM_CHANNELS) ]
                 self.sampling = 400
                 self.set_status( "LISTENING" ) 
                 return True
@@ -64,7 +65,7 @@ class Board(QObject):
                 boardmsg = "Connected to ADC-8 board: "+ portname +"\n"
                 # boardmsg += "    Serial number: "+ self.serial_number+"\n"
                 self.msg_out.emit( boardmsg )
-                self.gains = [128, 128, 128, 128]
+                self.gains = [128 for x in range( self.NUM_CHANNELS) ]
                 self.sampling = 400
                 self.set_status( "LISTENING" ) 
                 return True
@@ -75,16 +76,18 @@ class Board(QObject):
                 self.set_status( "NOT-READY" ) 
                 return False
             
+            
     def set_board_type( self, board_type=None ):
         self.board_type = board_type
         if board_type == "ADC-8x":
-            self.NUM_CHANNELS = 8
+            
+            self.NUM_CHANNELS = self.get_available_NUM_CHANNELS()
             self.HDR_LEN = 10 + self.NUM_CHANNELS * 2
             self.BIPOLAR = 2
             self.SCALE_24 = 1.0 / (1 << 24)
             self.VREF = 2.5 * 1.02		# Include 2% correction factor
         elif board_type == "ADC-8":
-            self.NUM_CHANNELS = 4
+            self.NUM_CHANNELS = self.get_available_NUM_CHANNELS()
             self.HDR_LEN = 16
             self.BIPOLAR = 2
             self.SCALE_24 = 1.0 / (1 << 24)
@@ -116,6 +119,14 @@ class Board(QObject):
         self.set_all_gains( 128 )
         time.sleep(0.1)
         self.set_sampling( 400 )
+
+    def get_available_NUM_CHANNELS( self ): 
+        # Get number of channels
+        self.dev.write(b'c\n')
+        msg = self.dev.read(1000).decode()
+        msg = msg.split('\n')
+        msg = [x for x in msg if x.startswith('ADC ')]
+        return len( msg )
 
     def set_status( self, value ):
         if not (value=="LISTENING" or value=="NOT-READY" or value=="STOPPING" or value=="LIVE" or value=="ACQUIRE" or value=="DISCONNECT"):
@@ -198,7 +209,7 @@ class Board(QObject):
         elif msg.startswith("All ADCs set to gain "):
             parts = msg.split(' ')
             gain = int(parts[5][:-1])
-            self.gains = [gain for i in range(4) ]
+            self.gains = [gain for i in range(self.NUM_CHANNELS) ]
             self.setting_changed.emit()
         elif msg.startswith("ADC "):
             parts = msg.split(' ')
@@ -255,12 +266,12 @@ class Board(QObject):
     def start_live_view(self):
         self.msg_out.emit("Starting Live View")
 
-        self.dev.write(f"b0\n".encode())
+        self.dev.write("b0\n".encode())
         self.dev.timeout = 6
-        self.dev.read_until(b"+")		# Skip initial text
+        a=self.dev.read_until(b"+")		# Skip initial text
         sig = b""
         h = self.dev.read(self.HDR_LEN)
-        
+
         if len(h) == self.HDR_LEN:
             if self.board_type == 'ADC-8':
                 fmt = f"<4sHBB {2 * self.NUM_CHANNELS}B"
@@ -268,6 +279,7 @@ class Board(QObject):
                 fmt = f"<8sH {2 * self.NUM_CHANNELS}B"
             hdr = struct.unpack(fmt, h)
             sig = hdr[0]		# The signature
+        
          
         if sig == b"ADC8":
             chans = hdr[4:]			# The ADC channel entries
@@ -277,8 +289,8 @@ class Board(QObject):
             self.msg_out.emit("Invalid header received, transfer aborted")
             self.dev.write(b"\n")
             self.set_status( "LISTENING" )
-            return -1
-
+            return -1 
+        
         num = 0
         gains = [chans[2 * i] for i in range(self.NUM_CHANNELS)]
         bipolar = [chans[2 * i + 1] & self.BIPOLAR for i in range(self.NUM_CHANNELS)]
@@ -299,6 +311,8 @@ class Board(QObject):
         output_data = []
         # Receive and store the data
         cont = True
+        if self.board_type == 'ADC-8x' and self.NUM_CHANNELS==4:
+            self.dev.read(8)
         while cont:   
             n = self.dev.read(1)		# Read the buffer's length byte
             if len(n) == 0:
@@ -308,7 +322,7 @@ class Board(QObject):
             if n == 0:
                 self.msg_out.emit("End of data")
                 break
-
+            
             d = self.dev.read(n)		# Read the buffer contents
             if len(d) < n:
                 self.msg_out.emit("Short data buffer received")

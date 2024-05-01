@@ -260,18 +260,12 @@ class MainWindow(QMainWindow):
         layout_middle.addWidget( self.group_save_control )
         self.on_save_path_change()
 
-        tabs_spectrogram = QTabWidget()
-        test_widget = QWidget()
-        # test_widget.setObjectName( "Test")
-        # tabs_spectrogram.addTab( test_widget, "Test")
-        # tabs_spectrogram.setAutoFillBackground( True )
+        self.tabs_spectrogram = QTabWidget()
         for i in range( 8 ):
-            tabs_spectrogram.addTab( self.plotter.PW_spectrogram[i], f"Ch {i+1}" )
-            # self.plotter.PW_spectrogram[i].setBackground( (60, 60, 60))
-        tabs_spectrogram.addTab( self.plotter.PW_integrated, "Integrated Power")
-        # self.plotter.PW_integrated.setBackground( (60, 60, 60))
+            self.tabs_spectrogram.addTab( self.plotter.PW_spectrogram[i], f"Ch {i+1}" )
+        self.tabs_spectrogram.addTab( self.plotter.PW_integrated, "Integrated Power")
 
-        layout_lower.addWidget( tabs_spectrogram ) 
+        layout_lower.addWidget( self.tabs_spectrogram ) 
 
         # self.plotter.initialize()
         self.group_viviewer.setEnabled( False )
@@ -459,6 +453,7 @@ class MainWindow(QMainWindow):
                     str_out += f"{line[i]} "
                 str_out += "\n"
                 acquire_file.write(str_out) # works with any number of elements in a line
+            
             acquire_file.close()
             self.save_status.setText( f"File Saved time stamp: {self.timestamp}")
 
@@ -473,7 +468,11 @@ class MainWindow(QMainWindow):
         self.plotter.update_all( volts, spectrogram=True)
         
         for line in value:
-            self.live_file.write(f"{line[0]}, {line[1]}, {line[2]}, {line[3]}\n") 
+            str_out = ""
+            for i in range(self.board.NUM_CHANNELS):
+                str_out += f"{line[i]} "
+            str_out += "\n"
+            self.live_file.write(str_out) 
 
     ### ADC Setting Related
     def get_board_status(self):
@@ -501,7 +500,7 @@ class MainWindow(QMainWindow):
         self.TB_sampling.setText( f"{self.board.sampling:.2f}" )
         # Update Gain UIs
         bool_all_gain = True
-        for i in range(8):
+        for i in range(self.board.NUM_CHANNELS):
             ind = ["128", "64", "32", "16", "8","1"].index(str(self.board.gains[i]))
             self.CB_gains[i].setCurrentIndex(ind)
             bool_all_gain = bool_all_gain and self.board.gains[i] == self.board.gains[0]
@@ -595,11 +594,14 @@ class MainWindow(QMainWindow):
                 for i in range(8):
                     self.CB_gains[i].setHidden( True )
                     self.CB_gains_labels[i].setHidden( True )
+                    self.tabs_spectrogram.setTabVisible(i, False)
 
                 for i in range(self.board.NUM_CHANNELS):
                     self.CB_gains[i].setHidden( False )
                     self.CB_gains_labels[i].setHidden( False )
+                    self.tabs_spectrogram.setTabVisible(i, True)
                 self.plotter.nchans = self.board.NUM_CHANNELS
+                
 
                 self.board.init_settings()
         

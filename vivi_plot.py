@@ -31,7 +31,8 @@ class Plotter(QObject):
         self.PW_integrated = pg.plot()
         self.PW_integrated.setBackground((57, 57, 57))
 
-        colors = [(239,48,90), (255, 248, 238), (242,132,68), (29,188,82), (29,188,82), (29,188,82), (29,188,82), (29,188,82)]
+        colors = [(239,48,90), (255, 248, 238), (242,132,68), (29,188,82),
+                  (29,188,82), (29,188,82), (29,188,82), (29,188,82)]
         self.pen = [ pg.mkPen( colors[i], width=2) for i in range(8)]
         self.pen_ave = [ pg.mkPen( colors[i], width=4) for i in range(8)]
 
@@ -71,9 +72,9 @@ class Plotter(QObject):
         self.legend.clear()
 
         ys = np.zeros_like( self.fs )
-        self.plot_spectrum = [self.PW_spectrum.plot( self.fs, ys+1, pen=self.pen[i], name="Ch. {}".format(i+1)) for i in range(8)]
+        self.plot_spectrum = [self.PW_spectrum.plot( self.fs, ys+1, pen=self.pen[i], name="Ch. {}".format(i+1)) for i in range(self.nchans)]
         if self.plot_average:
-            self.plot_spectrum_ave = [self.PW_spectrum.plot( self.fs, ys+1, pen=self.pen_ave[i] ) for i in range(8)]
+            self.plot_spectrum_ave = [self.PW_spectrum.plot( self.fs, ys+1, pen=self.pen_ave[i] ) for i in range(self.nchans)]
 
         self.y_counter = 0
         self.PW_spectrum.setLogMode(False, True)
@@ -133,7 +134,7 @@ class Plotter(QObject):
 
     def update_spectrum(self, data):
         self.y_counter += 1
-        for i in range(8):
+        for i in range(self.nchans):
             self.plot_spectrum[i].setData( self.fs, data[1:,i])
 
             if self.plot_average:
@@ -145,7 +146,7 @@ class Plotter(QObject):
                 self.plot_spectrum_ave[i].setData( self.fs, y_mean)
 
     def update_spectrogram( self, data ):
-        for i in range(8):
+        for i in range(self.nchans):
             self.Image_spectrogram[i] = np.roll( self.Image_spectrogram[i], 1, axis=(0))
             self.Image_spectrogram_log[i] = np.roll( self.Image_spectrogram_log[i], 1, axis=(0))
             self.Image_spectrogram[i][0,:] = data[1:,i]
@@ -153,7 +154,7 @@ class Plotter(QObject):
             self.II_spectrogram[i].setImage(self.Image_spectrogram_log[i],autoLevels=False )
 
     def update_integrated( self ):
-        for i in range(8):
+        for i in range(self.nchans):
             self.plot_integrated[i].setData( self.ts, np.mean(self.Image_spectrogram[i], axis=1 ))
 
     def set_plot_average( self, value ):
