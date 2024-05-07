@@ -19,7 +19,7 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtGui import QFont, QFontDatabase,QIcon
 from PyQt5.QtSvg import QSvgWidget
 
-import sys, os, time
+import sys, os, time, json
 import vivi, vivi_plot
 import numpy as np
 from functools import partial
@@ -70,11 +70,12 @@ class MainWindow(QMainWindow):
         layout_device.addWidget( self.dev_list )
         layout_device.addWidget( self.PB_connect )
         layout_device.addWidget( self.PB_refresh )
+        # g_tmp.setLayout( layout_device)
 
         self.update_port_list()
 
         # Settings Panel
-        self.group_device_setting = QGroupBox()
+        self.group_device_setting = QGroupBox("")
         layout_vivi_setting = QVBoxLayout()
         # self.group_device_setting.setContentsMargins( 0,0,0,0 )
         layout_vivi_setting.setContentsMargins( 0,0,0,0 )
@@ -90,45 +91,72 @@ class MainWindow(QMainWindow):
         self.TB_sampling = QLineEdit("400.00")
         self.TB_sampling.setMaxLength(7)
         self.TB_sampling.setFixedWidth( 55 )
-        self.TB_sampling.returnPressed.connect( self.set_sampling ) 
+        self.TB_sampling.editingFinished.connect( self.set_sampling ) 
         self.PB_getDevStatus = QPushButton( "Status" )
         self.PB_getDevStatus.clicked.connect( self.get_board_status )
         self.listening_for_sampling = True
-        layout_device_input.addWidget( QLabel("All Gains:"))
-        layout_device_input.addWidget( self.CB_allGains)
-        layout_device_input.addWidget( QLabel("Sampling (Hz):"))
-        layout_device_input.addWidget( self.TB_sampling)
+        layout_all_gain = QHBoxLayout()
+        layout_all_gain.addWidget( QLabel("All Gains:"))
+        layout_all_gain.addWidget( self.CB_allGains)
+        layout_all_gain.setSpacing(0)
+
+        layout_sampling = QHBoxLayout()
+        layout_sampling.addWidget( QLabel("Sampling (Hz):"))
+        layout_sampling.addWidget( self.TB_sampling)
+        layout_sampling.setSpacing(0)
+
+        layout_device_input.addLayout( layout_all_gain )
+        layout_device_input.addStretch()
+        layout_device_input.addLayout( layout_sampling )
+        layout_device_input.addStretch()
         layout_device_input.addWidget( self.PB_getDevStatus)
+        layout_device_input.setSpacing(0)
+        layout_device_input.setContentsMargins(0,0,0,0)
+
 
         # Individual Gain Channels
         layout_gains = QVBoxLayout()
         layout_gains_1 = QHBoxLayout()
         layout_gains_2 = QHBoxLayout()
         self.CB_gains = [QComboBox() for i in range(8)]
-        self.CB_gains_labels = []
+        # self.CB_gains_labels = []
+
+        self.TB_gains_labels = [QLineEdit(f"Ch {i+1}") for i in range(8)]
+
+        self.group_channels = [QGroupBox(f"Ch {i+1}") for i in range(8)]
+
+
         for i in range(8):
             self.CB_gains[i].addItems( ["128", "64", "32", "16", "8","1"])
             self.CB_gains[i].activated.connect( partial(self.set_individual_gain,i) )
-            self.CB_gains_labels.append(QLabel( "Ch {}".format(i+1)))
-
+            
+            # self.TB_gains_labels[i].setMaxLength(7)
+            # self.TB_gains_labels[i].setFixedWidth( 80 )
+            self.TB_gains_labels[i].editingFinished.connect( self.set_label )
+            # self.TB_gains_labels[i].setHidden( True )
+            cur_ver = QVBoxLayout()
+            cur_ver.addWidget( self.CB_gains[i] )
+            cur_ver.addWidget( self.TB_gains_labels[i])
+            cur_ver.setSpacing(0)
+            cur_ver.setContentsMargins(8,22,8,8)
+            self.group_channels[i].setLayout( cur_ver )
             if i < 4:
-                layout_gains_1.addWidget( self.CB_gains_labels[i])
-                layout_gains_1.addWidget( self.CB_gains[i])
+                layout_gains_1.addWidget( self.group_channels[i] )
             else:
-                layout_gains_2.addWidget( self.CB_gains_labels[i])
-                layout_gains_2.addWidget( self.CB_gains[i])
+                layout_gains_2.addWidget( self.group_channels[i] )
 
-            self.CB_gains[i].setHidden( True )
-            self.CB_gains_labels[i].setHidden( True )
+            self.group_channels[i].setHidden(True)
 
 
         layout_gains.addLayout( layout_gains_1 )
         layout_gains.addLayout( layout_gains_2 )
+        layout_gains.setSpacing(10)
         # Device Console
         layout_device_status = QHBoxLayout()
         self.TE_deviceStatus = QTextEdit( "Connect to an ADC-8 Board to start" )
         self.TE_deviceStatus.setReadOnly(True)
         layout_device_status.addWidget( self.TE_deviceStatus )
+        layout_device_status.setContentsMargins(0,10,0,0)
 
         layout_command = QHBoxLayout()
         self.LE_command = QLineEdit()
@@ -143,12 +171,14 @@ class MainWindow(QMainWindow):
         layout_command.addWidget( self.PB_clear )
 
         layout_vivi_setting.addLayout( layout_device_input )
-        layout_vivi_setting.addLayout(layout_gains)
+        layout_vivi_setting.addLayout( layout_gains )
         layout_vivi_setting.addLayout( layout_device_status )
         layout_vivi_setting.addLayout( layout_command )
+        layout_vivi_setting.setSpacing( 0 )
 
         layout_vivi.addLayout( layout_device )
         layout_vivi.addWidget( self.group_device_setting)
+        layout_vivi.setSpacing( 0 )
     
     def make_panel_viewer( self ):
         # Load Plot Manager
@@ -185,13 +215,22 @@ class MainWindow(QMainWindow):
         label_num_dft_live = QLabel("# DFT")
         self.LE_num_dft_live = QLineEdit("128")
         self.CheckBox_average =QCheckBox("Show Average")
-        self.CheckBox_average.setChecked( True )
+        self.CheckBox_average.setChecked( False )
+        layout_CB_plot = QHBoxLayout()
+        self.CB_plot = [QCheckBox() for i in range(8)]
+        for i in range(8):
+            layout_CB_plot.addWidget( self.CB_plot[i])
+            self.CB_plot[i].setChecked( True )
+            self.CB_plot[i].setHidden( True )
+            self.CB_plot[i].stateChanged.connect( self.set_plot_enable )
+
         layout_num_dft_live.addWidget( label_num_dft_live )
         layout_num_dft_live.addWidget( self.LE_num_dft_live )
         layout_live_control.addWidget( self.PB_live_start)
         layout_live_control.addLayout( layout_num_live_sample)
         layout_live_control.addLayout( layout_num_dft_live)
         layout_live_control.addWidget( self.CheckBox_average )
+        layout_live_control.addLayout( layout_CB_plot )
 
         self.group_acquire_control = QGroupBox()
         self.group_acquire_control.setFlat( True )
@@ -246,7 +285,7 @@ class MainWindow(QMainWindow):
         label_save_control = QLabel("Save Path:")
         today = datetime.today().strftime('%Y-%m-%d')# Get Today
         self.LE_save_path = QLineEdit(f"{os.getcwd()}/results/{today}")
-        self.LE_save_path.returnPressed.connect( self.on_save_path_change )
+        self.LE_save_path.editingFinished.connect( self.on_save_path_change )
         self.PB_browse = QPushButton( "Browse" )
         self.PB_browse.clicked.connect( self.on_click_browse )
         self.PB_open = QPushButton( "Open" )
@@ -350,6 +389,28 @@ class MainWindow(QMainWindow):
             self.group_viviewer.setEnabled( False )
             self.update_port_list()
 
+    def prepare_metadata( self, fname, acquistion ):
+        # Make Python dictionary then dump to JSON
+        
+        if acquistion == -1:
+            acquistion = "live"
+
+        channels = []
+        for i in range( self.board.NUM_CHANNELS):
+            channels.append( {"Channel": (i+1),
+                              "Gain": self.board.gains[i],
+                              "Label": self.board.labels[i]})
+
+
+        meta = {"filename": fname+".csv",
+                "Sampling": self.board.sampling,
+                "Acquisition": acquistion,
+                "Channels": channels}
+        
+        jsonpath = os.path.join(self.LE_save_path.text(), fname+".json")
+        with open(jsonpath, 'w') as f:
+            json.dump(meta, f, ensure_ascii=False, indent=2)
+
 
     def prepare_acquisition(self, mode ):
         self.plotter.sampling = self.board.sampling
@@ -361,14 +422,18 @@ class MainWindow(QMainWindow):
             self.plotter.num_dft = int( self.LE_num_dft_live.text() )
             self.plotter.num_sample = int( self.LE_num_live_sample.text() )
             self.plotter.set_plot_average( self.CheckBox_average.isChecked() )
-
+            self.plotter.set_plot_enable( self.CB_plot )
             self.plotter.init_all()
+            self.plotter.labels = self.board.labels
             self.plotter.init_spectrum()
             self.plotter.init_spectrogram()
             self.plotter.init_integrated()
 
-            fname = f"{self.timestamp}_Live_Sampling_{self.board.sampling}Hz_Gain_{self.board.gains}"
-            self.fpath = os.path.join(self.LE_save_path.text(), fname)
+            # fname = f"{self.timestamp}_Live_Sampling_{self.board.sampling}Hz_Gain_{self.board.gains}"
+            fname = f"{self.timestamp}"
+            self.fpath = os.path.join(self.LE_save_path.text(), fname+".csv")
+            self.prepare_metadata( fname, -1 ) #-1 for live acqusition
+
 
         elif mode == "acquire":
             acquire_time = int( self.LE_acquire_time.text() )
@@ -383,8 +448,10 @@ class MainWindow(QMainWindow):
             self.plotter.init_spectrum()
 
             self.timestamp = time.strftime( "%H%M", time.localtime())
-            fname = f"{self.timestamp}_Acquire_{acquire_time}s_Sampling_{self.board.sampling}Hz_Gain_{self.board.gains}"
-            self.fpath = os.path.join(self.LE_save_path.text(), fname)
+            #fname = f"{self.timestamp}_Acquire_{acquire_time}s_Sampling_{self.board.sampling}Hz_Gain_{self.board.gains}"
+            fname = f"{self.timestamp}"
+            self.fpath = os.path.join(self.LE_save_path.text(), fname+".csv")
+            self.prepare_metadata( fname, acquire_time )
         
     def on_click_start_acquire(self):
         if self.PB_acquire_start.text() == "Acquire: Start":
@@ -450,7 +517,8 @@ class MainWindow(QMainWindow):
             for line in value:
                 str_out = ""
                 for i in range(self.board.NUM_CHANNELS):
-                    str_out += f"{line[i]} "
+                    str_out += f"{line[i]}, "
+                str_out = str_out[:-2]
                 str_out += "\n"
                 acquire_file.write(str_out) # works with any number of elements in a line
             
@@ -470,7 +538,8 @@ class MainWindow(QMainWindow):
         for line in value:
             str_out = ""
             for i in range(self.board.NUM_CHANNELS):
-                str_out += f"{line[i]} "
+                str_out += f"{line[i]}, "
+            str_out = str_out[:-2]
             str_out += "\n"
             self.live_file.write(str_out) 
 
@@ -489,6 +558,16 @@ class MainWindow(QMainWindow):
     def set_sampling( self ):
         self.board.set_sampling(self.TB_sampling.text())
         self.board.sampling = float( self.TB_sampling.text() )
+
+    def set_label( self ):
+        for i in range(self.board.NUM_CHANNELS):
+            self.board.labels[i] = self.TB_gains_labels[i].text()
+            self.tabs_spectrogram.setTabText(i, self.TB_gains_labels[i].text())
+    def set_plot_enable( self ):
+        for i in range(self.board.NUM_CHANNELS):
+            self.plotter.plot_enable[i] = self.CB_plot[i].isChecked()
+
+        self.plotter.set_plot_enable( self.CB_plot )
     ###
 
     ### Terminal Related    
@@ -592,14 +671,15 @@ class MainWindow(QMainWindow):
                 # self.group_save_control.setEnabled( True )
 
                 for i in range(8):
-                    self.CB_gains[i].setHidden( True )
-                    self.CB_gains_labels[i].setHidden( True )
+                    self.group_channels[i].setHidden(True)
                     self.tabs_spectrogram.setTabVisible(i, False)
+                    self.CB_plot[i].setHidden( False )
 
                 for i in range(self.board.NUM_CHANNELS):
-                    self.CB_gains[i].setHidden( False )
-                    self.CB_gains_labels[i].setHidden( False )
+
+                    self.group_channels[i].setHidden(False)
                     self.tabs_spectrogram.setTabVisible(i, True)
+                    self.CB_plot[i].setHidden( False )
                 self.plotter.nchans = self.board.NUM_CHANNELS
                 
 

@@ -55,6 +55,7 @@ class Board(QObject):
                 self.msg_out.emit( boardmsg )
 
                 self.gains = [128 for x in range( self.NUM_CHANNELS) ]
+                self.labels = [ f"Ch {x+1}" for x in range( self.NUM_CHANNELS)]
                 self.sampling = 400
                 self.set_status( "LISTENING" ) 
                 return True
@@ -66,6 +67,7 @@ class Board(QObject):
                 # boardmsg += "    Serial number: "+ self.serial_number+"\n"
                 self.msg_out.emit( boardmsg )
                 self.gains = [128 for x in range( self.NUM_CHANNELS) ]
+                self.labels = [ f"Ch {x+1}" for x in range( self.NUM_CHANNELS)]
                 self.sampling = 400
                 self.set_status( "LISTENING" ) 
                 return True

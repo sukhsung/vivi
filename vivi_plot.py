@@ -13,10 +13,13 @@ class Plotter(QObject):
         pg.setConfigOption('foreground', "#FFFFFF")
         
         self.nchans = 8
+        self.labels = [f"Ch {i+1}" for i in range(self.nchans)]
+        self.plot_enable = [True for i in range(self.nchans)]
 
         # Spectrum
         self.PW_spectrum = pg.plot()
         self.legend = self.PW_spectrum.addLegend()
+        self.legend.setOffset( -1 )
         
         # Spectrograph
         self.PW_spectrogram = [pg.plot() for i in range(8)]
@@ -72,9 +75,14 @@ class Plotter(QObject):
         self.legend.clear()
 
         ys = np.zeros_like( self.fs )
-        self.plot_spectrum = [self.PW_spectrum.plot( self.fs, ys+1, pen=self.pen[i], name="Ch. {}".format(i+1)) for i in range(self.nchans)]
+        self.plot_spectrum = [self.PW_spectrum.plot( self.fs, ys+1, pen=self.pen[i], name=self.labels[i]) for i in range(self.nchans)]
         if self.plot_average:
             self.plot_spectrum_ave = [self.PW_spectrum.plot( self.fs, ys+1, pen=self.pen_ave[i] ) for i in range(self.nchans)]
+
+            # if self.plot_enable[i]:
+            #     self.plot_spectrum[i].show()
+            # else:
+            #     self.plot_spectrum[i].show()
 
         self.y_counter = 0
         self.PW_spectrum.setLogMode(False, True)
@@ -82,6 +90,7 @@ class Plotter(QObject):
         self.PW_spectrum.setRange( yRange=(0, 7), disableAutoRange=True)
         self.PW_spectrum.getAxis('bottom').setLabel(text="Frequency", units="Hz",unitPrefix=None)
            
+
     def init_spectrogram( self ):
         fticks_pos = np.linspace(0, self.num_fs, 5)
         fs = np.linspace(0, self.sampling/2, 5)
@@ -137,6 +146,8 @@ class Plotter(QObject):
         for i in range(self.nchans):
             self.plot_spectrum[i].setData( self.fs, data[1:,i])
 
+            self.plot_spectrum[i].setVisible( self.plot_enable[i])
+
             if self.plot_average:
                 if self.y_counter < self.num_ts:
                     y_mean = np.mean( self.Image_spectrogram[i][:self.y_counter],0 )
@@ -144,6 +155,7 @@ class Plotter(QObject):
                     y_mean = np.mean( self.Image_spectrogram[i],0 )
 
                 self.plot_spectrum_ave[i].setData( self.fs, y_mean)
+                self.plot_spectrum_ave[i].setVisible( self.plot_enable[i])
 
     def update_spectrogram( self, data ):
         for i in range(self.nchans):
@@ -159,6 +171,10 @@ class Plotter(QObject):
 
     def set_plot_average( self, value ):
         self.plot_average = value
+
+    def set_plot_enable( self, CB_plot):
+        for i in range( self.nchans ):
+            self.plot_enable[i] = CB_plot[i].isChecked()
 
     """Program to compute noise spectral density in nV / sqrt(Hz) for ADC-8 data."""
     def calc_noise_density( self, data, rate, NUM_DFT, nchans ):
