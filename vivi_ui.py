@@ -19,7 +19,7 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtGui import QFont, QFontDatabase,QIcon
 from PyQt5.QtSvg import QSvgWidget
 
-import sys, os, time, json
+import sys, os, time, json, glob
 import vivi, vivi_plot
 import numpy as np
 from functools import partial
@@ -29,6 +29,8 @@ import serial.tools.list_ports
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
+        self.vivi_path=os.path.dirname(os.path.abspath(__file__))
+        self.asset_path = os.path.join( self.vivi_path, 'assets')
 
         self.setWindowTitle("Vivi")
         self.setFixedSize(QSize(1280, 780))
@@ -216,6 +218,7 @@ class MainWindow(QMainWindow):
         self.LE_num_dft_live = QLineEdit("128")
         self.CheckBox_average =QCheckBox("Show Average")
         self.CheckBox_average.setChecked( False )
+
         layout_CB_plot = QHBoxLayout()
         self.CB_plot = [QCheckBox() for i in range(8)]
         for i in range(8):
@@ -288,20 +291,27 @@ class MainWindow(QMainWindow):
         self.LE_save_path.editingFinished.connect( self.on_save_path_change )
         self.PB_browse = QPushButton( "Browse" )
         self.PB_browse.clicked.connect( self.on_click_browse )
-        self.PB_open = QPushButton( "Open" )
-        self.PB_open.clicked.connect( self.on_click_open )
-        self.save_status = QLabel("")
         layout_save_control.addWidget( label_save_control )
         layout_save_control.addWidget( self.LE_save_path )
         layout_save_control.addWidget( self.PB_browse )
-        layout_save_control.addWidget( self.PB_open )
-        layout_save_control.addWidget( self.save_status )
+
+        folder_control = QGroupBox("")
+        folder_control.setFlat( True )
+        layout_folder_control = QHBoxLayout()
+        self.PB_open = QPushButton( "Open" )
+        self.PB_open.clicked.connect( self.on_click_open )
+        self.save_status = QLabel("")
+        layout_folder_control.addWidget( self.PB_open )
+        layout_folder_control.addWidget( self.save_status )
+        folder_control.setLayout( layout_folder_control)
         layout_middle.addWidget( self.group_save_control )
+        layout_middle.addWidget( folder_control )
         self.on_save_path_change()
 
         self.tabs_spectrogram = QTabWidget()
         for i in range( 8 ):
             self.tabs_spectrogram.addTab( self.plotter.PW_spectrogram[i], f"Ch {i+1}" )
+            self.tabs_spectrogram.setTabVisible(i,False)
         self.tabs_spectrogram.addTab( self.plotter.PW_integrated, "Integrated Power")
 
         layout_lower.addWidget( self.tabs_spectrogram ) 
@@ -315,13 +325,13 @@ class MainWindow(QMainWindow):
         self.group_logo.setFixedHeight(70)
 
         # Loading SVG
-        svg_logo_left = QSvgWidget('assets/vivi-logo-left.svg', parent=self.group_logo)
+        svg_logo_left = QSvgWidget( os.path.join(self.asset_path,'vivi-logo-left.svg'), parent=self.group_logo)
         svg_logo_left.renderer().setAspectRatioMode(Qt.AspectRatioMode.KeepAspectRatio)
         svg_logo_left.setContentsMargins( 0,0,0,0 )
         svg_logo_left.move(5, -75)
         svg_logo_left.resize(220,220)
 
-        svg_logo_right = QSvgWidget('assets/vivi-logo-right.svg', parent=self.group_logo)
+        svg_logo_right = QSvgWidget( os.path.join( self.asset_path,'vivi-logo-right.svg'), parent=self.group_logo)
         svg_logo_right.renderer().setAspectRatioMode(Qt.AspectRatioMode.KeepAspectRatio)
         # svg_logo_right.renderer().viewBox().setWidth( 5000)
         svg_logo_right.setContentsMargins( 0,0,0,0 )
@@ -411,10 +421,26 @@ class MainWindow(QMainWindow):
         with open(jsonpath, 'w') as f:
             json.dump(meta, f, ensure_ascii=False, indent=2)
 
+    def prepare_fname( self ):
+        self.timestamp = time.strftime( "%H%M", time.localtime())
+        file_path = self.LE_save_path.text()
+        fname = f"{self.timestamp}"
+
+        # Check to see if there is duplicate
+        print( file_path )
+        print( f"{fname}*.csv")
+        files = glob.glob( os.path.join( file_path, f"{fname}*.csv") )
+        
+        if len(files) == 0:
+            return fname
+        else:
+            return f"{fname}_{len(files)}"
+
+
+
 
     def prepare_acquisition(self, mode ):
         self.plotter.sampling = self.board.sampling
-        self.timestamp = time.strftime( "%H%M", time.localtime())
 
         if mode == "live":
             self.board.set_num_live_sample( int( self.LE_num_live_sample.text() ) )
@@ -429,9 +455,11 @@ class MainWindow(QMainWindow):
             self.plotter.init_spectrogram()
             self.plotter.init_integrated()
 
-            # fname = f"{self.timestamp}_Live_Sampling_{self.board.sampling}Hz_Gain_{self.board.gains}"
-            fname = f"{self.timestamp}"
+            fname = self.prepare_fname()
             self.fpath = os.path.join(self.LE_save_path.text(), fname+".csv")
+
+
+
             self.prepare_metadata( fname, -1 ) #-1 for live acqusition
 
 
@@ -673,7 +701,7 @@ class MainWindow(QMainWindow):
                 for i in range(8):
                     self.group_channels[i].setHidden(True)
                     self.tabs_spectrogram.setTabVisible(i, False)
-                    self.CB_plot[i].setHidden( False )
+                    self.CB_plot[i].setHidden( True )
 
                 for i in range(self.board.NUM_CHANNELS):
 
@@ -712,16 +740,14 @@ class MainWindow(QMainWindow):
 
 app = QApplication(sys.argv)
 
-with open("assets/style.css","r") as fh:
-    app.setStyleSheet(fh.read())
-# app.setStyleSheet( "assets/style.css")
- 
-# font = QFontDatabase.addApplicationFont("Arial")
-# font =QFont("Arial")
-# print(font)
-# app.setFont(font)
+vivi_path = os.path.dirname(os.path.abspath(__file__))
+asset_path = os.path.join( vivi_path, 'assets')
 
-app.setWindowIcon(QIcon("assets/vivi-icon.png"))
+with open( os.path.join( asset_path,"style.css"),"r") as fh:
+    app.setStyleSheet(fh.read())
+
+
+app.setWindowIcon(QIcon(os.path.join(asset_path,"vivi-icon.png")))
 window = MainWindow()
 window.show()
 
