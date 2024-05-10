@@ -64,11 +64,15 @@ class MainWindow(QMainWindow):
         layout_device = QHBoxLayout()
         layout_device.setContentsMargins( 0,0,0,0 )
         self.dev_list = QComboBox(  )
+        self.dev_list.activated.connect( self.on_dev_selected )
+        self.dev_list.setFixedWidth( 100)
+        self.LE_URL = QLineEdit( "<hostname>:<port>")
         self.PB_connect = QPushButton( "Connect" )
         self.PB_connect.clicked.connect( self.on_click_connect )
         self.PB_refresh = QPushButton( "Refresh" )
         self.PB_refresh.clicked.connect( self.update_port_list )
         layout_device.addWidget( self.dev_list )
+        layout_device.addWidget( self.LE_URL )
         layout_device.addWidget( self.PB_connect )
         layout_device.addWidget( self.PB_refresh )
         # g_tmp.setLayout( layout_device)
@@ -399,6 +403,14 @@ class MainWindow(QMainWindow):
             self.group_viviewer.setEnabled( False )
             self.update_port_list()
 
+    def on_dev_selected( self ):
+        if self.dev_list.currentText() == "RFC 2217":
+            self.LE_URL.setHidden(False)
+        else:
+            self.LE_URL.setHidden(True)
+            # self.dev_list.setFixedWidth( 100)
+            # self.LE_URL.setFixedWidth( 100 )
+
     def prepare_metadata( self, fname, acquistion ):
         # Make Python dictionary then dump to JSON
         
@@ -663,11 +675,19 @@ class MainWindow(QMainWindow):
 
         # Update Port List
         self.port_list = self.get_port_list()
+        self.dev_list.addItems( self.port_list )
         if len(self.port_list) > 0:
-            self.dev_list.addItems( self.port_list )
             self.PB_connect.setEnabled( True )
         elif len(self.port_list) == 0:
             self.PB_connect.setEnabled( False )
+            self.LE_URL.setHidden(True)
+
+        if self.dev_list.currentText() == "RFC 2217":
+            self.LE_URL.setHidden(False)
+        else:
+            self.LE_URL.setHidden(True)
+
+
 
     def connect_device(self):
         if self.board == None: # Initialize board object if it doesn't exisit
@@ -682,7 +702,7 @@ class MainWindow(QMainWindow):
         if len(self.port_list) > 0:
             portname = self.dev_list.currentText()
             if portname == "RFC 2217":
-                portname = "rfc2217://192.168.1.115:2217"
+                portname = "rfc2217://"+self.LE_URL.text()#192.168.1.115:2217"
             connected = self.board.connect_board( portname )
             if connected:
                 self.thread_board = QThread()
