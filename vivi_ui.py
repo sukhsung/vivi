@@ -50,7 +50,6 @@ class MainWindow(QMainWindow):
 
         layout_main.addLayout( layout_UI )
         layout_main.addWidget( self.group_logo )
-        # self.main_widget.setStyleSheet( "background-color:393939")
 
         self.setCentralWidget( self.main_widget )
 
@@ -312,7 +311,7 @@ class MainWindow(QMainWindow):
         self.tabs_spectrogram = QTabWidget()
         for i in range( 8 ):
             self.tabs_spectrogram.addTab( self.plotter.PW_spectrogram[i], f"Ch {i+1}" )
-            self.tabs_spectrogram.setTabVisible(i,False)
+            self.tabs_spectrogram.setTabVisible(i,True)
         self.tabs_spectrogram.addTab( self.plotter.PW_integrated, "Integrated Power")
 
         layout_lower.addWidget( self.tabs_spectrogram ) 
@@ -326,18 +325,18 @@ class MainWindow(QMainWindow):
         self.group_logo.setFixedHeight(70)
 
         # Loading SVG
-        svg_logo_left = QSvgWidget( os.path.join(self.asset_path,'vivi-logo-left.svg'), parent=self.group_logo)
-        svg_logo_left.renderer().setAspectRatioMode(Qt.AspectRatioMode.KeepAspectRatio)
-        svg_logo_left.setContentsMargins( 0,0,0,0 )
-        svg_logo_left.move(5, -75)
-        svg_logo_left.resize(220,220)
+        self.svg_logo_left = QSvgWidget( os.path.join(self.asset_path,'vivi-logo-left.svg'), parent=self.group_logo)
+        self.svg_logo_left.renderer().setAspectRatioMode(Qt.AspectRatioMode.KeepAspectRatio)
+        self.svg_logo_left.setContentsMargins( 0,0,0,0 )
+        self.svg_logo_left.move(5, -75)
+        self.svg_logo_left.resize(220,220)
 
-        svg_logo_right = QSvgWidget( os.path.join( self.asset_path,'vivi-logo-right.svg'), parent=self.group_logo)
-        svg_logo_right.renderer().setAspectRatioMode(Qt.AspectRatioMode.KeepAspectRatio)
+        self.svg_logo_right = QSvgWidget( os.path.join( self.asset_path,'vivi-logo-right.svg'), parent=self.group_logo)
+        self.svg_logo_right.renderer().setAspectRatioMode(Qt.AspectRatioMode.KeepAspectRatio)
         # svg_logo_right.renderer().viewBox().setWidth( 5000)
-        svg_logo_right.setContentsMargins( 0,0,0,0 )
-        svg_logo_right.move(825, -175)
-        svg_logo_right.resize(420,420)
+        self.svg_logo_right.setContentsMargins( 0,0,0,0 )
+        self.svg_logo_right.move(825, -175)
+        self.svg_logo_right.resize(420,420)
 
         # layout_logo.addSpacing(50)
         # layout_logo.addWidget(svg_logo_left)
@@ -429,7 +428,6 @@ class MainWindow(QMainWindow):
 
         # Check to see if there is duplicate
         print( file_path )
-        print( f"{fname}*.csv")
         files = glob.glob( os.path.join( file_path, f"{fname}*.csv") )
         
         if len(files) == 0:
@@ -477,8 +475,8 @@ class MainWindow(QMainWindow):
             self.plotter.init_spectrum()
 
             self.timestamp = time.strftime( "%H%M", time.localtime())
-            #fname = f"{self.timestamp}_Acquire_{acquire_time}s_Sampling_{self.board.sampling}Hz_Gain_{self.board.gains}"
-            fname = f"{self.timestamp}"
+
+            fname = self.prepare_fname()
             self.fpath = os.path.join(self.LE_save_path.text(), fname+".csv")
             self.prepare_metadata( fname, acquire_time )
         
@@ -654,7 +652,9 @@ class MainWindow(QMainWindow):
             vid:     The device's USB vendor ID value.
             pid:     The device's USB product ID value.
         """
-        return [p for p in serial.tools.list_ports.comports() if p.vid]
+        port_list = [p.device for p in serial.tools.list_ports.comports() if p.vid]
+        port_list.append("RFC 2217")
+        return port_list
 
     def update_port_list(self):
         # Remove Current List
@@ -664,7 +664,7 @@ class MainWindow(QMainWindow):
         # Update Port List
         self.port_list = self.get_port_list()
         if len(self.port_list) > 0:
-            self.dev_list.addItems( [p.device for p in self.port_list] )
+            self.dev_list.addItems( self.port_list )
             self.PB_connect.setEnabled( True )
         elif len(self.port_list) == 0:
             self.PB_connect.setEnabled( False )
@@ -680,7 +680,9 @@ class MainWindow(QMainWindow):
             self.board.setting_changed.connect( self.received_setting_changed )
 
         if len(self.port_list) > 0:
-            portname = self.port_list[self.dev_list.currentIndex()].device
+            portname = self.dev_list.currentText()
+            if portname == "RFC 2217":
+                portname = "rfc2217://localhost:2217"
             connected = self.board.connect_board( portname )
             if connected:
                 self.thread_board = QThread()

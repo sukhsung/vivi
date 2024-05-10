@@ -41,7 +41,10 @@ class Board(QObject):
             self.set_status( "NOT-READY" ) 
             return False
         else :
-            self.dev = serial.Serial(portname, exclusive=True)
+            if portname.startswith("rfc2217://"):
+                self.dev = serial.serial_for_url(portname, exclusive=True)
+            else:
+                self.dev = serial.Serial(portname, exclusive=True)
             time.sleep(0.8)
             # Verify that the device is an ADC-8 board running the
             # proper firmware
@@ -125,7 +128,8 @@ class Board(QObject):
     def get_available_NUM_CHANNELS( self ): 
         # Get number of channels
         self.dev.write(b'c\n')
-        msg = self.dev.read(1000).decode()
+        # msg = self.dev.read(1000).decode()
+        msg= self.dev.read_until(b'').decode()
         msg = msg.split('\n')
         msg = [x for x in msg if x.startswith('ADC ')]
         return len( msg )
@@ -151,7 +155,8 @@ class Board(QObject):
         self.dev.timeout = 0.01
         self.dev.write(b'\n')
         self.dev.reset_input_buffer()
-        self.dev.read(1000)		# Wait for timeout
+        # self.dev.read(1000)		# Wait for timeout
+        self.dev.read_until(b'')
 
         self.dev.write(b'*\n')
         id = self.dev.read_until(size=80)
@@ -175,7 +180,8 @@ class Board(QObject):
                         write_msg = self.msg_input + "\n"
 
                         self.dev.write( write_msg.encode() )
-                        ans_msg = self.dev.read(1500).decode()
+                        # ans_msg = self.dev.read(1500).decode()
+                        ans_msg = self.dev.read_until(b'').decode()
                         self.parse_answer( ans_msg )
                         self.msg_out.emit( ans_msg )
                         self.msg_input = None
@@ -358,7 +364,8 @@ class Board(QObject):
         self.msg_out.emit(f"{total_blocks} blocks received")
 
         self.dev.timeout = 0.01
-        self.dev.read(1000)		# Flush any extra output
+        # self.dev.read(1000)		# Flush any extra output
+        self.dev.read_until(b'')
         
         self.set_status( "LISTENING" )
         return output_data
@@ -462,6 +469,7 @@ class Board(QObject):
             self.acquire_data.emit( output_data )
 
         self.dev.timeout = 0.01
-        self.dev.read(1000)		# Flush any extra output
+        # self.dev.read(1000)		# Flush any extra output
+        self.dev.read_until(b'')
         self.set_status( "LISTENING" )
         return output_data
