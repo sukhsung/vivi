@@ -682,7 +682,7 @@ class MainWindow(QMainWindow):
         if len(self.port_list) > 0:
             portname = self.dev_list.currentText()
             if portname == "RFC 2217":
-                portname = "rfc2217://localhost:2217"
+                portname = "rfc2217://192.168.1.115:2217"
             connected = self.board.connect_board( portname )
             if connected:
                 self.thread_board = QThread()

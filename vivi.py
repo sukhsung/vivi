@@ -42,8 +42,10 @@ class Board(QObject):
             return False
         else :
             if portname.startswith("rfc2217://"):
+                self.default_timeout = 1
                 self.dev = serial.serial_for_url(portname, exclusive=True)
             else:
+                self.default_timeout = 0.01
                 self.dev = serial.Serial(portname, exclusive=True)
             time.sleep(0.8)
             # Verify that the device is an ADC-8 board running the
@@ -128,8 +130,7 @@ class Board(QObject):
     def get_available_NUM_CHANNELS( self ): 
         # Get number of channels
         self.dev.write(b'c\n')
-        # msg = self.dev.read(1000).decode()
-        msg= self.dev.read_until(b'').decode()
+        msg = self.dev.read(1000).decode()
         msg = msg.split('\n')
         msg = [x for x in msg if x.startswith('ADC ')]
         return len( msg )
@@ -152,11 +153,10 @@ class Board(QObject):
 
     def get_board_id(self):
         """Return the board's identification string and store its serial_number."""
-        self.dev.timeout = 0.01
+        self.dev.timeout = self.default_timeout#0.01
         self.dev.write(b'\n')
         self.dev.reset_input_buffer()
-        # self.dev.read(1000)		# Wait for timeout
-        self.dev.read_until(b'')
+        self.dev.read(1000)		# Wait for timeout
 
         self.dev.write(b'*\n')
         id = self.dev.read_until(size=80)
@@ -180,8 +180,7 @@ class Board(QObject):
                         write_msg = self.msg_input + "\n"
 
                         self.dev.write( write_msg.encode() )
-                        # ans_msg = self.dev.read(1500).decode()
-                        ans_msg = self.dev.read_until(b'').decode()
+                        ans_msg = self.dev.read(1500).decode()
                         self.parse_answer( ans_msg )
                         self.msg_out.emit( ans_msg )
                         self.msg_input = None
@@ -363,9 +362,8 @@ class Board(QObject):
         self.msg_out.emit("Transfer ended")
         self.msg_out.emit(f"{total_blocks} blocks received")
 
-        self.dev.timeout = 0.01
-        # self.dev.read(1000)		# Flush any extra output
-        self.dev.read_until(b'')
+        self.dev.timeout = self.default_timeout#0.01
+        self.dev.read(1000)		# Flush any extra output
         
         self.set_status( "LISTENING" )
         return output_data
@@ -468,8 +466,7 @@ class Board(QObject):
 
             self.acquire_data.emit( output_data )
 
-        self.dev.timeout = 0.01
-        # self.dev.read(1000)		# Flush any extra output
-        self.dev.read_until(b'')
+        self.dev.timeout = self.default_timeout#0.01
+        self.dev.read(1000)		# Flush any extra output
         self.set_status( "LISTENING" )
         return output_data
