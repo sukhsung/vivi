@@ -287,7 +287,8 @@ class MainWindow(QMainWindow):
         layout_save_control.setContentsMargins(0,0,0,0)
         label_save_control = QLabel("Save Path:")
         today = datetime.today().strftime('%Y-%m-%d')# Get Today
-        self.LE_save_path = QLineEdit(f"{os.getcwd()}/results/{today}")
+        savepath = os.path.join( self.vivi_path, 'results', today)
+        self.LE_save_path = QLineEdit(savepath)
         self.LE_save_path.editingFinished.connect( self.on_save_path_change )
         self.PB_browse = QPushButton( "Browse" )
         self.PB_browse.clicked.connect( self.on_click_browse )
