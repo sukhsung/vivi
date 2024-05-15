@@ -235,7 +235,8 @@ class Board(QObject):
         if self.status == "LISTENING":
             self.msg_input = msg
         else:
-            self.msg_out = "\nConnect an ADC-8 Board to Start"
+            # self.msg_out = "\nConnect an ADC-8 Board to Start"
+            self.msg_out.emit( "Connect an ADC-8 Board to Start" )
     
     def get_board_status(self):
         self.send_command("c")
