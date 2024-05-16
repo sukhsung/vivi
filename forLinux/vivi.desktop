@@ -1,5 +1,5 @@
 [Desktop Entry]
 Type=Application
 Name=Vivi
-Exec=/usr/local/vivi/vivi.sh
+Exec=/usr/local/vivi/forLinux/vivi.sh
 Icon=/usr/local/vivi/assets/vivi-Icon.png
