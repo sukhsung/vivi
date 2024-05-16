@@ -42,7 +42,7 @@ class Board(QObject):
             return False
         else :
             if portname.startswith("rfc2217://"):
-                self.default_timeout = 1
+                self.default_timeout = 0.5
                 self.dev = serial.serial_for_url(portname, exclusive=True)
             else:
                 self.default_timeout = 0.01

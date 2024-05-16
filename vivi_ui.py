@@ -760,21 +760,23 @@ class MainWindow(QMainWindow):
     
         
 
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
 
-app = QApplication(sys.argv)
+    vivi_path = os.path.dirname(os.path.abspath(__file__))
+    asset_path = os.path.join( vivi_path, 'assets')
 
-vivi_path = os.path.dirname(os.path.abspath(__file__))
-asset_path = os.path.join( vivi_path, 'assets')
-
-with open( os.path.join( asset_path,"style.css"),"r") as fh:
-    app.setStyleSheet(fh.read())
-
-
-app.setWindowIcon(QIcon(os.path.join(asset_path,"vivi-icon.png")))
-window = MainWindow()
-window.show()
-
-app.aboutToQuit.connect( window.on_quit )
+    with open( os.path.join( asset_path,"style.css"),"r") as fh:
+        app.setStyleSheet(fh.read())
 
 
-app.exec()
+    app.setWindowIcon(QIcon(os.path.join(asset_path,"vivi-icon.png")))
+    app.setApplicationName("Vivi")
+    
+    window = MainWindow()
+    window.show()
+
+    app.aboutToQuit.connect( window.on_quit )
+
+
+    app.exec()
