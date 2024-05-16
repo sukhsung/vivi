@@ -774,6 +774,7 @@ if __name__ == "__main__":
     app.setApplicationName("Vivi")
     
     window = MainWindow()
+    window.setWindowIcon(QIcon(os.path.join(asset_path,"vivi-icon.png")))
     window.show()
 
     app.aboutToQuit.connect( window.on_quit )
