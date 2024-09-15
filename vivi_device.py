@@ -1,33 +1,9 @@
 # auto-transfer.py
 """Program to store continuous data readings from an ADC-8 board."""
 """Based off of adc8-transfer.py and noise-density.py"""
-import math, time, struct, sys
+import serial, math, time, struct
 from PyQt5.QtCore import (pyqtSignal, QObject)
 
-if '-dev' in sys.argv:
-    print( 'DEV MODE: Dummy Devices' )
-    from dummy_serial import list_ports
-    import dummy_serial as serial
-else:
-    from serial.tools.list_ports import comports as list_ports
-    import serial
-
-def get_port_list():
-    """\
-    Return a list of USB serial port devices.
-
-    Entries in the list are ListPortInfo objects from the
-    serial.tools.list_ports module.  Fields of interest include:
-
-        device:  The device's full path name.
-        vid:     The device's USB vendor ID value.
-        pid:     The device's USB product ID value.
-    """
-    # port_list = [p.device for p in serial.tools.list_ports.comports() if p.vid]
-    # comports = list_ports()
-    port_list = [p.device for p in list_ports() if p.vid]
-    port_list.append("RFC 2217")
-    return port_list
 
 class Board(QObject):
     status = str
