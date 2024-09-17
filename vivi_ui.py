@@ -40,7 +40,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         self.make_panel_device()
         self.make_panel_viewer()
-        # self.make_panel_banner()
+        self.make_panel_banner()
 
         # layout_UI = QHBoxLayout()
         # layout_UI.addWidget( self.group_vivi )
@@ -181,7 +181,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
             self.group_channels[i].setHidden(True)
 
-
+        self.PB_closeCMD.clicked.connect( self.on_click_closeCMD )
         # layout_gains.addLayout( layout_gains_1 )
         # layout_gains.addLayout( layout_gains_2 )
         # layout_gains.setSpacing(10)
@@ -200,6 +200,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.PB_send.clicked.connect( self.on_click_send )
         # self.PB_clear = QPushButton( "Clear" )
         self.PB_clear.clicked.connect( self.on_click_clear )
+        self.group_cmd.setVisible(False)
 
         # layout_command.addWidget( self.LE_command )
         # layout_command.addWidget( self.PB_send )
@@ -367,9 +368,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.group_viviewer.setEnabled( False )
 
     def make_panel_banner( self ):
-        self.group_logo = QGroupBox("")
-        self.group_logo.setFlat( True )
-        self.group_logo.setFixedHeight(70)
+        # self.group_logo = QGroupBox("")
+        # self.group_logo.setFlat( True )
+        # self.group_logo.setFixedHeight(70)
 
         # Loading SVG
         self.svg_logo_left = QSvgWidget( os.path.join(self.asset_path,'vivi-logo-left.svg'), parent=self.group_logo)
@@ -378,12 +379,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.svg_logo_left.move(5, -75)
         self.svg_logo_left.resize(220,220)
 
-        self.svg_logo_right = QSvgWidget( os.path.join( self.asset_path,'vivi-logo-right.svg'), parent=self.group_logo)
-        self.svg_logo_right.renderer().setAspectRatioMode(Qt.AspectRatioMode.KeepAspectRatio)
+        self.group_logo.mouseDoubleClickEvent = self.test
+        # self.svg_logo_right = QSvgWidget( os.path.join( self.asset_path,'vivi-logo-right.svg'), parent=self.group_logo)
+        # self.svg_logo_right.renderer().setAspectRatioMode(Qt.AspectRatioMode.KeepAspectRatio)
         # svg_logo_right.renderer().viewBox().setWidth( 5000)
-        self.svg_logo_right.setContentsMargins( 0,0,0,0 )
-        self.svg_logo_right.move(825, -175)
-        self.svg_logo_right.resize(420,420)
+        # self.svg_logo_right.setContentsMargins( 0,0,0,0 )
+        # self.svg_logo_right.move(825, -175)
+        # self.svg_logo_right.resize(420,420)
 
         # layout_logo.addSpacing(50)
         # layout_logo.addWidget(svg_logo_left)
@@ -391,6 +393,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # layout_logo.addWidget(svg_logo_right)
         # layout_logo.addSpacing(50)
 
+    def test(self,a):
+        self.group_logo.setVisible(False)
+        self.group_cmd.setVisible(True)
+
+    def on_click_closeCMD(self):
+        self.group_logo.setVisible(True)
+        self.group_cmd.setVisible(False)
 
     ### Save Related
     def on_save_path_change( self ):

@@ -37,6 +37,8 @@ class Serial():
             else:
                 self.gains[channels-1] = gain
                 print( self.gains)
+        elif msg.startswith('b'):
+            self.begin_data_collection()
     
     def show_current_settings(self):
         msg_out =  "\nCurrent settings:  Sampling rate %.2f\n" % self.sampling
