@@ -1,31 +1,18 @@
-window{
-    background-color: #393939;
-}
-QWidget #main_widget {
-    background-color: #393939;
-}
-QPushButton {
-     /* border-style: outset; */
-     /* border-width: 1px;
-     border-color: beige;
-     border-radius: 10%; */
-}
-QGroupBox[flat="false"] {
-    border: 1px solid #555555;
-    border-radius: 10px;
-    /* background-color: #393939; */
-    /* border-width: 3px; */
-    /* border: #FFFFFF */
+#MainWindow{
+    background-color: #1e1e1e;
 }
 
-QTabWidget::pane {
-    /* background-color: #393939; */
-    border: 1px solid #555555;
-    border-radius: 10px;
-    padding: 5px;
+#group_cmd, #group_device {
+    background-color: #158081;
+    border-radius: 5%;
 }
 
+#group_left {
+    background-color: #058b8c;
+    border-radius: 15%;
+}
 
-#Test {
-    background-color: #FFFFFF;
+#group_viviewer{
+    background-color: #363636;
+    border-radius: 15%;
 }
