@@ -1,32 +1,18 @@
-from PyQt5.QtCore import QSize, QThread, Qt
+from PyQt5.QtCore import QThread, Qt
 from PyQt5.QtWidgets import (
     QApplication,
-    QVBoxLayout,
-    QHBoxLayout,
-    QLabel,
     QMainWindow,
-    QPushButton,
-    QTabWidget,
-    QLineEdit,
-    QWidget,
-    QGroupBox,
-    QComboBox,
-    QTextEdit,
     QFileDialog,
-    QCheckBox,
-    QProgressBar,
-    QStyleFactory
 )
-from PyQt5.QtGui import QFont, QFontDatabase,QIcon
+from PyQt5.QtGui import QIcon
 from PyQt5.QtSvg import QSvgWidget
 
 import sys, os, time, json, glob
-import vivi, vivi_plot
 import numpy as np
 from functools import partial
 from datetime import datetime
-import serial.tools.list_ports
 
+import vivi, vivi_plot
 from vivi_makeUI import Ui_MainWindow
 
 class MainWindow(QMainWindow, Ui_MainWindow):
@@ -37,11 +23,16 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         self.setupUi(self)
 
-        # print("HI")
-        # print(self.group_left.
-
         self.setWindowTitle("Vivi")
-        self.board = None
+        self.thread_main = QThread.currentThread() 
+        self.board = vivi.Board()
+        self.board.msg_out.connect( self.received_msg )
+        self.board.status_signal.connect( self.on_status_change )
+        self.board.live_data.connect( self.received_live_data )
+        self.board.acquire_data.connect( self.received_acquire_data )
+        self.board.elapsed_time.connect( self.received_elapsed_time)
+        self.board.setting_changed.connect( self.received_setting_changed )
+        self.board.connected_signal.connect( self.received_connected )
 
         self.make_panel_device()
         self.make_panel_viewer()
@@ -105,9 +96,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.CB_gains[i].addItems( ["128", "64", "32", "16", "8","1"])
             self.CB_gains[i].activated.connect( partial(self.set_individual_gain,i) )
             self.TB_gains_labels[i].editingFinished.connect( self.set_label )
-            self.group_channels[i].setHidden(True)
+            self.group_channels[i].setVisible(False)
 
-        self.PB_closeCMD.clicked.connect( self.on_click_closeCMD )
+        self.PB_closeCMD.clicked.connect( self.close_CMD )
 
         # # Device Console
         self.TE_deviceStatus.setText( "Connect to an ADC-8 Board to start" )
@@ -124,7 +115,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Acquisition Viewer Panel
         self.PB_live_start.clicked.connect( self.on_click_start_view )
         self.LE_num_live_sample.setText("512")
-        self.LE_num_dft_live = QLineEdit("128")
         self.LE_num_dft_live.setText("128")
         self.CheckBox_average.setChecked( False )
 
@@ -138,7 +128,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                        self.CB_plot_8]
         for i in range(8):
             self.CB_plot[i].setChecked( True )
-            self.CB_plot[i].setHidden( True )
+            self.CB_plot[i].setVisible( False )
             self.CB_plot[i].stateChanged.connect( self.set_plot_enable )
 
  
@@ -165,7 +155,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.group_viviewer.setEnabled( False )
 
     def make_panel_banner( self ):
-
         # Loading SVG
         self.svg_logo_main = QSvgWidget( os.path.join(self.asset_path,'vivi-main.svg'), parent=self.group_logo)
         self.svg_logo_main.renderer().setAspectRatioMode(Qt.AspectRatioMode.KeepAspectRatio)
@@ -177,10 +166,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.svg_logo_disabled.renderer().setAspectRatioMode(Qt.AspectRatioMode.KeepAspectRatio)
         self.svg_logo_disabled.setContentsMargins( 0,0,0,0 )
 
-        self.group_logo.mouseDoubleClickEvent = self.enable_logo
-        self.on_click_closeCMD()
+        self.group_logo.mouseDoubleClickEvent = self.open_CMD
+        self.close_CMD()
 
-    def enable_logo(self,a):
+    def open_CMD(self,a):
         self.group_logo.setVisible(False)
         self.group_cmd.setVisible(True)
         self.layout_left.setStretch(0,1)
@@ -189,7 +178,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.layout_left.setStretch(3,0)
         self.layout_left.setStretch(4,0)
 
-    def on_click_closeCMD(self):
+    def close_CMD(self):
         self.group_logo.setVisible(True)
         self.group_cmd.setVisible(False)
         self.layout_left.setStretch(0,1)
@@ -215,58 +204,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             os.system("open "+self.LE_save_path.text() )
         except:
             self.PB_open.setEnabled( False )
-        #     os.startfile(self.LE_save_path.text())
     def on_click_browse( self ):
         folderpath = QFileDialog.getExistingDirectory(self, 'Select Folder')
         self.LE_save_path.setText( folderpath )
         self.save_status.setText( "Folder Path Set")
-    ### #Save Realted
-
-    def on_status_change( self,status ):
-        print( status)
-        if status == "NOT-READY": # Board not Ready
-            self.group_device_setting.setEnabled( False )
-            self.group_viviewer.setEnabled( False )
-        elif status == "LISTENING":# Board Ready
-            self.group_device_setting.setVisible( True )
-            self.group_viviewer.setEnabled( True )
-            self.group_acquire_control.setEnabled( True )
-            self.group_live_control.setEnabled( True )
-            self.group_save_control.setEnabled( True )
-            self.PB_acquire_start.setText( "Acquire: Start")
-            self.PB_live_start.setText( "Live: Start")
-
-            self.svg_logo_disabled.setVisible( False )
-            self.svg_logo_main.setVisible( True )
-
-        elif status == "LIVE":
-            self.group_acquire_control.setEnabled( False )
-            self.group_save_control.setEnabled( False )
-        elif status == "ACQUIRE":
-            self.group_live_control.setEnabled( False )
-            self.group_save_control.setEnabled( False )
-        elif status == "DISCONNECT":
-            print("Disconnecting")
-            self.disconnect_device()
-            self.thread_board.quit()
-
-            self.PB_refresh.setEnabled( True )
-            self.PB_send.setEnabled( False )
-            self.PB_connect.setText( "Connect" )
-            self.group_device_setting.setVisible( False )
-            self.group_viviewer.setEnabled( False )
-            self.svg_logo_disabled.setVisible( True )
-            self.svg_logo_main.setVisible( False )
-            self.update_port_list()
-
-    def on_dev_selected( self ):
-        if self.dev_list.currentText() == "RFC 2217":
-            self.LE_URL.setVisible(True)
-            self.dev_list.setMaximumWidth(100)
-            self.LE_URL.setMinimumWidth(130)
-        else:
-            self.LE_URL.setVisible(False)
-            self.dev_list.setMaximumWidth(300)
 
     def prepare_metadata( self, fname, acquistion ):
         # Make Python dictionary then dump to JSON
@@ -305,7 +246,55 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             return f"{fname}_{len(files)}"
 
 
+    def on_status_change( self,status ):
+        if status == "NOT-READY": # Board not Ready
+            self.group_device_setting.setEnabled( False )
+            self.group_viviewer.setEnabled( False )
+        elif status == "LISTENING":# Board Ready
+            self.group_device_setting.setVisible( True )
+            self.group_device_setting.setEnabled( True )
+            self.group_viviewer.setEnabled( True )
+            self.PB_acquire_start.setText( "Acquire: Start")
+            self.PB_live_start.setText( "Live: Start")
 
+            self.group_device.setEnabled( True )
+            self.group_live_control.setEnabled( True )
+            self.group_acquire_control.setEnabled( True )
+
+            self.LE_num_dft_acquire.setEnabled( True )
+            self.LE_acquire_time.setEnabled( True )
+            self.LE_num_dft_live.setEnabled( True )
+            self.LE_num_live_sample.setEnabled( True )
+            self.CheckBox_average.setEnabled( True )
+            self.group_save_control.setEnabled( True )
+
+        elif status == "LIVE":
+            self.group_acquire_control.setEnabled( False )
+            self.group_save_control.setEnabled( False )
+            self.PB_live_start.setText( "Live: Stop")
+            self.group_device.setEnabled( False )
+            self.group_acquire_control.setEnabled( False )
+            self.LE_num_dft_live.setEnabled( False )
+            self.LE_num_live_sample.setEnabled( False )
+            self.CheckBox_average.setEnabled( False )
+        elif status == "ACQUIRE":
+            self.group_live_control.setEnabled( False )
+            self.group_save_control.setEnabled( False )
+            self.PB_acquire_start.setText( "Acquire: Stop")
+            self.group_device.setEnabled( False )
+            self.group_live_control.setEnabled( False )
+            self.LE_num_dft_acquire.setEnabled( False )
+            self.LE_acquire_time.setEnabled( False )
+            self.Progress_Acquistion.setValue(0)
+
+    def on_dev_selected( self ):
+        if self.dev_list.currentText() == "RFC 2217":
+            self.LE_URL.setVisible(True)
+            self.dev_list.setMaximumWidth(100)
+            self.LE_URL.setMinimumWidth(130)
+        else:
+            self.LE_URL.setVisible(False)
+            self.dev_list.setMaximumWidth(300)
 
     def prepare_acquisition(self, mode ):
         self.plotter.sampling = self.board.sampling
@@ -325,8 +314,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
             fname = self.prepare_fname()
             self.fpath = os.path.join(self.LE_save_path.text(), fname+".csv")
-
-
 
             self.prepare_metadata( fname, -1 ) #-1 for live acqusition
 
@@ -352,48 +339,18 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def on_click_start_acquire(self):
         if self.PB_acquire_start.text() == "Acquire: Start":
             self.prepare_acquisition("acquire")
-            self.board.set_status("ACQUIRE")
-
-
-            self.group_device_setting.setVisible( False )
-            self.group_live_control.setEnabled( False )
-
-            self.PB_acquire_start.setText( "Acquire: Stop")
-            self.LE_num_dft_acquire.setEnabled( False )
-            self.LE_acquire_time.setEnabled( False )
-            self.Progress_Acquistion.setValue(0)
-
+            self.board.set_request("ACQUIRE")
         elif self.PB_acquire_start.text() == "Acquire: Stop":
-            self.board.set_status( "STOPPING" )
-            self.PB_acquire_start.setText( "Acquire: Start")
-            self.group_device_setting.setVisible( True )
-            self.group_live_control.setEnabled( True )
-            self.LE_num_dft_acquire.setEnabled( True )
-            self.LE_acquire_time.setEnabled( True )
+            self.board.set_request( "STOP" )
 
     def on_click_start_view(self):
         if self.PB_live_start.text() == "Live: Start":
             self.prepare_acquisition("live")
             self.live_file = open( self.fpath, 'w')
-            self.board.set_status( "LIVE" )
-
-            self.PB_live_start.setText( "Live: Stop")
-            self.group_device_setting.setVisible( False )
-            self.group_acquire_control.setEnabled( False )
-            self.LE_num_dft_live.setEnabled( False )
-            self.LE_num_live_sample.setEnabled( False )
-            self.CheckBox_average.setEnabled( False )
+            self.board.set_request( "LIVE" )
         elif self.PB_live_start.text() == "Live: Stop":
-            self.board.set_status( "STOPPING" )
-
-            self.PB_live_start.setText( "Live: Start")
-            self.group_device_setting.setVisible( True )
-            self.group_acquire_control.setEnabled( True )
-            self.LE_num_dft_live.setEnabled( True )
-            self.LE_num_live_sample.setEnabled( True )
-            self.CheckBox_average.setEnabled( True )
+            self.board.set_request( "STOP" )
             self.live_file.close()
-
             self.save_status.setText( f"File Saved time stamp: {self.timestamp}")
 
     def received_elapsed_time( self, value):
@@ -421,9 +378,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             acquire_file.close()
             self.save_status.setText( f"File Saved time stamp: {self.timestamp}")
 
-        
-        self.LE_num_dft_acquire.setEnabled( True )
-        self.LE_acquire_time.setEnabled( True )
 
 
     def received_live_data( self, value ):
@@ -523,83 +477,112 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.PB_connect.setEnabled( True )
         elif len(self.port_list) == 0:
             self.PB_connect.setEnabled( False )
-            self.LE_URL.setHidden(True)
+            self.LE_URL.setVisible(False)
 
         if self.dev_list.currentText() == "RFC 2217":
-            self.LE_URL.setHidden(False)
+            self.LE_URL.setVisible(True)
         else:
-            self.LE_URL.setHidden(True)
+            self.LE_URL.setVisible(False)
 
+    def enable_logo(self, val):
+        self.svg_logo_main.setVisible( val )
+        self.svg_logo_disabled.setVisible( not val )
+
+    def received_connected( self, val ): 
+        if val: # CONNECTED
+            self.board.thread_main = self.thread_main
+            self.board.vivi_thread = QThread()
+            self.board.moveToThread(self.board.vivi_thread)
+            self.board.vivi_thread.started.connect( self.board.start_comm )
+            self.board.vivi_thread.start()
+
+            self.PB_connect.setText( "Disconnect" )
+            self.PB_refresh.setEnabled( False )
+            self.group_cmd.setEnabled( True )
+            self.group_acquire_control.setEnabled( True )
+            self.group_viviewer.setEnabled( True )
+            self.enable_logo( True )
+            self.dev_list.setEnabled( False )
+
+            for i in range(8):
+
+                if i<self.board.NUM_CHANNELS:
+                    # Enabled Channels
+                    self.group_channels[i].setVisible(True)
+                    self.tabs_spectrogram.setTabVisible(i, True)
+                    self.CB_plot[i].setVisible( True )
+                else:
+                    # Disabled channels
+                    self.group_channels[i].setVisible(False)
+                    self.tabs_spectrogram.setTabVisible(i, False)
+                    self.CB_plot[i].setVisible( False )
+
+            self.plotter.nchans = self.board.NUM_CHANNELS
+            
+            self.board.initialize()
+            for i in range( self.board.NUM_CHANNELS):
+                self.set_individual_gain(i)
+                time.sleep(0.1)
+            self.set_sampling()
+            self.set_label()
+
+
+            self.group_device_setting.setVisible( True )
+            self.group_device_setting.setEnabled( True )
+            self.group_viviewer.setEnabled( True )
+            self.PB_acquire_start.setText( "Acquire: Start")
+            self.PB_live_start.setText( "Live: Start")
+
+            self.group_device.setEnabled( True )
+            self.group_live_control.setEnabled( True )
+            self.group_acquire_control.setEnabled( True )
+
+            self.LE_num_dft_acquire.setEnabled( True )
+            self.LE_acquire_time.setEnabled( True )
+            self.LE_num_dft_live.setEnabled( True )
+            self.LE_num_live_sample.setEnabled( True )
+            self.CheckBox_average.setEnabled( True )
+            self.group_save_control.setEnabled( True )
+
+            # self.set_all_gains( self.init_gain )
+            # for i in range( self.NUM_CHANNELS ):
+            #     self.set_individual_gain(i, gains[i])
+            #     time.sleep(0.1)
+            # time.sleep(0.1)
+            # self.set_sampling( sampling )
+
+        else: # Disconnected
+            self.PB_connect.setText( "Connect" )
+            self.PB_refresh.setEnabled( True )
+            self.group_cmd.setEnabled( False )
+            self.group_device_setting.setVisible( False )
+            self.group_viviewer.setEnabled( False )
+            self.enable_logo( False )
+            self.update_port_list()
+            self.dev_list.setEnabled( True )
 
 
     def connect_device(self):
-        if self.board == None: # Initialize board object if it doesn't exisit
-            self.board = vivi.Board( )
-            self.board.msg_out.connect( self.received_msg )
-            self.board.status_signal.connect( self.on_status_change )
-            self.board.live_data.connect( self.received_live_data )
-            self.board.acquire_data.connect( self.received_acquire_data )
-            self.board.elapsed_time.connect( self.received_elapsed_time)
-            self.board.setting_changed.connect( self.received_setting_changed )
-
         if len(self.port_list) > 0:
             portname = self.dev_list.currentText()
             if portname == "RFC 2217":
                 portname = "rfc2217://"+self.LE_URL.text()#192.168.1.115:2217"
-            connected = self.board.connect_board( portname )
-            if connected:
-                self.thread_board = QThread()
-                self.thread_main = QThread.currentThread() 
-                self.board.thread_main = self.thread_main
-                self.board.moveToThread(self.thread_board)
-                self.thread_board.started.connect( self.board.start_comm )
-                self.thread_board.finished.connect( self.thread_board.deleteLater )
-                self.thread_board.start()
-
-                self.PB_send.setEnabled( True )
-                self.PB_connect.setText( "Disconnect" )
-                self.PB_refresh.setEnabled( False )
-
-                self.group_acquire_control.setEnabled( True )
-                self.group_live_control.setEnabled( True )
-                # self.group_save_control.setEnabled( True )
-
-                for i in range(8):
-                    self.group_channels[i].setHidden(True)
-                    self.tabs_spectrogram.setTabVisible(i, False)
-                    self.CB_plot[i].setHidden( True )
-
-                for i in range(self.board.NUM_CHANNELS):
-
-                    self.group_channels[i].setHidden(False)
-                    self.tabs_spectrogram.setTabVisible(i, True)
-                    self.CB_plot[i].setHidden( False )
-                self.plotter.nchans = self.board.NUM_CHANNELS
-                
-
-                self.board.init_settings()
-        
+            self.board.connect_board( portname )
 
     def disconnect_device( self ):
-        if self.board == None:
-            return
-        elif self.board.status == "DISCONNECT":
-            return
-        elif self.board.status == "NOT-READY":
-            return
-        else:
-            self.board.close_board()
-            self.thread_board.quit()
-            self.PB_refresh.setEnabled( True )
-            self.PB_send.setEnabled( False )
-            self.PB_connect.setText( "Connect" )
-            self.group_device_setting.setVisible( False )
-            self.group_viviewer.setEnabled( False )
+        if self.board.status in ["LIVE", "ACQUIRE"]:
+            self.board.set_request("STOP")
+            t = time.time()
+            while self.board.status != "LISTENING" and (time.time()-t<1):
+                time.sleep(0.01)
 
+        self.board.set_request("DISCONNECT")
+        t = time.time()
+        while self.board.connected and (time.time()-t<1):
+            time.sleep(0.01)
     def on_quit( self ):
         print("Exiting Vivi")
         self.disconnect_device()
-    ###
     
         
 if __name__ == "__main__":
