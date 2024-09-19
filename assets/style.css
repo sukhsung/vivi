@@ -4,7 +4,7 @@
 
 #group_cmd, #group_device {
     background-color: #158081;
-    border-radius: 5%;
+    border-radius: 10%;
 }
 
 #group_left {
@@ -16,3 +16,22 @@
     background-color: #363636;
     border-radius: 15%;
 }
+
+#group_viewer, #group_save_control, #group_tabs {
+    border-radius: 10%;
+    background-color: #3c3c3c;
+}
+
+#group_channel_1,
+#group_channel_2,
+#group_channel_3,
+#group_channel_4,
+#group_channel_5,
+#group_channel_6,
+#group_channel_7,
+#group_channel_8 {
+    border-radius: 10%;
+    background-color: #058b8c;
+}
+
+QTabWidget { border: none; } 

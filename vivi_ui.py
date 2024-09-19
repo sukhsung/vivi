@@ -223,11 +223,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     ### #Save Realted
 
     def on_status_change( self,status ):
+        print( status)
         if status == "NOT-READY": # Board not Ready
-            self.group_device_setting.setVisible( False )
+            self.group_device_setting.setEnabled( False )
             self.group_viviewer.setEnabled( False )
-            self.svg_logo_disabled.setVisible( True )
-            self.svg_logo_main.setVisible( False )
         elif status == "LISTENING":# Board Ready
             self.group_device_setting.setVisible( True )
             self.group_viviewer.setEnabled( True )
@@ -236,8 +235,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.group_save_control.setEnabled( True )
             self.PB_acquire_start.setText( "Acquire: Start")
             self.PB_live_start.setText( "Live: Start")
+
             self.svg_logo_disabled.setVisible( False )
             self.svg_logo_main.setVisible( True )
+
         elif status == "LIVE":
             self.group_acquire_control.setEnabled( False )
             self.group_save_control.setEnabled( False )

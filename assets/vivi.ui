@@ -228,8 +228,11 @@
              </item>
              <item>
               <layout class="QGridLayout" name="gridLayout_2">
-               <property name="spacing">
-                <number>0</number>
+               <property name="horizontalSpacing">
+                <number>6</number>
+               </property>
+               <property name="verticalSpacing">
+                <number>20</number>
                </property>
                <item row="1" column="3">
                 <widget class="QGroupBox" name="group_channel_8">
@@ -243,7 +246,7 @@
                   <string>Ch 8</string>
                  </property>
                  <property name="flat">
-                  <bool>true</bool>
+                  <bool>false</bool>
                  </property>
                  <layout class="QVBoxLayout" name="verticalLayout_10">
                   <property name="spacing">
@@ -253,7 +256,7 @@
                    <number>0</number>
                   </property>
                   <property name="topMargin">
-                   <number>20</number>
+                   <number>0</number>
                   </property>
                   <property name="rightMargin">
                    <number>0</number>
@@ -286,7 +289,7 @@
                   <string>Ch 6</string>
                  </property>
                  <property name="flat">
-                  <bool>true</bool>
+                  <bool>false</bool>
                  </property>
                  <layout class="QVBoxLayout" name="verticalLayout_6">
                   <property name="spacing">
@@ -296,7 +299,7 @@
                    <number>0</number>
                   </property>
                   <property name="topMargin">
-                   <number>20</number>
+                   <number>0</number>
                   </property>
                   <property name="rightMargin">
                    <number>0</number>
@@ -329,7 +332,7 @@
                   <string>Ch 7</string>
                  </property>
                  <property name="flat">
-                  <bool>true</bool>
+                  <bool>false</bool>
                  </property>
                  <layout class="QVBoxLayout" name="verticalLayout_8">
                   <property name="spacing">
@@ -339,7 +342,7 @@
                    <number>0</number>
                   </property>
                   <property name="topMargin">
-                   <number>20</number>
+                   <number>0</number>
                   </property>
                   <property name="rightMargin">
                    <number>0</number>
@@ -372,7 +375,7 @@
                   <string>Ch 3</string>
                  </property>
                  <property name="flat">
-                  <bool>true</bool>
+                  <bool>false</bool>
                  </property>
                  <layout class="QVBoxLayout" name="verticalLayout_9">
                   <property name="spacing">
@@ -382,7 +385,7 @@
                    <number>0</number>
                   </property>
                   <property name="topMargin">
-                   <number>20</number>
+                   <number>0</number>
                   </property>
                   <property name="rightMargin">
                    <number>0</number>
@@ -415,7 +418,7 @@
                   <string>Ch 4</string>
                  </property>
                  <property name="flat">
-                  <bool>true</bool>
+                  <bool>false</bool>
                  </property>
                  <layout class="QVBoxLayout" name="verticalLayout_11">
                   <property name="spacing">
@@ -425,7 +428,7 @@
                    <number>0</number>
                   </property>
                   <property name="topMargin">
-                   <number>20</number>
+                   <number>0</number>
                   </property>
                   <property name="rightMargin">
                    <number>0</number>
@@ -458,7 +461,7 @@
                   <string>Ch 2</string>
                  </property>
                  <property name="flat">
-                  <bool>true</bool>
+                  <bool>false</bool>
                  </property>
                  <layout class="QVBoxLayout" name="verticalLayout_5">
                   <property name="spacing">
@@ -468,7 +471,7 @@
                    <number>0</number>
                   </property>
                   <property name="topMargin">
-                   <number>20</number>
+                   <number>0</number>
                   </property>
                   <property name="rightMargin">
                    <number>0</number>
@@ -501,7 +504,7 @@
                   <string>Ch 1</string>
                  </property>
                  <property name="flat">
-                  <bool>true</bool>
+                  <bool>false</bool>
                  </property>
                  <layout class="QVBoxLayout" name="verticalLayout_7">
                   <property name="spacing">
@@ -511,7 +514,7 @@
                    <number>0</number>
                   </property>
                   <property name="topMargin">
-                   <number>20</number>
+                   <number>0</number>
                   </property>
                   <property name="rightMargin">
                    <number>0</number>
@@ -544,7 +547,7 @@
                   <string>Ch 5</string>
                  </property>
                  <property name="flat">
-                  <bool>true</bool>
+                  <bool>false</bool>
                  </property>
                  <layout class="QVBoxLayout" name="verticalLayout_4">
                   <property name="spacing">
@@ -554,7 +557,7 @@
                    <number>0</number>
                   </property>
                   <property name="topMargin">
-                   <number>20</number>
+                   <number>0</number>
                   </property>
                   <property name="rightMargin">
                    <number>0</number>
@@ -717,12 +720,12 @@
         <number>12</number>
        </property>
        <item>
-        <widget class="QGroupBox" name="groupBox_9">
+        <widget class="QGroupBox" name="group_viewer">
          <property name="title">
           <string/>
          </property>
          <property name="flat">
-          <bool>true</bool>
+          <bool>false</bool>
          </property>
          <layout class="QHBoxLayout" name="horizontalLayout_5" stretch="1,5">
           <property name="leftMargin">
@@ -1082,12 +1085,12 @@
         </widget>
        </item>
        <item>
-        <widget class="QGroupBox" name="groupBox_3">
+        <widget class="QGroupBox" name="group_tabs">
          <property name="title">
           <string/>
          </property>
          <property name="flat">
-          <bool>true</bool>
+          <bool>false</bool>
          </property>
          <layout class="QHBoxLayout" name="horizontalLayout_8">
           <property name="leftMargin">
@@ -1104,6 +1107,12 @@
           </property>
           <item>
            <widget class="QTabWidget" name="tabs_spectrogram">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
             <property name="palette">
              <palette>
               <active>
