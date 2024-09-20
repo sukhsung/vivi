@@ -3,6 +3,8 @@ from PyQt5.QtWidgets import (
     QApplication,
     QMainWindow,
     QFileDialog,
+    QWidgetAction,
+    QAction, QMenu
 )
 from PyQt5.QtGui import QIcon
 from PyQt5.QtSvg import QSvgWidget
@@ -91,14 +93,46 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                          self.CB_gain_6,
                          self.CB_gain_7,
                          self.CB_gain_8]
+        
+# 
 # 
         for i in range(8):
             self.CB_gains[i].addItems( ["128", "64", "32", "16", "8","1"])
-            self.CB_gains[i].activated.connect( partial(self.set_individual_gain,i) )
+            self.CB_gains[i].activated.connect( partial(self.set_individual_gain,i,0,'') )
             self.TB_gains_labels[i].editingFinished.connect( self.set_label )
             self.group_channels[i].setVisible(False)
 
-        self.PB_closeCMD.clicked.connect( self.close_CMD )
+        ## Set context menu
+
+        self.action_polar_labels = [QAction('Polarity') for i in range(8)]
+        self.action_bipolars = [QAction('  Bipolar') for i in range(8)]
+        self.action_unipolars = [QAction('  Unipolar') for i in range(8)]
+
+        self.action_buffer_labels = [QAction('Buffered') for i in range(8)]
+        self.action_buffered = [QAction('  Buffered') for i in range(8)]
+        self.action_unbuffered = [QAction('  Unbuffered') for i in range(8)]
+        for i in range(8):
+            self.group_channels[i].setContextMenuPolicy(Qt.ActionsContextMenu)
+            self.action_polar_labels[i].setEnabled(False)
+            self.action_buffer_labels[i].setEnabled(False)
+            self.group_channels[i].addAction( self.action_polar_labels[i])
+            self.group_channels[i].addAction(self.action_bipolars[i])
+            self.group_channels[i].addAction(self.action_unipolars[i])
+            self.group_channels[i].addAction( self.action_buffer_labels[i])
+            self.group_channels[i].addAction(self.action_buffered[i])
+            self.group_channels[i].addAction(self.action_unbuffered[i])
+            self.action_bipolars[i].setCheckable(True)
+            self.action_bipolars[i].setChecked(True)
+            self.action_unipolars[i].setCheckable(True)
+            self.action_buffered[i].setCheckable(True)
+            self.action_buffered[i].setChecked(True)
+            self.action_unbuffered[i].setCheckable(True)
+
+            self.action_unipolars[i].triggered.connect( partial(self.triggered_channel_polarity, i, "UNI"))
+            self.action_bipolars[i].triggered.connect( partial(self.triggered_channel_polarity, i, "BI"))
+            self.action_buffered[i].triggered.connect( partial(self.triggered_channel_buffer, i, 1))
+            self.action_unbuffered[i].triggered.connect( partial(self.triggered_channel_buffer, i, 0))
+
 
         # # Device Console
         self.TE_deviceStatus.setText( "Connect to an ADC-8 Board to start" )
@@ -107,7 +141,33 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.PB_send.clicked.connect( self.on_click_send )
         self.PB_clear.clicked.connect( self.on_click_clear )
         self.group_cmd.setVisible(False)
+
+        self.PB_closeCMD.clicked.connect( self.close_CMD)
     
+    def triggered_channel_polarity( self, ch, polarity ):
+        if polarity == "UNI":
+            print( "CH ", ch+1, " Polarity: ", "Uni")
+            self.action_unipolars[ch].setChecked(True)
+            self.action_bipolars[ch].setChecked(False)
+            self.set_individual_gain(ch,polarity=1)
+        elif polarity == "BI":
+            print( "CH ", ch+1, " Polarity: ", "Bi")
+            self.action_unipolars[ch].setChecked(False)
+            self.action_bipolars[ch].setChecked(True)
+            self.set_individual_gain(ch,polarity=2)
+    def triggered_channel_buffer( self, ch, buffered ):
+        if buffered == 0:
+            print( "CH ", ch+1, " Buffered: ", "unbuffered")
+            self.action_unbuffered[ch].setChecked(True)
+            self.action_buffered[ch].setChecked(False)
+            self.set_individual_gain(ch,buffer='u')
+        else:
+            print( "CH ", ch+1, " Buffered: ", "Buffered")
+            self.action_unbuffered[ch].setChecked(False)
+            self.action_buffered[ch].setChecked(True)
+            self.set_individual_gain(ch,buffer='b')
+
+
     def make_panel_viewer( self ):
         # Load Plot Manager
         self.plotter = vivi_plot.Plotter(  )
@@ -402,8 +462,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         for i in range( len(self.CB_gains) ):
             self.CB_gains[i].setCurrentIndex( self.CB_allGains.currentIndex() )
 
-    def set_individual_gain( self, ch):
-        self.board.set_individual_gain(ch+1, self.CB_gains[ch].currentText())
+    def set_individual_gain( self, ch, polarity=0, buffer=''):
+        self.board.set_individual_gain(ch+1, self.CB_gains[ch].currentText(),polarity,buffer)
 
     def set_sampling( self ):
         self.board.set_sampling(self.TB_sampling.text())
@@ -434,21 +494,35 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.CB_gains[i].setCurrentIndex(ind)
             bool_all_gain = bool_all_gain and self.board.gains[i] == self.board.gains[0]
 
+
+            if self.board.polarity[i]==1 :
+                self.action_unipolars[i].setChecked(True)
+                self.action_bipolars[i].setChecked(False)
+            elif self.board.polarity[i]==2 :
+                self.action_unipolars[i].setChecked(False)
+                self.action_bipolars[i].setChecked(True)
+
+            if self.board.buffer[i]==1 :
+                self.action_buffered[i].setChecked(True)
+                self.action_unbuffered[i].setChecked(False)
+            elif self.board.buffer[i]==0 :
+                self.action_buffered[i].setChecked(False)
+                self.action_unbuffered[i].setChecked(True)
+
+
         if bool_all_gain:
             self.CB_allGains.setCurrentIndex(ind)
 
+        
 
-    def send_command( self, msg ):      
-        # Send Serial Command and Listen
-        self.board.send_command( msg )
+        
 
     def on_click_send(self):
-        self.send_command( self.LE_command.text() )
+        self.board.send_command( self.LE_command.text() )
         self.LE_command.setText("")
 
     def on_click_clear(self):
         self.TE_deviceStatus.setText("")
-    ###
 
     ### Device management Related
     def on_click_connect(self):
@@ -522,10 +596,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.board.initialize()
             for i in range( self.board.NUM_CHANNELS):
                 self.set_individual_gain(i)
-                time.sleep(0.1)
             self.set_sampling()
             self.set_label()
-
 
             self.group_device_setting.setVisible( True )
             self.group_device_setting.setEnabled( True )
@@ -543,14 +615,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.LE_num_live_sample.setEnabled( True )
             self.CheckBox_average.setEnabled( True )
             self.group_save_control.setEnabled( True )
-
-            # self.set_all_gains( self.init_gain )
-            # for i in range( self.NUM_CHANNELS ):
-            #     self.set_individual_gain(i, gains[i])
-            #     time.sleep(0.1)
-            # time.sleep(0.1)
-            # self.set_sampling( sampling )
-
         else: # Disconnected
             self.PB_connect.setText( "Connect" )
             self.PB_refresh.setEnabled( True )

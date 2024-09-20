@@ -14,7 +14,7 @@ class Serial():
         self.portname = portname
         self.sampling = 400
         self.NUM_CHANNEL = 8
-        self.gains = [1 for x in range(self.NUM_CHANNEL)]
+        self.gains = [0 for x in range(self.NUM_CHANNEL)]
         self.identifier = "ADC-8x FAUX DEVICE\nNO SERIAL NUMBER"
         
     def reset_input_buffer(self):
@@ -27,7 +27,7 @@ class Serial():
             self.buffer = self.print_id()
         elif msg.startswith('s'):
             msg = msg.split(' ')
-            self.sampling = int(msg[1])
+            self.sampling = float(msg[1])
         elif msg.startswith('g'):
             msg = msg.split(' ')
             channels = int(msg[1])

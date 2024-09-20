@@ -61,7 +61,7 @@ class Board(QObject):
         self.set_board_type()
 
         self.dev = None
-        self.msg_input = None
+        self.msg_input = []
         self.status = "NOT-READY"
         self.connected = False
 
@@ -80,7 +80,7 @@ class Board(QObject):
                 # True Serial (pyserial)
                 self.default_timeout = 0.01
                 self.dev = serial.Serial(portname, exclusive=True)
-            time.sleep(0.8)
+            time.sleep( 0.8 )
 
             # Run Device Check
             dev_check_result = self.dev_check()
@@ -129,7 +129,7 @@ class Board(QObject):
         elif board_type is None:
             self.NUM_CHANNELS = 0
             self.HDR_LEN = 0
-            self.BIPOLAR = 20
+            self.BIPOLAR = 2
             self.SCALE_24 = 0
             self.VREF = 0
 
@@ -150,7 +150,7 @@ class Board(QObject):
         self.dev = None
         self.set_status( "NOT-READY")
         self.set_connected(False)
-        self.msg_input = None
+        self.msg_input = []
         self.board_type = None
         self.portname = None
 
@@ -159,9 +159,12 @@ class Board(QObject):
 
         boardmsg = "Connected to "+self.board_type+" board: "+self.portname +"\n"
         self.msg_out.emit( boardmsg )
-        self.gains = [0 for x in range( self.NUM_CHANNELS) ]
+        self.gains = [1 for x in range( self.NUM_CHANNELS) ]
         self.labels = [f"Ch {x+1}" for x in range( self.NUM_CHANNELS)]
+        self.polarity = [2 for x in range( self.NUM_CHANNELS) ]
+        self.buffer = [0 for x in range( self.NUM_CHANNELS) ]
         self.sampling = 0#sampling#self.init_sampling
+        
         self.set_status( "LISTENING" ) 
 
 
@@ -221,17 +224,18 @@ class Board(QObject):
                     # Check for request
                     if self.request is None:
                         # See if there's any message to pass
-                        if not self.msg_input == None and isinstance( self.msg_input, str ):
-                            self.msg_out.emit( self.msg_input )
-                            write_msg = self.msg_input + "\n"
+                        if len(self.msg_input)>0:
+                            cur_msg = self.msg_input.pop(0)
+                            self.msg_out.emit( cur_msg )
+                            write_msg = cur_msg + "\n"
 
                             self.dev.write( write_msg.encode() )
                             ans_msg = self.dev.read(1500).decode()
                             self.parse_answer( ans_msg )
                             self.msg_out.emit( ans_msg )
-                            self.msg_input = None
                         else:
                         # Might as well check for connectivity
+                            time.sleep(0.01) #Prevent talking too often
                             self.dev.write( '*'.encode())
                             ans_msg = self.dev.read(1500).decode()
                             if not ans_msg.startswith('ADC'):
@@ -262,7 +266,6 @@ class Board(QObject):
     def run_emergency(self):
         print("Something Wrong, closing board")
         self.close_board()
-        self.set_status("LISTENING") ## Required to reset UI
         self.set_connected( False)
         self.set_status("NOT-READY")
         self.moveToThread( self.thread_main )
@@ -273,16 +276,54 @@ class Board(QObject):
             parts = msg.split(' ')
             self.sampling = float(parts[4])
             self.setting_changed.emit()
-        elif msg.startswith("All ADCs set to gain "):
-            parts = msg.split(' ')
-            gain = int(parts[5][:-1])
-            self.gains = [gain for i in range(self.NUM_CHANNELS) ]
-            self.setting_changed.emit()
         elif msg.startswith("ADC "):
-            parts = msg.split(' ')
-            ch = int(parts[1])
-            gain = int(parts[5][:-1])
-            self.gains[ch-1] = gain
+            parts = msg.split(',')
+            parts_gain = parts[0]
+            parts_polarity = parts[1]
+            parts_buffer = parts[2]
+
+            parts_gain = parts_gain.split(' ')
+            ch = int(parts_gain[1])-1
+            gain = int(parts_gain[5])
+            self.gains[ch] = gain
+
+            parts_polarity = parts_polarity.split(' ')[-1]
+            if parts_polarity=="(unipolar)":
+                self.polarity[ch] = 1
+            elif parts_polarity=="(bipolar)":
+                self.polarity[ch] = 2
+            
+            parts_buffer = parts_buffer.split(' ')[-1]
+            if parts_buffer.startswith( "buffered" ):
+                self.buffer[ch] = 1
+            elif parts_buffer.startswith( "unbuffered"):
+                self.buffer[ch] = 0
+
+        elif msg.startswith("All ADCs "):
+            parts = msg.split(',')
+            parts_gain = parts[0]
+            parts_polarity = parts[1]
+            parts_buffer = parts[2]
+
+            parts_gain = parts_gain.split(' ')
+
+            gain = int(parts_gain[5])
+            self.gains = [gain for i in range(self.NUM_CHANNELS)]
+
+            parts_polarity = parts_polarity.split(' ')[-1]
+            print( parts_polarity)
+            if parts_polarity=="(unipolar)":
+                self.polarity = [1 for i in range(self.NUM_CHANNELS)]
+            elif parts_polarity=="(bipolar)":
+                self.polarity = [2 for i in range(self.NUM_CHANNELS)]
+            
+            parts_buffer = parts_buffer.split(' ')[-1]
+            if parts_buffer.startswith( "buffered" ):
+                self.buffer = [1 for i in range(self.NUM_CHANNELS)]
+            elif parts_buffer.startswith( "unbuffered"):
+                self.buffer = [0 for i in range(self.NUM_CHANNELS)]
+
+
             self.setting_changed.emit()
 
 
@@ -292,8 +333,9 @@ class Board(QObject):
 
     def send_command(self, msg):
         # Send Serial Command and Listen
+
         if self.status == "LISTENING":
-            self.msg_input = msg
+            self.msg_input.append(msg)
         else:
             self.msg_out.emit( "Connect an ADC-8 Board to Start" )
     
@@ -303,8 +345,8 @@ class Board(QObject):
     def set_all_gains(self, gain):
         self.send_command(f"g 0 {gain}")
     
-    def set_individual_gain(self, ch, gain):
-        self.send_command(f"g {ch} {gain}")
+    def set_individual_gain(self, ch, gain, polarity=0, buffer=''):
+        self.send_command(f"g {ch} {gain} {polarity} {buffer}")
     
     def set_sampling(self, sampling):
         self.send_command(f"s {sampling}")
