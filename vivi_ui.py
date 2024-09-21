@@ -245,7 +245,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.dlg_about.setWindowTitle("About Vivi")
         self.dlg_about.resize(300,450)
         self.dlg_about.setMinimumSize(300,450)
-        self.dlg_about.setSizeGripEnabled(False)
         layout_about = QVBoxLayout()
         self.dlg_about.setLayout( layout_about )
         layout_about.setContentsMargins(15,15,15,15)
@@ -274,12 +273,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # self.svg_about.setContentsMargins( 0,0,0,0 ) 
         self.svg_about.resize( 500,900)
 
-    def open_about( self ):
-        print('test')
-        # self.widget_about.show()
+        self.dlg_about.resizeEvent = self.on_resize_dlg_about
 
-        # self.widget_about = QDialog(self)
-        # self.lwidget_about.setWindowTitle("About Vivi")
+    def on_resize_dlg_about( self,event ):
+        new_w= int(self.dlg_about.width())
+        new_h= int(self.dlg_about.width()*1.5)
+        self.dlg_about.resize(new_w, new_h)
+
+    def open_about( self ):
         self.dlg_about.exec_()
 
     def open_CMD(self,a):
