@@ -1,5 +1,5 @@
 import math, time, struct, sys
-from PyQt5.QtCore import (pyqtSignal, QObject, QThread)
+from PySide6.QtCore import (Signal, QObject, QThread)
 
 if '-dev' in sys.argv:
     print( 'DEV MODE: Dummy Devices' )
@@ -28,20 +28,20 @@ def get_port_list():
 
 class Board(QObject):
     status = str
-    status_signal = pyqtSignal(str)
+    status_signal = Signal(str)
     status_possible = ["NOT-READY", "LISTENING", "LIVE", "ACQUIRE", "STOPPING", "DISCONNECT"]
 
     request = None
     request_possible = ["LISTEN", "LIVE", "ACQUIRE","STOP","DISCONNECT"]
 
-    msg_out = pyqtSignal( str )
-    live_data = pyqtSignal( list )
-    acquire_data = pyqtSignal( list )
-    elapsed_time = pyqtSignal( int )
-    setting_changed = pyqtSignal()
+    msg_out = Signal( str )
+    live_data = Signal( list )
+    acquire_data = Signal( list )
+    elapsed_time = Signal( int )
+    setting_changed = Signal()
 
     connected = False
-    connected_signal = pyqtSignal( bool )
+    connected_signal = Signal( bool )
 
     gains = []
     sampling = 0
@@ -311,7 +311,6 @@ class Board(QObject):
             self.gains = [gain for i in range(self.NUM_CHANNELS)]
 
             parts_polarity = parts_polarity.split(' ')[-1]
-            print( parts_polarity)
             if parts_polarity=="(unipolar)":
                 self.polarity = [1 for i in range(self.NUM_CHANNELS)]
             elif parts_polarity=="(bipolar)":
@@ -341,11 +340,8 @@ class Board(QObject):
     
     def get_board_status(self):
         self.send_command("c")
-        
-    def set_all_gains(self, gain):
-        self.send_command(f"g 0 {gain}")
-    
-    def set_individual_gain(self, ch, gain, polarity=0, buffer=''):
+            
+    def set_ADC_settings(self, ch, gain, polarity, buffer):
         self.send_command(f"g {ch} {gain} {polarity} {buffer}")
     
     def set_sampling(self, sampling):

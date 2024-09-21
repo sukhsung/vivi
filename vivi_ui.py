@@ -1,13 +1,11 @@
-from PyQt5.QtCore import QThread, Qt
-from PyQt5.QtWidgets import (
+from PySide6.QtCore import QThread, Qt
+from PySide6.QtWidgets import (
     QApplication,
     QMainWindow,
-    QFileDialog,
-    QWidgetAction,
-    QAction, QMenu
+    QFileDialog
 )
-from PyQt5.QtGui import QIcon
-from PyQt5.QtSvg import QSvgWidget
+from PySide6.QtGui import QIcon, QAction
+from PySide6.QtSvgWidgets import QSvgWidget
 
 import sys, os, time, json, glob
 import numpy as np
@@ -98,7 +96,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 # 
         for i in range(8):
             self.CB_gains[i].addItems( ["128", "64", "32", "16", "8","1"])
-            self.CB_gains[i].activated.connect( partial(self.set_individual_gain,i,0,'') )
+            self.CB_gains[i].activated.connect( partial(self.set_individual_gain,i) )
+            # self.CB_gains[i].activated.connect( partial(self.set_individual_gain,i) )
             self.TB_gains_labels[i].editingFinished.connect( self.set_label )
             self.group_channels[i].setVisible(False)
 
@@ -146,26 +145,22 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     
     def triggered_channel_polarity( self, ch, polarity ):
         if polarity == "UNI":
-            print( "CH ", ch+1, " Polarity: ", "Uni")
             self.action_unipolars[ch].setChecked(True)
             self.action_bipolars[ch].setChecked(False)
-            self.set_individual_gain(ch,polarity=1)
+            self.set_individual_polarity(ch,polarity=1)
         elif polarity == "BI":
-            print( "CH ", ch+1, " Polarity: ", "Bi")
             self.action_unipolars[ch].setChecked(False)
             self.action_bipolars[ch].setChecked(True)
-            self.set_individual_gain(ch,polarity=2)
+            self.set_individual_polarity(ch,polarity=2)
     def triggered_channel_buffer( self, ch, buffered ):
         if buffered == 0:
-            print( "CH ", ch+1, " Buffered: ", "unbuffered")
             self.action_unbuffered[ch].setChecked(True)
             self.action_buffered[ch].setChecked(False)
-            self.set_individual_gain(ch,buffer='u')
+            self.set_individual_buffer(ch,buffer='u')
         else:
-            print( "CH ", ch+1, " Buffered: ", "Buffered")
             self.action_unbuffered[ch].setChecked(False)
             self.action_buffered[ch].setChecked(True)
-            self.set_individual_gain(ch,buffer='b')
+            self.set_individual_buffer(ch,buffer='b')
 
 
     def make_panel_viewer( self ):
@@ -458,16 +453,25 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.board.get_board_status()
                                                                                                                                                                                                                                                                                           
     def set_all_gains( self ):
-        self.board.set_all_gains( self.CB_allGains.currentText() )
-        for i in range( len(self.CB_gains) ):
+        self.board.set_ADC_settings( 0, self.CB_allGains.currentText(),polarity=0,buffer='' )
+        for i in range( self.board.NUM_CHANNELS ):
             self.CB_gains[i].setCurrentIndex( self.CB_allGains.currentIndex() )
 
-    def set_individual_gain( self, ch, polarity=0, buffer=''):
-        self.board.set_individual_gain(ch+1, self.CB_gains[ch].currentText(),polarity,buffer)
+    def set_individual_gain( self, ch, dummy ):
+        gain = self.CB_gains[ch].currentText()
+        self.board.set_ADC_settings(ch+1, gain, polarity=0,buffer='')
+
+    def set_individual_polarity( self, ch, polarity):
+        gain = self.CB_gains[ch].currentText()
+        self.board.set_ADC_settings(ch+1, gain,polarity, buffer='')
+
+    def set_individual_buffer( self, ch, buffer):
+        gain = self.CB_gains[ch].currentText()
+        self.board.set_ADC_settings(ch+1, gain,polarity=0, buffer=buffer)
 
     def set_sampling( self ):
-        self.board.set_sampling(self.TB_sampling.text())
-        self.board.sampling = float( self.TB_sampling.text() )
+        if self.board.sampling != float( self.TB_sampling.text() ):
+            self.board.set_sampling(self.TB_sampling.text())
 
     def set_label( self ):
         for i in range(self.board.NUM_CHANNELS):
@@ -594,8 +598,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.plotter.nchans = self.board.NUM_CHANNELS
             
             self.board.initialize()
-            for i in range( self.board.NUM_CHANNELS):
-                self.set_individual_gain(i)
+            # for i in range( self.board.NUM_CHANNELS):
+            #     self.set_individual_gain(i,'128')
+            self.board.set_ADC_settings(0,128,2,'u')
             self.set_sampling()
             self.set_label()
 
