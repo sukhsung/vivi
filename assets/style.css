@@ -35,3 +35,9 @@
 }
 
 QTabWidget { border: none; } 
+
+
+#AboutWindow {
+    background-color: #158081;
+    border-radius: 10%;
+}

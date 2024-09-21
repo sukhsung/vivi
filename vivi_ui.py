@@ -4,7 +4,8 @@ from PyQt5.QtWidgets import (
     QMainWindow,
     QFileDialog,
     QWidgetAction,
-    QAction, QMenu
+    QAction, QMenu,
+    QDialog, QGroupBox, QVBoxLayout
 )
 from PyQt5.QtGui import QIcon
 from PyQt5.QtSvg import QSvgWidget
@@ -17,6 +18,7 @@ from datetime import datetime
 import vivi, vivi_plot
 from vivi_makeUI import Ui_MainWindow
 
+ 
 class MainWindow(QMainWindow, Ui_MainWindow):
     def __init__(self):
         super().__init__()
@@ -39,6 +41,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.make_panel_device()
         self.make_panel_viewer()
         self.make_panel_banner()
+        self.make_about_dialog()
+
+        # self.widget_about = AboutWindow()
 
         self.group_left.resizeEvent = self.group_left_resize_event
 
@@ -211,19 +216,71 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.group_viviewer.setEnabled( False )
 
     def make_panel_banner( self ):
+        # self.group_logo.setAlignment(Qt.AlignCenter)
+
         # Loading SVG
-        self.svg_logo_main = QSvgWidget( os.path.join(self.asset_path,'vivi-main.svg'), parent=self.group_logo)
+        self.svg_logo_main = QSvgWidget( os.path.join(self.asset_path,'vivi-main.svg'))#, parent=self.group_logo)
+        self.layout_logo.addWidget( self.svg_logo_main )
         self.svg_logo_main.renderer().setAspectRatioMode(Qt.AspectRatioMode.KeepAspectRatio)
         self.svg_logo_main.setContentsMargins( 0,0,0,0 )
         self.svg_logo_main.setVisible(False)
 
 
-        self.svg_logo_disabled = QSvgWidget( os.path.join(self.asset_path,'vivi-disabled.svg'), parent=self.group_logo)
+        self.svg_logo_disabled = QSvgWidget( os.path.join(self.asset_path,'vivi-disabled.svg'))#, parent=self.group_logo)
+        self.layout_logo.addWidget( self.svg_logo_disabled )
         self.svg_logo_disabled.renderer().setAspectRatioMode(Qt.AspectRatioMode.KeepAspectRatio)
         self.svg_logo_disabled.setContentsMargins( 0,0,0,0 )
 
         self.group_logo.mouseDoubleClickEvent = self.open_CMD
         self.close_CMD()
+
+        self.group_logo.setContextMenuPolicy(Qt.ActionsContextMenu)
+        self.action_logo = QAction('About Vivi')
+        self.group_logo.addAction( self.action_logo )
+        self.action_logo.triggered.connect( self.open_about )
+
+        
+    def make_about_dialog( self ):
+        self.dlg_about = QDialog(self)
+        self.dlg_about.setWindowTitle("About Vivi")
+        self.dlg_about.resize(300,450)
+        self.dlg_about.setMinimumSize(300,450)
+        self.dlg_about.setSizeGripEnabled(False)
+        layout_about = QVBoxLayout()
+        self.dlg_about.setLayout( layout_about )
+        layout_about.setContentsMargins(15,15,15,15)
+        self.dlg_about.setStyleSheet('background-color: black;')
+        
+        self.group_dlg = QGroupBox()
+        layout_about.addWidget(self.group_dlg)
+        layout_dlg = QVBoxLayout()
+        self.group_dlg.setLayout( layout_dlg )
+        layout_dlg.setContentsMargins(0,0,0,0)
+
+        self.group_dlg.setStyleSheet('background-color: #158081;border-radius:15%')
+
+
+        group_svg = QGroupBox()
+        layout_dlg.addWidget( group_svg)
+        # group_svg.setAlignment(Qt.AlignCenter)
+        layout_svg = QVBoxLayout()
+        group_svg.setLayout( layout_svg )
+        # group_svg.setFlat(True)
+        layout_svg.setContentsMargins(0,0,0,0)
+
+        self.svg_about = QSvgWidget( os.path.join(self.asset_path,'vivi-about.svg'))#, parent=group_svg)
+        layout_svg.addWidget( self.svg_about )
+        self.svg_about.renderer().setAspectRatioMode(Qt.AspectRatioMode.KeepAspectRatio)
+        # self.svg_about.setContentsMargins( 0,0,0,0 ) 
+        self.svg_about.resize( 500,900)
+
+    def open_about( self ):
+        print('test')
+        # self.widget_about.show()
+
+        # self.widget_about = QDialog(self)
+        # self.lwidget_about.setWindowTitle("About Vivi")
+        self.dlg_about.exec_()
 
     def open_CMD(self,a):
         self.group_logo.setVisible(False)
