@@ -9,7 +9,7 @@ from math import sqrt
 class Plotter(QObject):
     def __init__(self):
         super().__init__() #Inherit QObject
-        pg.setConfigOption('background', "#393939")
+        pg.setConfigOption('background', "#3c3c3c")
         pg.setConfigOption('foreground', "#FFFFFF")
         
         self.nchans = 8
@@ -32,7 +32,7 @@ class Plotter(QObject):
 
         # Integrated Intensity
         self.PW_integrated = pg.plot()
-        self.PW_integrated.setBackground((57, 57, 57))
+        # self.PW_integrated.setBackground((57, 57, 57))
 
         colors = [(239,48,90), (255, 248, 238), (242,132,68), (29,188,82),
                   (29,188,82), (29,188,82), (29,188,82), (29,188,82)]

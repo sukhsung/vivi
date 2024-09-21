@@ -1,31 +1,37 @@
-window{
-    background-color: #393939;
-}
-QWidget #main_widget {
-    background-color: #393939;
-}
-QPushButton {
-     /* border-style: outset; */
-     /* border-width: 1px;
-     border-color: beige;
-     border-radius: 10%; */
-}
-QGroupBox[flat="false"] {
-    border: 1px solid #555555;
-    border-radius: 10px;
-    /* background-color: #393939; */
-    /* border-width: 3px; */
-    /* border: #FFFFFF */
+#MainWindow{
+    background-color: #1e1e1e;
 }
 
-QTabWidget::pane {
-    /* background-color: #393939; */
-    border: 1px solid #555555;
-    border-radius: 10px;
-    padding: 5px;
+#group_cmd, #group_device {
+    background-color: #158081;
+    border-radius: 10%;
 }
 
-
-#Test {
-    background-color: #FFFFFF;
+#group_left {
+    background-color: #058b8c;
+    border-radius: 15%;
 }
+
+#group_viviewer{
+    background-color: #363636;
+    border-radius: 15%;
+}
+
+#group_viewer, #group_save_control, #group_tabs {
+    border-radius: 10%;
+    background-color: #3c3c3c;
+}
+
+#group_channel_1,
+#group_channel_2,
+#group_channel_3,
+#group_channel_4,
+#group_channel_5,
+#group_channel_6,
+#group_channel_7,
+#group_channel_8 {
+    border-radius: 10%;
+    background-color: #058b8c;
+}
+
+QTabWidget { border: none; } 
