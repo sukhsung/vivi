@@ -311,7 +311,6 @@ class Board(QObject):
             self.gains = [gain for i in range(self.NUM_CHANNELS)]
 
             parts_polarity = parts_polarity.split(' ')[-1]
-            print( parts_polarity)
             if parts_polarity=="(unipolar)":
                 self.polarity = [1 for i in range(self.NUM_CHANNELS)]
             elif parts_polarity=="(bipolar)":
@@ -341,12 +340,12 @@ class Board(QObject):
     
     def get_board_status(self):
         self.send_command("c")
-        
-    def set_all_gains(self, gain):
-        self.send_command(f"g 0 {gain}")
-    
-    def set_individual_gain(self, ch, gain, polarity=0, buffer=''):
+
+    def set_ADC_settings(self, ch, gain, polarity, buffer):
         self.send_command(f"g {ch} {gain} {polarity} {buffer}")
+    
+    def set_sampling(self, sampling):
+        self.send_command(f"s {sampling}")
     
     def set_sampling(self, sampling):
         self.send_command(f"s {sampling}")
