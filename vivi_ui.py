@@ -1,14 +1,12 @@
-from PyQt5.QtCore import QThread, Qt
-from PyQt5.QtWidgets import (
+from PySide6.QtCore import QThread, Qt
+from PySide6.QtWidgets import (
     QApplication,
     QMainWindow,
     QFileDialog,
-    QWidgetAction,
-    QAction, QMenu,
     QDialog, QGroupBox, QVBoxLayout
 )
-from PyQt5.QtGui import QIcon
-from PyQt5.QtSvg import QSvgWidget
+from PySide6.QtGui import QIcon, QAction
+from PySide6.QtSvgWidgets import QSvgWidget
 
 import sys, os, time, json, glob
 import numpy as np

@@ -1,5 +1,5 @@
 import math, time, struct, sys
-from PyQt5.QtCore import (pyqtSignal, QObject, QThread)
+from PySide6.QtCore import (Signal, QObject, QThread)
 
 if '-dev' in sys.argv:
     print( 'DEV MODE: Dummy Devices' )
@@ -28,20 +28,20 @@ def get_port_list():
 
 class Board(QObject):
     status = str
-    status_signal = pyqtSignal(str)
+    status_signal = Signal(str)
     status_possible = ["NOT-READY", "LISTENING", "LIVE", "ACQUIRE", "STOPPING", "DISCONNECT"]
 
     request = None
     request_possible = ["LISTEN", "LIVE", "ACQUIRE","STOP","DISCONNECT"]
 
-    msg_out = pyqtSignal( str )
-    live_data = pyqtSignal( list )
-    acquire_data = pyqtSignal( list )
-    elapsed_time = pyqtSignal( int )
-    setting_changed = pyqtSignal()
+    msg_out = Signal( str )
+    live_data = Signal( list )
+    acquire_data = Signal( list )
+    elapsed_time = Signal( int )
+    setting_changed = Signal()
 
     connected = False
-    connected_signal = pyqtSignal( bool )
+    connected_signal = Signal( bool )
 
     gains = []
     sampling = 0

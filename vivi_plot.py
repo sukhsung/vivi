@@ -1,7 +1,6 @@
 # vivi_plot.py
 # Manage Plotting Aspects
-from PyQt5.QtCore import (QObject)
-# from PyQt6.QtWidgets import QWidget
+from PySide6.QtCore import (QObject)
 import pyqtgraph as pg
 import numpy as np
 from math import sqrt
