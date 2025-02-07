@@ -9,7 +9,7 @@ class dummy_device():
 
 
 class Serial():
-    def __init__(self, portname, exclusive=True):
+    def __init__(self, portname, baudrate=9600, exclusive=True):
         super().__init__()
         self.portname = portname
         self.sampling = 400
@@ -77,6 +77,9 @@ class Serial():
             msg_out = self.buffer
         
         return msg_out.encode()
+    
+    def read_all(self):
+        return self.read_until(10000)
 
 
         
