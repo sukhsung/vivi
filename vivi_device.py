@@ -132,9 +132,12 @@ class Device(QObject):
             elif len(addr) ==3:
                 port = int(addr[2])
             self.device = UDP_Device( IP, port)
+            self.device.timeout = 1
+            self.default_timeout = self.device.timeout
         else:
             self.device = Serial( addr, baudrate=baudrate, exclusive=True )
-            self.device.timeout = 1
+            self.device.timeout = 0.1
+            self.default_timeout = self.device.timeout
 
         
         if not self.dev_check():
@@ -220,7 +223,6 @@ class ADC8( Device ):
         self.time_interval = 0.1
         self.board_type = 'ADC-8x'
         self.NUM_CHANNELS = 0
-        self.default_timeout = 0.01
 
     def dev_check(self):
         try:
@@ -389,6 +391,7 @@ class ADC8( Device ):
 
 
     def start_live_view(self):
+        self.set_status( "LIVE")
         self.stop = False
 
         self.device.write("b0\n".encode())
@@ -485,10 +488,12 @@ class ADC8( Device ):
         
 
         self.device.read(1000)		# Flush any extra output
+        self.set_status( "LISTENING" )
         
         return output_data
     
     def start_acquire(self):
+        self.set_status( "ACQUIRE" )
         self.stop = False
 
         self.device.write(f"b{self.acquire_time}\n".encode())
@@ -590,6 +595,8 @@ class ADC8( Device ):
 
         self.device.timeout = self.default_timeout#0.01
         self.device.read(1000)		# Flush any extra output
+
+        self.set_status( "LISTENING" )
         return output_data
 
 

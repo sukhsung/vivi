@@ -27,6 +27,10 @@ class Ui_device_manager(object):
         self.verticalLayout = QVBoxLayout(device_manager)
         self.verticalLayout.setSpacing(0)
         self.verticalLayout.setObjectName(u"verticalLayout")
+        self.verticalSpacer = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
+
+        self.verticalLayout.addItem(self.verticalSpacer)
+
         self.label_deviceName = QLabel(device_manager)
         self.label_deviceName.setObjectName(u"label_deviceName")
 
@@ -80,6 +84,10 @@ class Ui_device_manager(object):
 
 
         self.verticalLayout.addLayout(self.horizontalLayout_2)
+
+        self.verticalSpacer_2 = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
+
+        self.verticalLayout.addItem(self.verticalSpacer_2)
 
 
         self.retranslateUi(device_manager)

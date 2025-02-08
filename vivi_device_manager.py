@@ -139,8 +139,8 @@ class device_manager():
             # self.device.initialize()
             self.make_panel_adc()
             self.get_board_status()
-            # self.set_ADC_settings(0,128,2,'u')
-            # self.set_sampling()
+            self.set_ADC_settings(0,128,2,'u')
+            self.set_sampling()
 
 
             

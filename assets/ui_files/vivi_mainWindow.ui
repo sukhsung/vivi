@@ -264,6 +264,19 @@
               <number>0</number>
              </property>
              <item>
+              <spacer name="verticalSpacer">
+               <property name="orientation">
+                <enum>Qt::Vertical</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>20</width>
+                 <height>40</height>
+                </size>
+               </property>
+              </spacer>
+             </item>
+             <item>
               <widget class="QGroupBox" name="group_live_control">
                <property name="title">
                 <string/>
@@ -276,7 +289,7 @@
                  <number>0</number>
                 </property>
                 <property name="topMargin">
-                 <number>0</number>
+                 <number>12</number>
                 </property>
                 <property name="rightMargin">
                  <number>0</number>
@@ -285,31 +298,21 @@
                  <number>0</number>
                 </property>
                 <item>
-                 <widget class="QPushButton" name="PB_live_start">
-                  <property name="text">
-                   <string>Live: Start</string>
+                 <layout class="QHBoxLayout" name="horizontalLayout_7">
+                  <property name="topMargin">
+                   <number>0</number>
                   </property>
-                 </widget>
-                </item>
-                <item>
-                 <layout class="QHBoxLayout" name="horizontalLayout_6">
                   <item>
-                   <widget class="QLabel" name="label_5">
+                   <widget class="QLabel" name="label_8">
                     <property name="text">
-                     <string># Live Sample</string>
+                     <string># DFT</string>
                     </property>
                    </widget>
                   </item>
                   <item>
-                   <widget class="QLineEdit" name="LE_num_live_sample">
-                    <property name="minimumSize">
-                     <size>
-                      <width>35</width>
-                      <height>0</height>
-                     </size>
-                    </property>
+                   <widget class="QLineEdit" name="LE_num_dft">
                     <property name="text">
-                     <string>512</string>
+                     <string>1024</string>
                     </property>
                    </widget>
                   </item>
@@ -412,29 +415,18 @@
                  <number>0</number>
                 </property>
                 <item>
+                 <widget class="QPushButton" name="PB_live_start">
+                  <property name="text">
+                   <string>Live: Start</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
                  <widget class="QPushButton" name="PB_acquire_start">
                   <property name="text">
                    <string>Acquire: Start</string>
                   </property>
                  </widget>
-                </item>
-                <item>
-                 <layout class="QHBoxLayout" name="horizontalLayout_9">
-                  <item>
-                   <widget class="QLabel" name="label_8">
-                    <property name="text">
-                     <string># DFT</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QLineEdit" name="LE_num_dft_acquire">
-                    <property name="text">
-                     <string>1024</string>
-                    </property>
-                   </widget>
-                  </item>
-                 </layout>
                 </item>
                 <item>
                  <layout class="QHBoxLayout" name="horizontalLayout_10">

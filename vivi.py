@@ -45,7 +45,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # self.thread_main = QThread.currentThread() 
         # self.dev_vivi = vivi_device.Board()
         # self.dev_vivi.msg_out.connect( self.received_msg )
-        # self.dev_vivi.signal_status.connect( self.on_status_change )
+        self.dev_vivi.signal_status.connect( self.on_status_change )
         self.dev_vivi.live_data.connect( self.received_live_data )
         self.dev_vivi.acquire_data.connect( self.received_acquire_data )
         self.dev_vivi.elapsed_time.connect( self.received_elapsed_time)
@@ -135,8 +135,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         # Acquisition Viewer Panel
         self.PB_live_start.clicked.connect( self.on_click_start_view )
-        self.LE_num_live_sample.setText("128")
-        # self.LE_num_dft_live.setText("128")
+        self.LE_num_dft.setText("128")
         self.CheckBox_average.setChecked( False )
 
         self.CB_plot =[self.CB_plot_1,
@@ -196,17 +195,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         group_svg = QGroupBox()
         layout_dlg.addWidget( group_svg)
-        # group_svg.setAlignment(Qt.AlignCenter)
         layout_svg = QVBoxLayout()
         group_svg.setLayout( layout_svg )
-        # group_svg.setFlat(True)
         layout_svg.setContentsMargins(0,0,0,0)
 
         self.svg_about = QSvgWidget( os.path.join(self.asset_path,'vivi-about.svg'))#, parent=group_svg)
         layout_svg.addWidget( self.svg_about )
         self.svg_about.renderer().setAspectRatioMode(Qt.AspectRatioMode.KeepAspectRatio)
-        # self.svg_about.setContentsMargins( 0,0,0,0 ) 
-        self.svg_about.resize( 500,900)
+        self.svg_about.resize( 500,900 )
 
         self.dlg_about.resizeEvent = self.on_resize_dlg_about
 
@@ -279,53 +275,40 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def on_status_change( self,status ):
         if status == "NOT-READY": # Board not Ready
-            self.group_device_setting.setEnabled( False )
+            self.group_vivi_on.setEnabled(False)
             self.group_viviewer.setEnabled( False )
         elif status == "LISTENING":# Board Ready
-            self.group_device_setting.setVisible( True )
-            self.group_device_setting.setEnabled( True )
-            self.group_viviewer.setEnabled( True )
             self.PB_acquire_start.setText( "Acquire: Start")
             self.PB_live_start.setText( "Live: Start")
-
-            self.group_device.setEnabled( True )
             self.group_live_control.setEnabled( True )
             self.group_acquire_control.setEnabled( True )
 
-            self.LE_num_dft_acquire.setEnabled( True )
+            self.PB_acquire_start.setEnabled(True)
+            self.PB_live_start.setEnabled(True)
             self.LE_acquire_time.setEnabled( True )
-            # self.LE_num_dft_live.setEnabled( True )
-            self.LE_num_live_sample.setEnabled( True )
-            self.CheckBox_average.setEnabled( True )
-            self.group_save_control.setEnabled( True )
+            self.group_vivi_on.setEnabled(True)
 
         elif status == "LIVE":
-            self.group_acquire_control.setEnabled( False )
-            self.group_save_control.setEnabled( False )
             self.PB_live_start.setText( "Live: Stop")
-            self.group_device.setEnabled( False )
-            self.group_acquire_control.setEnabled( False )
-            # self.LE_num_dft_live.setEnabled( False )
-            self.LE_num_live_sample.setEnabled( False )
-            self.CheckBox_average.setEnabled( False )
-        elif status == "ACQUIRE":
             self.group_live_control.setEnabled( False )
-            self.group_save_control.setEnabled( False )
-            self.PB_acquire_start.setText( "Acquire: Stop")
-            self.group_device.setEnabled( False )
-            self.group_live_control.setEnabled( False )
-            self.LE_num_dft_acquire.setEnabled( False )
+            self.PB_acquire_start.setEnabled(False)
             self.LE_acquire_time.setEnabled( False )
-            self.Progress_Acquistion.setValue(0)
+            self.group_vivi_on.setEnabled(False)
+        elif status == "ACQUIRE":
+            self.PB_acquire_start.setText( "Acquire: Stop")
+            self.group_live_control.setEnabled( False )
+            self.PB_live_start.setEnabled(False)
+            self.LE_acquire_time.setEnabled( False )
+            self.group_vivi_on.setEnabled(False)
 
     def prepare_acquisition(self, mode ):
         self.plotter.sampling = self.dev_vivi.sampling
         
         if mode == "live":
-            self.dev_vivi.set_num_live_sample( int( self.LE_num_live_sample.text() ) )
+            self.dev_vivi.set_num_live_sample( int( self.LE_num_dft.text() ) )
             
             self.plotter.num_dft = self.dev_vivi.num_live_sample
-            self.plotter.num_sample = int( self.LE_num_live_sample.text() )
+            self.plotter.num_sample = int( self.LE_num_dft.text() )
             self.plotter.set_plot_average( self.CheckBox_average.isChecked() )
             self.plotter.set_plot_enable( self.CB_plot )
             self.plotter.init_all()
@@ -345,7 +328,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.dev_vivi.set_acquire_time( acquire_time )
             self.plotter.set_plot_average( False )
 
-            self.plotter.num_dft = int( self.LE_num_dft_acquire.text() )
+            self.plotter.num_dft = int( self.LE_num_dft.text() )
             self.plotter.num_sample = self.plotter.num_dft
             self.plotter.set_plot_average( False )
 
@@ -363,22 +346,22 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.prepare_acquisition("acquire")
             self.dev_vivi.set_request( {"func":"acquire"})
 
-            self.PB_acquire_start.setText( "Acquire: Stop")
+            # self.PB_acquire_start.setText( "Acquire: Stop")
         elif self.PB_acquire_start.text() == "Acquire: Stop":
             self.dev_vivi.set_stop()
             print( f"File Saved time stamp: {self.timestamp}")
-            self.PB_acquire_start.setText( "Acquire: Start")
+            # self.PB_acquire_start.setText( "Acquire: Start")
 
     def on_click_start_view(self):
         if self.PB_live_start.text() == "Live: Start":
             self.prepare_acquisition("live")
             self.live_file = open( self.fpath, 'w')
             self.dev_vivi.set_request( {"func":"live"} )
-            self.PB_live_start.setText( "Live: Stop")
+            # self.PB_live_start.setText( "Live: Stop")
         elif self.PB_live_start.text() == "Live: Stop":
             self.dev_vivi.set_stop()
             print( f"File Saved time stamp: {self.timestamp}")
-            self.PB_live_start.setText( "Live: Start")
+            # self.PB_live_start.setText( "Live: Start")
 
     def received_elapsed_time( self, value):
         self.label_elapsed_time.setText( f"{value} s")
@@ -406,8 +389,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             print( f"File Saved time stamp: {self.timestamp}")
             self.PB_acquire_start.setText( "Acquire: Start")
 
-
-
     def received_live_data( self, value ):
         if value == ["STOP"]:
             self.live_file.close()
@@ -422,7 +403,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 str_out += "\n"
                 self.live_file.write(str_out) 
 
-
     def set_plot_enable( self ):
         for i in range(self.dev_vivi.NUM_CHANNELS):
             self.plotter.plot_enable[i] = self.CB_plot[i].isChecked()
@@ -431,7 +411,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def received_connected( self, val ): 
         if val: # CONNECTED
-
             for i in range(8):
                 if i<self.dev_vivi.NUM_CHANNELS:
                     # Enabled Channels
@@ -444,28 +423,25 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
             self.plotter.nchans = self.dev_vivi.NUM_CHANNELS
             
-
             self.group_viviewer.setEnabled( True )
-            self.PB_acquire_start.setText( "Acquire: Start")
-            self.PB_live_start.setText( "Live: Start")
-
             self.group_live_control.setEnabled( True )
             self.group_acquire_control.setEnabled( True )
-
-            self.LE_num_dft_acquire.setEnabled( True )
-            self.LE_acquire_time.setEnabled( True )
-            # self.LE_num_dft_live.setEnabled( True )
-            self.LE_num_live_sample.setEnabled( True )
-            self.CheckBox_average.setEnabled( True )
             self.group_save_control.setEnabled( True )
+
+            # Init settings
+            # self.dev_vivi.
+
         else: # Disconnected
+
+            self.group_viviewer.setEnabled( False )
+            self.group_live_control.setEnabled( False )
+            self.group_acquire_control.setEnabled( False )
+            self.group_save_control.setEnabled( False )
             print("disconnected")
 
 
     def on_quit( self ):
         print("Exiting Vivi")
-
-        # self.flow_data_handler.logging_stop()
         self.dev_manager_vivi.disconnect_device()
     
         

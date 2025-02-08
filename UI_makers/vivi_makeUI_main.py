@@ -18,7 +18,8 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
 from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QGridLayout,
     QGroupBox, QHBoxLayout, QLabel, QLineEdit,
     QMainWindow, QProgressBar, QPushButton, QSizePolicy,
-    QStackedWidget, QTabWidget, QVBoxLayout, QWidget)
+    QSpacerItem, QStackedWidget, QTabWidget, QVBoxLayout,
+    QWidget)
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
@@ -134,32 +135,31 @@ class Ui_MainWindow(object):
         self.verticalLayout_15 = QVBoxLayout(self.groupBox_10)
         self.verticalLayout_15.setObjectName(u"verticalLayout_15")
         self.verticalLayout_15.setContentsMargins(0, 0, 0, 0)
+        self.verticalSpacer = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
+
+        self.verticalLayout_15.addItem(self.verticalSpacer)
+
         self.group_live_control = QGroupBox(self.groupBox_10)
         self.group_live_control.setObjectName(u"group_live_control")
         self.group_live_control.setFlat(True)
         self.verticalLayout_13 = QVBoxLayout(self.group_live_control)
         self.verticalLayout_13.setObjectName(u"verticalLayout_13")
-        self.verticalLayout_13.setContentsMargins(0, 0, 0, 0)
-        self.PB_live_start = QPushButton(self.group_live_control)
-        self.PB_live_start.setObjectName(u"PB_live_start")
+        self.verticalLayout_13.setContentsMargins(0, 12, 0, 0)
+        self.horizontalLayout_7 = QHBoxLayout()
+        self.horizontalLayout_7.setObjectName(u"horizontalLayout_7")
+        self.horizontalLayout_7.setContentsMargins(-1, 0, -1, -1)
+        self.label_8 = QLabel(self.group_live_control)
+        self.label_8.setObjectName(u"label_8")
 
-        self.verticalLayout_13.addWidget(self.PB_live_start)
+        self.horizontalLayout_7.addWidget(self.label_8)
 
-        self.horizontalLayout_6 = QHBoxLayout()
-        self.horizontalLayout_6.setObjectName(u"horizontalLayout_6")
-        self.label_5 = QLabel(self.group_live_control)
-        self.label_5.setObjectName(u"label_5")
+        self.LE_num_dft = QLineEdit(self.group_live_control)
+        self.LE_num_dft.setObjectName(u"LE_num_dft")
 
-        self.horizontalLayout_6.addWidget(self.label_5)
-
-        self.LE_num_live_sample = QLineEdit(self.group_live_control)
-        self.LE_num_live_sample.setObjectName(u"LE_num_live_sample")
-        self.LE_num_live_sample.setMinimumSize(QSize(35, 0))
-
-        self.horizontalLayout_6.addWidget(self.LE_num_live_sample)
+        self.horizontalLayout_7.addWidget(self.LE_num_dft)
 
 
-        self.verticalLayout_13.addLayout(self.horizontalLayout_6)
+        self.verticalLayout_13.addLayout(self.horizontalLayout_7)
 
         self.CheckBox_average = QCheckBox(self.group_live_control)
         self.CheckBox_average.setObjectName(u"CheckBox_average")
@@ -223,25 +223,15 @@ class Ui_MainWindow(object):
         self.verticalLayout_14 = QVBoxLayout(self.group_acquire_control)
         self.verticalLayout_14.setObjectName(u"verticalLayout_14")
         self.verticalLayout_14.setContentsMargins(0, 0, 0, 0)
+        self.PB_live_start = QPushButton(self.group_acquire_control)
+        self.PB_live_start.setObjectName(u"PB_live_start")
+
+        self.verticalLayout_14.addWidget(self.PB_live_start)
+
         self.PB_acquire_start = QPushButton(self.group_acquire_control)
         self.PB_acquire_start.setObjectName(u"PB_acquire_start")
 
         self.verticalLayout_14.addWidget(self.PB_acquire_start)
-
-        self.horizontalLayout_9 = QHBoxLayout()
-        self.horizontalLayout_9.setObjectName(u"horizontalLayout_9")
-        self.label_8 = QLabel(self.group_acquire_control)
-        self.label_8.setObjectName(u"label_8")
-
-        self.horizontalLayout_9.addWidget(self.label_8)
-
-        self.LE_num_dft_acquire = QLineEdit(self.group_acquire_control)
-        self.LE_num_dft_acquire.setObjectName(u"LE_num_dft_acquire")
-
-        self.horizontalLayout_9.addWidget(self.LE_num_dft_acquire)
-
-
-        self.verticalLayout_14.addLayout(self.horizontalLayout_9)
 
         self.horizontalLayout_10 = QHBoxLayout()
         self.horizontalLayout_10.setObjectName(u"horizontalLayout_10")
@@ -454,9 +444,8 @@ class Ui_MainWindow(object):
         self.group_viewer.setTitle("")
         self.groupBox_10.setTitle("")
         self.group_live_control.setTitle("")
-        self.PB_live_start.setText(QCoreApplication.translate("MainWindow", u"Live: Start", None))
-        self.label_5.setText(QCoreApplication.translate("MainWindow", u"# Live Sample", None))
-        self.LE_num_live_sample.setText(QCoreApplication.translate("MainWindow", u"512", None))
+        self.label_8.setText(QCoreApplication.translate("MainWindow", u"# DFT", None))
+        self.LE_num_dft.setText(QCoreApplication.translate("MainWindow", u"1024", None))
         self.CheckBox_average.setText(QCoreApplication.translate("MainWindow", u"Show Average", None))
         self.CB_plot_4.setText("")
         self.CB_plot_3.setText("")
@@ -467,9 +456,8 @@ class Ui_MainWindow(object):
         self.CB_plot_7.setText("")
         self.CB_plot_8.setText("")
         self.group_acquire_control.setTitle("")
+        self.PB_live_start.setText(QCoreApplication.translate("MainWindow", u"Live: Start", None))
         self.PB_acquire_start.setText(QCoreApplication.translate("MainWindow", u"Acquire: Start", None))
-        self.label_8.setText(QCoreApplication.translate("MainWindow", u"# DFT", None))
-        self.LE_num_dft_acquire.setText(QCoreApplication.translate("MainWindow", u"1024", None))
         self.label_9.setText(QCoreApplication.translate("MainWindow", u"times (s)", None))
         self.LE_acquire_time.setText(QCoreApplication.translate("MainWindow", u"3", None))
         self.label_elapsed_time.setText(QCoreApplication.translate("MainWindow", u"0 s", None))
