@@ -45,10 +45,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # self.thread_main = QThread.currentThread() 
         # self.dev_vivi = vivi_device.Board()
         # self.dev_vivi.msg_out.connect( self.received_msg )
-        # self.dev_vivi.status_signal.connect( self.on_status_change )
-        # self.dev_vivi.live_data.connect( self.received_live_data )
-        # self.dev_vivi.acquire_data.connect( self.received_acquire_data )
-        # self.dev_vivi.elapsed_time.connect( self.received_elapsed_time)
+        # self.dev_vivi.signal_status.connect( self.on_status_change )
+        self.dev_vivi.live_data.connect( self.received_live_data )
+        self.dev_vivi.acquire_data.connect( self.received_acquire_data )
+        self.dev_vivi.elapsed_time.connect( self.received_elapsed_time)
         # self.dev_vivi.setting_changed.connect( self.received_setting_changed )
         self.dev_vivi.signal_connected.connect( self.received_connected )
 
@@ -60,7 +60,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.add_actions()
 
         # # self.widget_about = AboutWindow()
-
 
     def contextMenuEvent(self, event):
         # Show the context menu at the event position
@@ -111,9 +110,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                                                 layout_adc = self.layout_adc,
                                                 console = self.console_vivi,
                                                 baudrate=9600)
-        
-                                                
-
 
     def start_main( self ):
         self.Ui_device_dialog.widget.close()
@@ -123,7 +119,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def open_device_dialog(self):
         self.Ui_device_dialog.widget.show()
-
 
     def make_panel_banner( self ):
         # Page 0: Logo
@@ -180,7 +175,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # self.plotter.initialize()
         self.group_viviewer.setEnabled( False )
 
-        
     def make_about_dialog( self ):
         self.dlg_about = QDialog(self)
         self.dlg_about.setWindowTitle("About Vivi")
@@ -367,20 +361,24 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def on_click_start_acquire(self):
         if self.PB_acquire_start.text() == "Acquire: Start":
             self.prepare_acquisition("acquire")
-            self.dev_vivi.set_request("ACQUIRE")
+            self.dev_vivi.set_request( {"func":"acquire"})
+
+            self.PB_acquire_start.setText( "Acquire: Stop")
         elif self.PB_acquire_start.text() == "Acquire: Stop":
-            self.dev_vivi.set_request( "STOP" )
+            self.dev_vivi.set_stop()
+            print( f"File Saved time stamp: {self.timestamp}")
+            self.PB_acquire_start.setText( "Acquire: Start")
 
     def on_click_start_view(self):
         if self.PB_live_start.text() == "Live: Start":
             self.prepare_acquisition("live")
             self.live_file = open( self.fpath, 'w')
             self.dev_vivi.set_request( {"func":"live"} )
+            self.PB_live_start.setText( "Live: Stop")
         elif self.PB_live_start.text() == "Live: Stop":
             self.dev_vivi.set_stop()
-            # self.dev_vivi.set_request( {"func":"stop"} )
-            self.live_file.close()
-            self.save_status.setText( f"File Saved time stamp: {self.timestamp}")
+            print( f"File Saved time stamp: {self.timestamp}")
+            self.PB_live_start.setText( "Live: Start")
 
     def received_elapsed_time( self, value):
         self.label_elapsed_time.setText( f"{value} s")
@@ -405,22 +403,24 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 acquire_file.write(str_out) # works with any number of elements in a line
             
             acquire_file.close()
-            self.save_status.setText( f"File Saved time stamp: {self.timestamp}")
+            print( f"File Saved time stamp: {self.timestamp}")
+            self.PB_acquire_start.setText( "Acquire: Start")
 
 
 
     def received_live_data( self, value ):
-        volts = np.array(value)
-
-        self.plotter.update_all( volts, spectrogram=True)
-        
-        for line in value:
-            str_out = ""
-            for i in range(self.dev_vivi.NUM_CHANNELS):
-                str_out += f"{line[i]}, "
-            str_out = str_out[:-2]
-            str_out += "\n"
-            self.live_file.write(str_out) 
+        if value == ["STOP"]:
+            self.live_file.close()
+        else:
+            volts = np.array(value)
+            self.plotter.update_all( volts, spectrogram=True)
+            for line in value:
+                str_out = ""
+                for i in range(self.dev_vivi.NUM_CHANNELS):
+                    str_out += f"{line[i]}, "
+                str_out = str_out[:-2]
+                str_out += "\n"
+                self.live_file.write(str_out) 
 
 
     def set_plot_enable( self ):

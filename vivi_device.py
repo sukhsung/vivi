@@ -2,6 +2,7 @@ import time,sys,struct
 from datetime import datetime
 from PySide6.QtCore import (Signal, QObject, QThread, QElapsedTimer)
 import numpy as np
+from math import floor
 
 if '-verbose' in sys.argv:
     verbose = True
@@ -54,6 +55,8 @@ class Device(QObject):
     signal_update = Signal( object )
     signal_status = Signal( str)
     signal_received_msg = Signal (str)
+
+    elapsed_time = Signal( int )
 
     def __init__( self ):
         # Inherit QObject
@@ -209,6 +212,7 @@ class Device(QObject):
 class ADC8( Device ):
     signal_setting = Signal( )
     live_data = Signal(list)
+    acquire_data = Signal(list)
     def __init__(self):
         super().__init__()
         self.encoding = 'utf-8'
@@ -216,7 +220,7 @@ class ADC8( Device ):
         self.time_interval = 0.1
         self.board_type = 'ADC-8x'
         self.NUM_CHANNELS = 0
-
+        self.default_timeout = 0.01
 
     def dev_check(self):
         try:
@@ -312,11 +316,11 @@ class ADC8( Device ):
         msg = self.device.read(1000).decode()
         if msg.startswith('Impedance'):
             self.i_function = True
-            print( 'I exists')
+            print( 'I function exists')
         else:
             self.i_function = False
-            print( 'I does not exist')
-        print( self.device.read(1000))
+            print( 'I function does not exist')
+        _ = self.device.read(1000)
 
 
     def get_available_NUM_CHANNELS( self ): 
@@ -359,6 +363,9 @@ class ADC8( Device ):
 
             case 'live':
                 self.start_live_view()
+
+            case 'acquire':
+                self.start_acquire()
                 
     def send_command( self, val,emit=True ):
         msg = self.query( val, announce=True)
@@ -382,13 +389,11 @@ class ADC8( Device ):
 
 
     def start_live_view(self):
-        # self.msg_out.emit("Starting Live View")
-        # self.set_status("LIVE")
         self.stop = False
 
         self.device.write("b0\n".encode())
         self.device.timeout = 6
-        a=self.device.read_until(b"+")		# Skip initial text
+        self.device.read_until(b"+")		# Skip initial text
         sig = b""
         h = self.device.read(self.HDR_LEN)
 
@@ -399,14 +404,13 @@ class ADC8( Device ):
                 fmt = f"<8sH {2 * self.NUM_CHANNELS}B"
             hdr = struct.unpack(fmt, h)
             sig = hdr[0]		# The signature
-        
          
         if sig == b"ADC8":
             chans = hdr[4:]			# The ADC channel entries
         elif sig == b"ADC8x-1.":
             chans = hdr[2:]			# The ADC channel entries
         else:
-            self.msg_out.emit("Invalid header received, transfer aborted")
+            print("Invalid header received, transfer aborted")
             self.device.write(b"\n")
             self.set_status( "LISTENING" )
             return -1 
@@ -418,7 +422,7 @@ class ADC8( Device ):
             if g > 0:
                 num += 1
         if num == 0:
-            self.msg_out.emit("Header shows no active ADCs, transfer aborted")
+            print("Header shows no active ADCs, transfer aborted")
             self.device.write(b"\n")
             self.set_status( "LISTENING" )
             return -1
@@ -434,24 +438,24 @@ class ADC8( Device ):
         cont = True
         if self.board_type == 'ADC-8x' and self.NUM_CHANNELS==4:
             self.device.read(8)
-        while cont:   
+        while cont:
             n = self.device.read(1)		# Read the buffer's length byte
             if len(n) == 0:
-                self.msg_out.emit("Timeout")
+                print("Timeout")
                 break
             n = n[0]
             if n == 0:
-                self.msg_out.emit("End of data")
+                print("End of data")
                 break
             
             d = self.device.read(n)		# Read the buffer contents
             if len(d) < n:
-                self.msg_out.emit("Short data buffer received")
+                print("Short data buffer received")
                 break
             
             if n % blocksize != 0:
                 if not warned:
-                    self.msg_out.emit("Warning: Invalid buffer length", n)
+                    print("Warning: Invalid buffer length", n)
                     warned = True
                 n -= n % blocksize
 
@@ -469,13 +473,13 @@ class ADC8( Device ):
             total_blocks += n // blocksize
 
             if self.stop:
-                # self.msg_out.emit("Termination requested")
-                self.set_status( "STOPPING")
+                print( "Live View Termination Requested")
+                self.live_data.emit( ["STOP"] )
                 break
 
         self.device.write(b"\n")
-        # self.msg_out.emit("Transfer ended")
-        # self.msg_out.emit(f"{total_blocks} blocks received")
+        # print("Transfer ended")
+        # print(f"{total_blocks} blocks received")
 
         self.device.timeout = self.default_timeout#0.01
         
@@ -483,9 +487,113 @@ class ADC8( Device ):
         self.device.read(1000)		# Flush any extra output
         
         return output_data
+    
+    def start_acquire(self):
+        self.stop = False
+
+        self.device.write(f"b{self.acquire_time}\n".encode())
+        self.device.timeout = 6
+        self.device.read_until(b"+")		# Skip initial text
+        sig = b""
+        h = self.device.read(self.HDR_LEN)
+        
+        if len(h) == self.HDR_LEN:
+            if self.board_type == 'ADC-8':
+                fmt = f"<4sHBB {2 * self.NUM_CHANNELS}B"
+            elif self.board_type == 'ADC-8x':
+                fmt = f"<8sH {2 * self.NUM_CHANNELS}B"
+            hdr = struct.unpack(fmt, h)
+            sig = hdr[0]		# The signature
+         
+        if sig == b"ADC8":
+            chans = hdr[4:]			# The ADC channel entries
+        elif sig == b"ADC8x-1.":
+            chans = hdr[2:]			# The ADC channel entries
+        else:
+            print("Invalid header received, transfer aborted")
+            self.device.write(b"\n")
+            self.set_request( "LISTEN" )
+            return -1
+        
+        num = 0
+        gains = [chans[2 * i] for i in range(self.NUM_CHANNELS)]
+        bipolar = [chans[2 * i + 1] & self.BIPOLAR for i in range(self.NUM_CHANNELS)]
+        for g in gains:
+            if g > 0:
+                num += 1
+        if num == 0:
+            print("Header shows no active ADCs, transfer aborted")
+            self.device.write(b"\n")
+            self.set_status( "LISTEN" )
+            return -1
+        
+
+        blocksize = num * 3
+
+        total_blocks = 0
+        warned = False
+
+        output_data = []
+        # Receive and store the data
+
+
+        time_start = time.time()
+        time_counter = 0
+        cont = True
+        if self.board_type == 'ADC-8x' and self.NUM_CHANNELS==4:
+            self.device.read(8)
+        while cont:
+            time_cur = time.time()
+            time_elapsed = floor(time_cur - time_start)
+            if time_elapsed == time_counter:
+                self.elapsed_time.emit(time_elapsed)
+                time_counter += 1
+            n = self.device.read(1)		# Read the buffer's length byte
+            
+            if len(n) == 0:
+                print("Timeout")
+                break
+            n = n[0]
+            if n == 0:
+                print("End of data")
+                break
+
+            d = self.device.read(n)		# Read the buffer contents
+            if len(d) < n:
+                print("Short data buffer received")
+                break
+            
+            if n % blocksize != 0:
+                if not warned:
+                    print("Warning: Invalid buffer length", n)
+                    warned = True
+                n -= n % blocksize
+
+            for i in range(0, n, blocksize):
+                # Convert the block data to floats and write them out
+                volts = self.convert_values(d[i:i + blocksize], gains, bipolar, num)
+                output_data.append ( volts )
+
+            total_blocks += n // blocksize
+
+            if self.stop:
+                print( "Acquisition Termination Requested")
+                # self.acquire_data.emit( ["STOP"] )
+                break
+
+        if self.stop: 
+            self.device.write(b"\n")
+            self.acquire_data.emit( [-1] )
+        else:
+            self.device.write(b"\n")
+            self.acquire_data.emit( output_data )
+
+        self.device.timeout = self.default_timeout#0.01
+        self.device.read(1000)		# Flush any extra output
+        return output_data
+
 
     def set_stop(self):
-        print('here')
         self.stop = True
 
     def parse_answer(self, msg, emit):
