@@ -107,6 +107,7 @@ class Ui_MainWindow(object):
 
         self.group_logo_enable = QGroupBox(self.group_left)
         self.group_logo_enable.setObjectName(u"group_logo_enable")
+        self.group_logo_enable.setFlat(True)
 
         self.layout_left.addWidget(self.group_logo_enable)
 
