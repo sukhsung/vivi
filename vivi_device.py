@@ -21,12 +21,13 @@ if '-dev' in sys.argv:
 else:
     from serial.tools.list_ports import comports as list_ports
     from serial import Serial
+    import serial
 import socket
     
 def get_port_list():
     port_list = [p.device for p in list_ports() if p.vid]
-    port_list.append("RFC 2217")
-    port_list.append("UDP")
+    if len(port_list) == 0:
+        port_list.append( 'No Serial Ports' )
     return port_list
 
 class UDP_Device():
@@ -123,21 +124,29 @@ class Device(QObject):
         self.moveToThread( self.thread_main )
         QThread.currentThread().quit()
 
-    def connect_device( self, addr, baudrate=9600 ):
-        if addr.startswith("UDP"):
+    def connect_device( self, protocol, addr, baudrate=9600 ):
+        if protocol == "TCP":
             addr = addr.split(':')
-            IP = addr[1]
-            if len(addr)==2:
+            IP = addr[0]
+            if len(addr)==1:
                 port = 23
-            elif len(addr) ==3:
-                port = int(addr[2])
-            self.device = UDP_Device( IP, port)
+            elif len(addr) ==2:
+                port = int(addr[1])
+            self.device = serial.serial_for_url( f"socket://{IP}:{port}" )
             self.device.timeout = 1
-            self.default_timeout = self.device.timeout
-        else:
+        elif protocol == "UDP":
+            addr = addr.split(':')
+            IP = addr[0]
+            if len(addr)==1:
+                port = 23
+            elif len(addr) ==2:
+                port = int(addr[1])
+            self.device = UDP_Device( IP, port)
+            
+        elif protocol == "Serial":
             self.device = Serial( addr, baudrate=baudrate, exclusive=True )
-            self.device.timeout = 0.1
-            self.default_timeout = self.device.timeout
+            self.device.timeout = 1
+        
 
         
         if not self.dev_check():

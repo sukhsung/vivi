@@ -15,7 +15,7 @@ class device_manager():
                  ui_stack,
                  layout_adc,
                  console,
-                 baudrate=9600):
+                 default_ip):
         
         self.name = name
         self.device = device
@@ -31,12 +31,27 @@ class device_manager():
         
         self.ui_stack = ui_stack
         self.console = console
-        self.baudrate = baudrate
 
+        self.protocol = 'TCP'
+        self.serial_port = None
+        self.baudrate = 9600
+
+
+        self.UI_device_manager.CB_protocol.activated.connect( self.on_select_protocol )
         self.UI_device_manager.CB_deviceList.activated.connect(self.on_device_selected)
         self.UI_device_manager.PB_connect.clicked.connect( self.on_click_connect )
         self.UI_device_manager.PB_refresh.clicked.connect( self.update_port_list )
-        self.UI_device_manager.CB_boardType.activated.connect( self.on_boardType_selected )
+
+        self.UI_device_manager.CB_protocol.setCurrentIndex(0)
+
+        self.UI_device_manager.CB_Baud.setCurrentIndex(6)
+        self.baudrate = int( self.UI_device_manager.CB_Baud.currentText())
+        self.UI_device_manager.CB_Baud.currentIndexChanged.connect( self.on_select_baud )
+
+        self.UI_device_manager.CB_deviceList.setVisible(False)
+        self.UI_device_manager.LE_addr.setText( f"{default_ip}:48105")
+        self.UI_device_manager.LE_addr.setVisible( True )
+        self.UI_device_manager.PB_refresh.setVisible( False )
 
         # Console Related
         self.console.signal_send_command.connect( self.console_send )
@@ -57,6 +72,38 @@ class device_manager():
 
         self.CB_allGains = self.parent.CB_allGains
         self.CB_allGains.activated.connect( self.set_all_gains )
+
+    def allow_connect( self ):
+        if self.baudrate is None:
+            return False
+        
+        if self.protocol == "Serial":
+            if self.serial_port == None:
+                return False
+        return True
+
+    def on_select_protocol( self ):
+        self.protocol = self.UI_device_manager.CB_protocol.currentText()
+        if self.protocol == "Serial":
+            self.UI_device_manager.LE_addr.setVisible( False )
+            self.UI_device_manager.CB_deviceList.setVisible( True )
+            self.UI_device_manager.PB_refresh.setVisible( True )
+        else:
+            self.UI_device_manager.LE_addr.setVisible( True )
+            self.UI_device_manager.CB_deviceList.setVisible( False )
+            self.UI_device_manager.PB_refresh.setVisible( False )
+        
+        self.UI_device_manager.PB_connect.setEnabled( self.allow_connect() )
+
+
+    def on_select_baud( self ):
+        if self.UI_device_manager.CB_Baud.currentIndex() == 0:
+            self.baudrate = None
+        else:
+            self.baudrate = int(self.UI_device_manager.CB_Baud.currentText())
+
+        self.UI_device_manager.PB_connect.setEnabled( self.allow_connect() )
+
 
     def on_boardType_selected( self ):
         self.device.board_type = self.UI_device_manager.CB_boardType.currentText()
@@ -81,18 +128,12 @@ class device_manager():
         self.PB_open_deviceManager.clicked.connect( self.parent.open_device_dialog )
 
     def on_device_selected(self):
-        if self.UI_device_manager.CB_deviceList.currentText() == "RFC 2217":
-            self.UI_device_manager.LE_addr.setVisible(True)
-        elif self.UI_device_manager.CB_deviceList.currentText() == "UDP":
-            self.UI_device_manager.LE_addr.setVisible(True)
-        else:
-            self.UI_device_manager.LE_addr.setVisible(False)
-        # if self.CB_devicelist.currentText() == "UDP":
-        #     self.LE_URL.setVisible(True)
-        #     # self.CB_devicelist.setMaximumWidth(100)
-        # else:
-        #     self.LE_URL.setVisible(False)
-        #     # self.CB_devicelist.setMaximumWidth(300)
+        self.serial_port = self.UI_device_manager.CB_deviceList.currentText()
+        if self.serial_port == 'No Serial Ports':
+            self.serial_port = None
+
+        self.UI_device_manager.PB_connect.setEnabled( self.allow_connect() )
+            
 
     def on_click_connect(self):
         if self.UI_device_manager.PB_connect.text() == "Connect":
@@ -111,13 +152,13 @@ class device_manager():
         self.on_device_selected()
 
     def connect_device(self):
-        portname = self.UI_device_manager.CB_deviceList.currentText()
-        if portname == "RFC 2217":
-            portname = "rfc2217://"+self.LE_addr.text()#192.168.1.115:2217"
-        if portname == "UDP":
-            portname = "UDP:"+self.LE_addr.text()#192.168.1.115:2217"
-            
-        self.device.connect_device( portname,baudrate=self.baudrate )
+        if self.protocol == 'Serial':
+            portname = self.serial_port
+        else:
+            portname = self.UI_device_manager.LE_addr.text()
+
+        self.device.connect_device( self.protocol, portname,baudrate=self.baudrate )
+
 
     def disconnect_device(self):
         self.device.set_status("DISCONNECT")

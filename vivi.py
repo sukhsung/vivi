@@ -109,7 +109,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                                                 ui_stack = self.group_vivi_control,
                                                 layout_adc = self.layout_adc,
                                                 console = self.console_vivi,
-                                                baudrate=9600)
+                                                default_ip='192.168.88.12:48105')
 
     def start_main( self ):
         self.Ui_device_dialog.widget.close()

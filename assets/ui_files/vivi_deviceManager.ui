@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>400</width>
+    <width>457</width>
     <height>278</height>
    </rect>
   </property>
@@ -40,6 +40,25 @@
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout">
      <item>
+      <widget class="QComboBox" name="CB_protocol">
+       <item>
+        <property name="text">
+         <string>TCP</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Serial</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>UDP</string>
+        </property>
+       </item>
+      </widget>
+     </item>
+     <item>
       <widget class="QComboBox" name="CB_deviceList"/>
      </item>
      <item>
@@ -59,6 +78,55 @@
        <item>
         <property name="text">
          <string>ADC-8</string>
+        </property>
+       </item>
+      </widget>
+     </item>
+     <item>
+      <widget class="QComboBox" name="CB_Baud">
+       <item>
+        <property name="text">
+         <string>Baud Rate</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>4800</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>9600</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>19200</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>38400</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>57600</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>115200</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>128000</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>256000</string>
         </property>
        </item>
       </widget>

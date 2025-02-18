@@ -23,7 +23,7 @@ class Ui_device_manager(object):
     def setupUi(self, device_manager):
         if not device_manager.objectName():
             device_manager.setObjectName(u"device_manager")
-        device_manager.resize(400, 278)
+        device_manager.resize(457, 278)
         self.verticalLayout = QVBoxLayout(device_manager)
         self.verticalLayout.setSpacing(0)
         self.verticalLayout.setObjectName(u"verticalLayout")
@@ -38,6 +38,14 @@ class Ui_device_manager(object):
 
         self.horizontalLayout = QHBoxLayout()
         self.horizontalLayout.setObjectName(u"horizontalLayout")
+        self.CB_protocol = QComboBox(device_manager)
+        self.CB_protocol.addItem("")
+        self.CB_protocol.addItem("")
+        self.CB_protocol.addItem("")
+        self.CB_protocol.setObjectName(u"CB_protocol")
+
+        self.horizontalLayout.addWidget(self.CB_protocol)
+
         self.CB_deviceList = QComboBox(device_manager)
         self.CB_deviceList.setObjectName(u"CB_deviceList")
 
@@ -59,6 +67,20 @@ class Ui_device_manager(object):
         self.CB_boardType.setObjectName(u"CB_boardType")
 
         self.horizontalLayout_2.addWidget(self.CB_boardType)
+
+        self.CB_Baud = QComboBox(device_manager)
+        self.CB_Baud.addItem("")
+        self.CB_Baud.addItem("")
+        self.CB_Baud.addItem("")
+        self.CB_Baud.addItem("")
+        self.CB_Baud.addItem("")
+        self.CB_Baud.addItem("")
+        self.CB_Baud.addItem("")
+        self.CB_Baud.addItem("")
+        self.CB_Baud.addItem("")
+        self.CB_Baud.setObjectName(u"CB_Baud")
+
+        self.horizontalLayout_2.addWidget(self.CB_Baud)
 
         self.horizontalSpacer = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
@@ -98,8 +120,22 @@ class Ui_device_manager(object):
     def retranslateUi(self, device_manager):
         device_manager.setWindowTitle(QCoreApplication.translate("device_manager", u"Form", None))
         self.label_deviceName.setText(QCoreApplication.translate("device_manager", u"TextLabel", None))
+        self.CB_protocol.setItemText(0, QCoreApplication.translate("device_manager", u"TCP", None))
+        self.CB_protocol.setItemText(1, QCoreApplication.translate("device_manager", u"Serial", None))
+        self.CB_protocol.setItemText(2, QCoreApplication.translate("device_manager", u"UDP", None))
+
         self.CB_boardType.setItemText(0, QCoreApplication.translate("device_manager", u"ADC-8x", None))
         self.CB_boardType.setItemText(1, QCoreApplication.translate("device_manager", u"ADC-8", None))
+
+        self.CB_Baud.setItemText(0, QCoreApplication.translate("device_manager", u"Baud Rate", None))
+        self.CB_Baud.setItemText(1, QCoreApplication.translate("device_manager", u"4800", None))
+        self.CB_Baud.setItemText(2, QCoreApplication.translate("device_manager", u"9600", None))
+        self.CB_Baud.setItemText(3, QCoreApplication.translate("device_manager", u"19200", None))
+        self.CB_Baud.setItemText(4, QCoreApplication.translate("device_manager", u"38400", None))
+        self.CB_Baud.setItemText(5, QCoreApplication.translate("device_manager", u"57600", None))
+        self.CB_Baud.setItemText(6, QCoreApplication.translate("device_manager", u"115200", None))
+        self.CB_Baud.setItemText(7, QCoreApplication.translate("device_manager", u"128000", None))
+        self.CB_Baud.setItemText(8, QCoreApplication.translate("device_manager", u"256000", None))
 
         self.PB_connect.setText(QCoreApplication.translate("device_manager", u"Connect", None))
         self.PB_refresh.setText(QCoreApplication.translate("device_manager", u"Refresh", None))
