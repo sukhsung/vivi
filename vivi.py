@@ -1,582 +1,471 @@
-import math, time, struct, sys
-from PySide6.QtCore import (Signal, QObject, QThread)
+from PySide6.QtCore import QThread, Qt
+from PySide6.QtWidgets import (
+    QApplication,
+    QMainWindow,
+    QFileDialog, QMenu,
+    QDialog, QGroupBox, QVBoxLayout, QHBoxLayout
+)
+from PySide6.QtGui import QIcon, QAction
+from PySide6.QtSvgWidgets import QSvgWidget
 
-if '-dev' in sys.argv:
-    print( 'DEV MODE: Dummy Devices' )
-    from dummy_serial import list_ports
-    import dummy_serial as serial
-else:
-    from serial.tools.list_ports import comports as list_ports
-    import serial
+import sys, os, time, json, glob
+import numpy as np
+from functools import partial
+from datetime import datetime
 
-"""Program to store continuous data readings from an ADC-8 board."""
-"""Based off of adc8-transfer.py and noise-density.py"""
-def get_port_list():
-    """
-    Return a list of USB serial port devices.
+import vivi_device, vivi_plot
+# from vivi_makeUI import Ui_MainWindow
 
-    Entries in the list are ListPortInfo objects from the
-    serial.tools.list_ports module.  Fields of interest include:
+from UI_makers.vivi_makeUI_main import Ui_MainWindow
+from UI_makers.vivi_makeUI_deviceDialog import Ui_device_dialog
+from vivi_device_manager import device_manager
 
-        device:  The device's full path name.
-        vid:     The device's USB vendor ID value.
-        pid:     The device's USB product ID value.
-    """
-    port_list = [p.device for p in list_ports() if p.vid]
-    port_list.append("RFC 2217")
-    return port_list
+from vivi_console import device_console
+ 
 
-class Board(QObject):
-    status = str
-    status_signal = Signal(str)
-    status_possible = ["NOT-READY", "LISTENING", "LIVE", "ACQUIRE", "STOPPING", "DISCONNECT"]
-
-    request = None
-    request_possible = ["LISTEN", "LIVE", "ACQUIRE","STOP","DISCONNECT"]
-
-    msg_out = Signal( str )
-    live_data = Signal( list )
-    acquire_data = Signal( list )
-    elapsed_time = Signal( int )
-    setting_changed = Signal()
-
-    connected = False
-    connected_signal = Signal( bool )
-
-    gains = []
-    sampling = 0
-    labels = []
-
-    portname = None
-
-    vivi_thread = None
-
-    """Represent a single ADC-8 board."""
+class MainWindow(QMainWindow, Ui_MainWindow):
     def __init__(self):
-        """
-        Initialize an ADC-8 Board object.
-        """
-        super().__init__() #Inherit QObject
+        super().__init__()
+        self.vivi_path=os.path.dirname(os.path.abspath(__file__))
+        self.asset_path = os.path.join( self.vivi_path, 'assets')
 
-        self.set_board_type()
+        with open( os.path.join( self.asset_path,"style.css"),"r") as fh:
+            self.css = fh.read()
+        self.icon = QIcon(os.path.join(self.asset_path,"vivi-icon.png"))
 
-        self.dev = None
-        self.msg_input = []
-        self.status = "NOT-READY"
-        self.connected = False
+        self.setupUi(self)
+        self.setWindowTitle("Vivi")
 
-    def connect_board( self, portname ):
-        """  
-        portname is the name of the board's USB serial port device, 
-        which will be opened in exclusive mode.
-        """
-        self.msg_out.emit("Connecting...")
-        try:
-            if portname.startswith("rfc2217://"):
-                # Serial over Ethernet (RFC2217)
-                self.default_timeout = 0.5
-                self.dev = serial.serial_for_url(portname, exclusive=True)
-            else:
-                # True Serial (pyserial)
-                self.default_timeout = 0.01
-                self.dev = serial.Serial(portname, exclusive=True)
-            time.sleep( 0.8 )
 
-            # Run Device Check
-            dev_check_result = self.dev_check()
-            if not dev_check_result:
-                self.dev = None
-                self.msg_out.emit("Device is not an ADC-8 board")
-                self.set_status( "NOT-READY" ) 
-                self.set_connected( False )
-                return False
-            else:
-                self.portname = portname
-                self.set_board_type(dev_check_result)
-                self.set_connected( True )
-        except:
-            self.portname = None
-            self.dev = None
-            self.set_status( "NOT-READY" ) 
-            self.set_connected( False )
-            return False
-            
-    def dev_check(self):
-        msg = self.get_board_id()
+        self.dev_vivi = vivi_device.ADC8()
+        self.thread_main = QThread.currentThread()
 
-        if msg.startswith("ADC-8x"):
-            return "ADC-8x"
-        elif msg.startswith("ADC-8"):
-            return "ADC-8"
-        else:
-            return False
-            
-    def set_board_type( self, board_type=None ):
-        self.board_type = board_type
-        if board_type == "ADC-8x":
-            
-            self.NUM_CHANNELS = self.get_available_NUM_CHANNELS()
-            self.HDR_LEN = 10 + self.NUM_CHANNELS * 2
-            self.BIPOLAR = 2
-            self.SCALE_24 = 1.0 / (1 << 24)
-            self.VREF = 2.5 * 1.02		# Include 2% correction factor
-        elif board_type == "ADC-8":
-            self.NUM_CHANNELS = self.get_available_NUM_CHANNELS()
-            self.HDR_LEN = 16
-            self.BIPOLAR = 2
-            self.SCALE_24 = 1.0 / (1 << 24)
-            self.VREF = 2.5 * 1.02		# Include 2% correction factor
-        elif board_type is None:
-            self.NUM_CHANNELS = 0
-            self.HDR_LEN = 0
-            self.BIPOLAR = 2
-            self.SCALE_24 = 0
-            self.VREF = 0
+        self.console_vivi = device_console('Geophone Recorder')
 
-    def returnThreadToMain( self, main_thread ):
-        self.moveToThread( main_thread )
+        # self.thread_main = QThread.currentThread() 
+        # self.dev_vivi = vivi_device.Board()
+        # self.dev_vivi.msg_out.connect( self.received_msg )
+        self.dev_vivi.signal_status.connect( self.on_status_change )
+        self.dev_vivi.live_data.connect( self.received_live_data )
+        self.dev_vivi.acquire_data.connect( self.received_acquire_data )
+        self.dev_vivi.elapsed_time.connect( self.received_elapsed_time)
+        # self.dev_vivi.setting_changed.connect( self.received_setting_changed )
+        self.dev_vivi.signal_connected.connect( self.received_connected )
 
-    def close_board( self ):
-        if self.status == "LIVE" or self.status == "ACQUIRE":
-            self.set_request( "STOP" )
-            while self.status == "STOPPING":
-                time.sleep(0.01)
+        self.make_panel_viewer()
+        self.make_about_dialog()
+        self.make_panel_banner()
+        self.make_device_dialog()
 
-        time.sleep(0.01)
-        self.set_status( "DISCONNECT")
-        self.send_command( "q" )
+        self.add_actions()
 
-        self.dev.close()
-        self.dev = None
-        self.set_status( "NOT-READY")
-        self.set_connected(False)
-        self.msg_input = []
-        self.board_type = None
-        self.portname = None
+        # # self.widget_about = AboutWindow()
 
-    def initialize( self ):
-        self.dev.write(b'\n')
+    def contextMenuEvent(self, event):
+        # Show the context menu at the event position
+        self.main_contextMenu.exec(event.globalPos())
 
-        boardmsg = "Connected to "+self.board_type+" board: "+self.portname +"\n"
-        self.msg_out.emit( boardmsg )
-        self.gains = [1 for x in range( self.NUM_CHANNELS) ]
-        self.labels = [f"Ch {x+1}" for x in range( self.NUM_CHANNELS)]
-        self.polarity = [2 for x in range( self.NUM_CHANNELS) ]
-        self.buffer = [0 for x in range( self.NUM_CHANNELS) ]
-        self.sampling = 0#sampling#self.init_sampling
+    def add_actions(self):
+        ## Right Click
+        self.main_contextMenu = QMenu(self)
+
+        self.action_logo = QAction('About Vivi')
+        self.action_device_dialog = QAction('Open Device Manager')
+        self.action_adc_dlg = QAction('Open ADC Settings')
+        self.action_vivi_cmd = QAction('Open Console')
+
+        self.action_logo.triggered.connect( self.dlg_about.show )
+        self.action_device_dialog.triggered.connect( self.open_device_dialog )
+        self.action_adc_dlg.triggered.connect( self.dev_manager_vivi.open_adc_setting )
+        self.action_vivi_cmd.triggered.connect( self.dev_manager_vivi.console_open )
+
+        self.main_contextMenu.addAction(self.action_logo)
+        self.main_contextMenu.addAction(self.action_device_dialog)
+        self.main_contextMenu.addAction(self.action_adc_dlg)
+        self.main_contextMenu.addAction(self.action_vivi_cmd)
+
+    ### DEVICE DIALOG
+    def make_device_dialog(self):
+        # Create a Modal Dialog
+        self.Ui_device_dialog = Ui_device_dialog()
+        self.Ui_device_dialog.widget = QDialog()
+        self.Ui_device_dialog.setupUi( self.Ui_device_dialog.widget )
+        self.Ui_device_dialog.widget.setModal(True)
+        self.Ui_device_dialog.widget.show()
+        self.Ui_device_dialog.widget.setWindowTitle("Vivi")
+
+        # Logo on Left
+        self.svg_logo_device = QSvgWidget( os.path.join(self.asset_path,'vivi-main.svg'))#, parent=self.group_logo)
+        self.Ui_device_dialog.layout_logo = QHBoxLayout( self.Ui_device_dialog.group_logo)
+        self.Ui_device_dialog.layout_logo.setContentsMargins( 50,50,50,50 )
+        self.Ui_device_dialog.layout_logo.addWidget( self.svg_logo_device )
+        self.svg_logo_device.renderer().setAspectRatioMode(Qt.AspectRatioMode.KeepAspectRatio)
+
+        self.Ui_device_dialog.PB_start_main.clicked.connect( self.start_main)
+
+        self.dev_manager_vivi = device_manager( parent = self,
+                                                name = "Geophone Recorder",
+                                                device = self.dev_vivi,
+                                                ui_stack = self.group_vivi_control,
+                                                layout_adc = self.layout_adc,
+                                                console = self.console_vivi,
+                                                default_ip='192.168.88.12')
+
+    def start_main( self ):
+        self.Ui_device_dialog.widget.close()
+        self.Ui_device_dialog.PB_start_main.setVisible( False )
+        self.Ui_device_dialog.widget.setWindowTitle("Milí - Device Manager")
+        self.show()
+
+    def open_device_dialog(self):
+        self.Ui_device_dialog.widget.show()
+
+    def make_panel_banner( self ):
+        # Page 0: Logo
+        self.svg_logo_enabled = QSvgWidget( os.path.join(self.asset_path,'vivi-main.svg'))#, parent=self.group_logo)
+        self.layout_logo_enable = QVBoxLayout( self.group_logo_enable)
+        self.layout_logo_enable.addWidget( self.svg_logo_enabled )
+        self.svg_logo_enabled.renderer().setAspectRatioMode(Qt.AspectRatioMode.KeepAspectRatio)
+
+        # self.console_temp.setFont( self.font_mono_XS )
+
+    def make_panel_viewer( self ):
+        # Load Plot Manager
+        self.plotter = vivi_plot.Plotter(  )
+
+        # Acquisition Viewer Panel
+        self.PB_live_start.clicked.connect( self.on_click_start_view )
+        self.LE_num_dft.setText("128")
+        self.CheckBox_average.setChecked( False )
+
+        self.CB_plot =[self.CB_plot_1,
+                       self.CB_plot_2,
+                       self.CB_plot_3,
+                       self.CB_plot_4,
+                       self.CB_plot_5,
+                       self.CB_plot_6,
+                       self.CB_plot_7,
+                       self.CB_plot_8]
+        for i in range(8):
+            self.CB_plot[i].setChecked( True )
+            self.CB_plot[i].setVisible( False )
+            self.CB_plot[i].stateChanged.connect( self.set_plot_enable )
+
+ 
+        self.PB_acquire_start.clicked.connect( self.on_click_start_acquire )
+        self.LE_acquire_time.setText("3")
+
+        self.layout_spectrum.addWidget( self.plotter.PW_spectrum )
+
+        # Save Control
+        today = datetime.today().strftime('%Y-%m-%d')# Get Today
+        savepath = os.path.join( self.vivi_path, 'results', today)
+        self.LE_save_path.setText(savepath)
+        self.LE_save_path.editingFinished.connect( self.on_save_path_change )
+        self.PB_browse.clicked.connect( self.on_click_browse )
+        self.PB_open.clicked.connect( self.on_click_open )
+        self.on_save_path_change()
+
+        for i in range( 8 ):
+            self.tabs_spectrogram.addTab( self.plotter.PW_spectrogram[i], f"Ch {i+1}" )
+            self.tabs_spectrogram.setTabVisible(i,True)
+        self.tabs_spectrogram.addTab( self.plotter.PW_integrated, "Integrated Power")
+
+        # self.plotter.initialize()
+        self.group_viviewer.setEnabled( False )
+
+    def make_about_dialog( self ):
+        self.dlg_about = QDialog(self)
+        self.dlg_about.setWindowTitle("About Vivi")
+        self.dlg_about.resize(300,450)
+        self.dlg_about.setMinimumSize(300,450)
+        layout_about = QVBoxLayout()
+        self.dlg_about.setLayout( layout_about )
+        layout_about.setContentsMargins(15,15,15,15)
+        self.dlg_about.setStyleSheet('background-color: black;')
         
-        self.set_status( "LISTENING" ) 
+        self.group_dlg = QGroupBox()
+        layout_about.addWidget(self.group_dlg)
+        layout_dlg = QVBoxLayout()
+        self.group_dlg.setLayout( layout_dlg )
+        layout_dlg.setContentsMargins(0,0,0,0)
+
+        self.group_dlg.setStyleSheet('background-color: #158081;border-radius:15%')
 
 
-    def get_available_NUM_CHANNELS( self ): 
-        # Get number of channels
-        self.dev.write(b'c\n')
-        msg = self.dev.read(1000).decode()
-        msg = msg.split('\n')
-        msg = [x for x in msg if x.startswith('ADC ')]
-        return len( msg )
+        group_svg = QGroupBox()
+        layout_dlg.addWidget( group_svg)
+        layout_svg = QVBoxLayout()
+        group_svg.setLayout( layout_svg )
+        layout_svg.setContentsMargins(0,0,0,0)
 
-    def set_connected( self,connected ):
-        self.connected = connected
-        self.connected_signal.emit(connected)
+        self.svg_about = QSvgWidget( os.path.join(self.asset_path,'vivi-about.svg'))#, parent=group_svg)
+        layout_svg.addWidget( self.svg_about )
+        self.svg_about.renderer().setAspectRatioMode(Qt.AspectRatioMode.KeepAspectRatio)
+        self.svg_about.resize( 500,900 )
 
-    def set_status( self, new_status ):
-        if new_status not in self.status_possible:
-            print( "INVALID STATUS SIGNAL")
-        else:
-            self.status = new_status
-            self.status_signal.emit( new_status )
+        self.dlg_about.resizeEvent = self.on_resize_dlg_about
 
-    def set_request( self, new_request ):
-        if new_request in self.request_possible or new_request is None:
-            self.request = new_request
-        else:
-            print( "INVALID REQUEST")
+    def on_resize_dlg_about( self,event ):
+        new_w= int(self.dlg_about.width())
+        new_h= int(self.dlg_about.width()*1.5)
+        self.dlg_about.resize(new_w, new_h)
 
-    def __repr__(self):
-        """String representation of adc8 Board."""
+    def open_about( self ):
+        self.dlg_about.exec_()
 
-        return "<Board id=0x{:X}, port={!r}>".format(id(self), self.dev.port)
-
-    def get_board_id(self):
-        """Return the board's identification string and store its serial_number."""
-        self.dev.timeout = self.default_timeout#0.01
-        self.dev.write(b'\n')
-        self.dev.reset_input_buffer()
-        self.dev.read(1000)		# Wait for timeout
-
-        self.dev.write(b'*\n')
-        id = self.dev.read_until(size=80)
-        n = id.rfind(b"   ")
-        if n < 0:
-            self.serial_number = ""
-        else:
-            # Remove the final '\n' and convert to an ASCII string
-            self.serial_number = id[n + 3:-1].decode()
-        return id[:n].decode()
-    
-    def start_comm(self):
-        counter = 0
-        while self.connected:
-            counter += 1
+    ### Save Related
+    def on_save_path_change( self ):
+        folderpath= self.LE_save_path.text(  )
+        if not os.path.isdir( folderpath ):
             try:
-                if self.status == "LISTENING":
-                    # Check for request
-                    if self.request is None:
-                        # See if there's any message to pass
-                        if len(self.msg_input)>0:
-                            cur_msg = self.msg_input.pop(0)
-                            self.msg_out.emit( cur_msg )
-                            write_msg = cur_msg + "\n"
+                os.makedirs( folderpath )
+                self.save_status.setText( "Folder Path Created")
+            except:
+                self.save_status.setText( "Folder Path Not Set")
+        else :
+            self.save_status.setText( "Folder Path Set")
 
-                            self.dev.write( write_msg.encode() )
-                            ans_msg = self.dev.read(1500).decode()
-                            self.parse_answer( ans_msg )
-                            self.msg_out.emit( ans_msg )
-                        else:
-                        # Might as well check for connectivity
-                            time.sleep(0.01) #Prevent talking too often
-                            self.dev.write( '*'.encode())
-                            ans_msg = self.dev.read(1500).decode()
-                            if not ans_msg.startswith('ADC'):
-                                self.run_emergency()
-                                return
-                    elif self.request == "LIVE":
-                        self.start_live_view()
-                        self.set_status( "LISTENING" )
-                        self.set_request(None)
-                    elif self.request == "ACQUIRE":
-                        self.start_acquire()
-                        self.set_status( "LISTENING" )
-                        self.set_request(None)
-                    elif self.request == "DISCONNECT":
-                        self.set_request(None)
-                        break
-            except Exception as e:
-                print(e)
-                self.run_emergency()
-                return
-                        
+    def on_click_open( self ):
+        try:
+            os.system("open "+self.LE_save_path.text() )
+        except:
+            self.PB_open.setEnabled( False )
+    def on_click_browse( self ):
+        folderpath = QFileDialog.getExistingDirectory(self, 'Select Folder')
+        self.LE_save_path.setText( folderpath )
+        self.save_status.setText( "Folder Path Set")
+
+    def prepare_metadata( self, fname, acquistion ):
+        # Make Python dictionary then dump to JSON
         
-        self.msg_out.emit( "Disconnecting..." )
-        self.close_board()
-        self.moveToThread( self.thread_main )
-        QThread.currentThread().quit()
+        if acquistion == -1:
+            acquistion = "live"
 
-    def run_emergency(self):
-        print("Something Wrong, closing board")
-        self.close_board()
-        self.set_connected( False)
-        self.set_status("NOT-READY")
-        self.moveToThread( self.thread_main )
-        QThread.currentThread().quit()
-
-    def parse_answer(self, msg):
-        if msg.startswith("Sampling rate set to "):
-            parts = msg.split(' ')
-            self.sampling = float(parts[4])
-            self.setting_changed.emit()
-        elif msg.startswith("ADC "):
-            parts = msg.split(',')
-            parts_gain = parts[0]
-            parts_polarity = parts[1]
-            parts_buffer = parts[2]
-
-            parts_gain = parts_gain.split(' ')
-            ch = int(parts_gain[1])-1
-            gain = int(parts_gain[5])
-            self.gains[ch] = gain
-
-            parts_polarity = parts_polarity.split(' ')[-1]
-            if parts_polarity=="(unipolar)":
-                self.polarity[ch] = 1
-            elif parts_polarity=="(bipolar)":
-                self.polarity[ch] = 2
-            
-            parts_buffer = parts_buffer.split(' ')[-1]
-            if parts_buffer.startswith( "buffered" ):
-                self.buffer[ch] = 1
-            elif parts_buffer.startswith( "unbuffered"):
-                self.buffer[ch] = 0
-
-        elif msg.startswith("All ADCs "):
-            parts = msg.split(',')
-            parts_gain = parts[0]
-            parts_polarity = parts[1]
-            parts_buffer = parts[2]
-
-            parts_gain = parts_gain.split(' ')
-
-            gain = int(parts_gain[5])
-            self.gains = [gain for i in range(self.NUM_CHANNELS)]
-
-            parts_polarity = parts_polarity.split(' ')[-1]
-            if parts_polarity=="(unipolar)":
-                self.polarity = [1 for i in range(self.NUM_CHANNELS)]
-            elif parts_polarity=="(bipolar)":
-                self.polarity = [2 for i in range(self.NUM_CHANNELS)]
-            
-            parts_buffer = parts_buffer.split(' ')[-1]
-            if parts_buffer.startswith( "buffered" ):
-                self.buffer = [1 for i in range(self.NUM_CHANNELS)]
-            elif parts_buffer.startswith( "unbuffered"):
-                self.buffer = [0 for i in range(self.NUM_CHANNELS)]
+        channels = []
+        for i in range( self.dev_vivi.NUM_CHANNELS):
+            channels.append( {"Channel": (i+1),
+                              "Gain": self.dev_vivi.adcs[i]['gain'],
+                              "Label": self.dev_vivi.adcs[i]['label']})
 
 
-            self.setting_changed.emit()
+        meta = {"filename": fname+".csv",
+                "Sampling": self.dev_vivi.sampling,
+                "Acquisition": acquistion,
+                "Channels": channels}
+        
+        jsonpath = os.path.join(self.LE_save_path.text(), fname+".json")
+        with open(jsonpath, 'w') as f:
+            json.dump(meta, f, ensure_ascii=False, indent=2)
 
+    def prepare_fname( self ):
+        self.timestamp = time.strftime( "%H%M", time.localtime())
+        file_path = self.LE_save_path.text()
+        fname = f"{self.timestamp}"
 
-            
-    def set_num_live_sample(self, value):
-        self.num_live_sample = value
-
-    def send_command(self, msg):
-        # Send Serial Command and Listen
-
-        if self.status == "LISTENING":
-            self.msg_input.append(msg)
+        # Check to see if there is duplicate
+        print( file_path )
+        files = glob.glob( os.path.join( file_path, f"{fname}*.csv") )
+        
+        if len(files) == 0:
+            return fname
         else:
-            self.msg_out.emit( "Connect an ADC-8 Board to Start" )
-    
-    def get_board_status(self):
-        self.send_command("c")
+            return f"{fname}_{len(files)}"
 
-    def set_ADC_settings(self, ch, gain, polarity, buffer):
-        self.send_command(f"g {ch} {gain} {polarity} {buffer}")
-    
-    def set_sampling(self, sampling):
-        self.send_command(f"s {sampling}")
-    
-    def set_sampling(self, sampling):
-        self.send_command(f"s {sampling}")
 
-    def set_acquire_time( self, value ):
-        self.acquire_time = value
+    def on_status_change( self,status ):
+        if status == "NOT-READY": # Board not Ready
+            self.group_vivi_on.setEnabled(False)
+            self.group_viviewer.setEnabled( False )
+        elif status == "LISTENING":# Board Ready
+            self.PB_acquire_start.setText( "Acquire: Start")
+            self.PB_live_start.setText( "Live: Start")
+            self.group_live_control.setEnabled( True )
+            self.group_acquire_control.setEnabled( True )
 
-    
-    def convert_values(self, block, gains, bipolar, num):
-        """Convert the 24-bit values in block to floating-point numbers
-        and store them in the global variable volts."""
+            self.PB_acquire_start.setEnabled(True)
+            self.PB_live_start.setEnabled(True)
+            self.LE_acquire_time.setEnabled( True )
+            self.group_vivi_on.setEnabled(True)
 
-        j = v = 0
-        volts = [0.] * num
-        for i, g in enumerate(gains):
-            if g == 0:
-                continue
-            x = (block[j] + (block[j+1] << 8) + (block[j+2] << 16)) * self.SCALE_24
-            if bipolar[i]:
-                x = 2. * x - 1.
-            volts[v] = round(x * self.VREF / g, 9)
-            j += 3
-            v += 1
-        return volts
-    
-    def start_live_view(self):
-        self.msg_out.emit("Starting Live View")
-        self.set_status("LIVE")
+        elif status == "LIVE":
+            self.PB_live_start.setText( "Live: Stop")
+            self.group_live_control.setEnabled( False )
+            self.PB_acquire_start.setEnabled(False)
+            self.LE_acquire_time.setEnabled( False )
+            self.group_vivi_on.setEnabled(False)
+        elif status == "ACQUIRE":
+            self.PB_acquire_start.setText( "Acquire: Stop")
+            self.group_live_control.setEnabled( False )
+            self.PB_live_start.setEnabled(False)
+            self.LE_acquire_time.setEnabled( False )
+            self.group_vivi_on.setEnabled(False)
 
-        self.dev.write("b0\n".encode())
-        self.dev.timeout = 6
-        a=self.dev.read_until(b"+")		# Skip initial text
-        sig = b""
-        h = self.dev.read(self.HDR_LEN)
-
-        if len(h) == self.HDR_LEN:
-            if self.board_type == 'ADC-8':
-                fmt = f"<4sHBB {2 * self.NUM_CHANNELS}B"
-            elif self.board_type == 'ADC-8x':
-                fmt = f"<8sH {2 * self.NUM_CHANNELS}B"
-            hdr = struct.unpack(fmt, h)
-            sig = hdr[0]		# The signature
+    def prepare_acquisition(self, mode ):
+        self.plotter.sampling = self.dev_vivi.sampling
         
-         
-        if sig == b"ADC8":
-            chans = hdr[4:]			# The ADC channel entries
-        elif sig == b"ADC8x-1.":
-            chans = hdr[2:]			# The ADC channel entries
+        if mode == "live":
+            self.dev_vivi.set_num_live_sample( int( self.LE_num_dft.text() ) )
+            
+            self.plotter.num_dft = self.dev_vivi.num_live_sample
+            self.plotter.num_sample = int( self.LE_num_dft.text() )
+            self.plotter.set_plot_average( self.CheckBox_average.isChecked() )
+            self.plotter.set_plot_enable( self.CB_plot )
+            self.plotter.init_all()
+            self.plotter.labels = [adc['label'] for adc in self.dev_vivi.adcs]
+            self.plotter.init_spectrum()
+            self.plotter.init_spectrogram()
+            self.plotter.init_integrated()
+
+            fname = self.prepare_fname()
+            self.fpath = os.path.join(self.LE_save_path.text(), fname+".csv")
+
+            self.prepare_metadata( fname, -1 ) #-1 for live acqusition
+
+
+        elif mode == "acquire":
+            acquire_time = int( self.LE_acquire_time.text() )
+            self.dev_vivi.set_acquire_time( acquire_time )
+            self.plotter.set_plot_average( False )
+
+            self.plotter.num_dft = int( self.LE_num_dft.text() )
+            self.plotter.num_sample = self.plotter.num_dft
+            self.plotter.set_plot_average( False )
+
+            self.plotter.init_all()
+            self.plotter.init_spectrum()
+
+            self.timestamp = time.strftime( "%H%M", time.localtime())
+
+            fname = self.prepare_fname()
+            self.fpath = os.path.join(self.LE_save_path.text(), fname+".csv")
+            self.prepare_metadata( fname, acquire_time )
+        
+    def on_click_start_acquire(self):
+        if self.PB_acquire_start.text() == "Acquire: Start":
+            self.prepare_acquisition("acquire")
+            self.dev_vivi.set_request( {"func":"acquire"})
+
+            # self.PB_acquire_start.setText( "Acquire: Stop")
+        elif self.PB_acquire_start.text() == "Acquire: Stop":
+            self.dev_vivi.set_stop()
+            print( f"File Saved time stamp: {self.timestamp}")
+            # self.PB_acquire_start.setText( "Acquire: Start")
+
+    def on_click_start_view(self):
+        if self.PB_live_start.text() == "Live: Start":
+            self.prepare_acquisition("live")
+            self.live_file = open( self.fpath, 'w')
+            self.dev_vivi.set_request( {"func":"live"} )
+            # self.PB_live_start.setText( "Live: Stop")
+        elif self.PB_live_start.text() == "Live: Stop":
+            self.dev_vivi.set_stop()
+            print( f"File Saved time stamp: {self.timestamp}")
+            # self.PB_live_start.setText( "Live: Start")
+
+    def received_elapsed_time( self, value):
+        self.label_elapsed_time.setText( f"{value} s")
+        self.Progress_Acquistion.setValue( int( 100*float(value)/float(self.LE_acquire_time.text())))
+
+    def received_acquire_data( self, value):
+        if not value==[-1]:
+            self.Progress_Acquistion.setValue(100)
+            self.label_elapsed_time.setText( f"{self.LE_acquire_time.text()} s" )
+            volts = np.array(value)
+            self.plotter.update_all( volts, spectrogram=False )
+
+            ## Save Data
+            acquire_file = open(self.fpath, 'w')
+
+            for line in value:
+                str_out = ""
+                for i in range(self.dev_vivi.NUM_CHANNELS):
+                    str_out += f"{line[i]}, "
+                str_out = str_out[:-2]
+                str_out += "\n"
+                acquire_file.write(str_out) # works with any number of elements in a line
+            
+            acquire_file.close()
+            print( f"File Saved time stamp: {self.timestamp}")
+            self.PB_acquire_start.setText( "Acquire: Start")
+
+    def received_live_data( self, value ):
+        if value == ["STOP"]:
+            self.live_file.close()
         else:
-            self.msg_out.emit("Invalid header received, transfer aborted")
-            self.dev.write(b"\n")
-            self.set_status( "LISTENING" )
-            return -1 
-        
-        num = 0
-        gains = [chans[2 * i] for i in range(self.NUM_CHANNELS)]
-        bipolar = [chans[2 * i + 1] & self.BIPOLAR for i in range(self.NUM_CHANNELS)]
-        for g in gains:
-            if g > 0:
-                num += 1
-        if num == 0:
-            self.msg_out.emit("Header shows no active ADCs, transfer aborted")
-            self.dev.write(b"\n")
-            self.set_status( "LISTENING" )
-            return -1
+            volts = np.array(value)
+            self.plotter.update_all( volts, spectrogram=True)
+            for line in value:
+                str_out = ""
+                for i in range(self.dev_vivi.NUM_CHANNELS):
+                    str_out += f"{line[i]}, "
+                str_out = str_out[:-2]
+                str_out += "\n"
+                self.live_file.write(str_out) 
 
+    def set_plot_enable( self ):
+        for i in range(self.dev_vivi.NUM_CHANNELS):
+            self.plotter.plot_enable[i] = self.CB_plot[i].isChecked()
 
-        blocksize = num * 3
+        self.plotter.set_plot_enable( self.CB_plot )
 
-        total_blocks = 0
-        warned = False
+    def received_connected( self, val ): 
+        if val: # CONNECTED
+            for i in range(8):
+                if i<self.dev_vivi.NUM_CHANNELS:
+                    # Enabled Channels
+                    self.tabs_spectrogram.setTabVisible(i, True)
+                    self.CB_plot[i].setVisible( True )
+                else:
+                    # Disabled channels
+                    self.tabs_spectrogram.setTabVisible(i, False)
+                    self.CB_plot[i].setVisible( False )
 
-        output_data = []
-        # Receive and store the data
-        cont = True
-        if self.board_type == 'ADC-8x' and self.NUM_CHANNELS==4:
-            self.dev.read(8)
-        while cont:   
-            n = self.dev.read(1)		# Read the buffer's length byte
-            if len(n) == 0:
-                self.msg_out.emit("Timeout")
-                break
-            n = n[0]
-            if n == 0:
-                self.msg_out.emit("End of data")
-                break
+            self.plotter.nchans = self.dev_vivi.NUM_CHANNELS
             
-            d = self.dev.read(n)		# Read the buffer contents
-            if len(d) < n:
-                self.msg_out.emit("Short data buffer received")
-                break
-            
-            if n % blocksize != 0:
-                if not warned:
-                    self.msg_out.emit("Warning: Invalid buffer length", n)
-                    warned = True
-                n -= n % blocksize
+            self.group_viviewer.setEnabled( True )
+            self.group_live_control.setEnabled( True )
+            self.group_acquire_control.setEnabled( True )
+            self.group_save_control.setEnabled( True )
 
-            for i in range(0, n, blocksize):
-                # Convert the block data to floats and write them out
-                volts = self.convert_values(d[i:i + blocksize], gains, bipolar, num)
-                output_data.append ( volts )
-                if len(output_data) == self.num_live_sample+1:
-                    self.live_data.emit( output_data )
-                    output_data = []
-                    break
-            
+            # Init settings
+            # self.dev_vivi.
+
+        else: # Disconnected
+
+            self.group_viviewer.setEnabled( False )
+            self.group_live_control.setEnabled( False )
+            self.group_acquire_control.setEnabled( False )
+            self.group_save_control.setEnabled( False )
+            print("disconnected")
 
 
-            total_blocks += n // blocksize
-
-            if self.request == "STOP":
-                self.msg_out.emit("Termination requested")
-                self.set_status( "STOPPING")
-                break
-
-        self.dev.write(b"\n")
-        self.msg_out.emit("Transfer ended")
-        self.msg_out.emit(f"{total_blocks} blocks received")
-
-        self.dev.timeout = self.default_timeout#0.01
-        
-
-        self.dev.read(1000)		# Flush any extra output
-        
-        return output_data
+    def on_quit( self ):
+        print("Exiting Vivi")
+        self.dev_manager_vivi.disconnect_device()
     
-    def start_acquire(self):
-        self.msg_out.emit("Acquiring")
-        self.set_status("ACQUIRE")
-
-        self.dev.write(f"b{self.acquire_time}\n".encode())
-        self.dev.timeout = 6
-        self.dev.read_until(b"+")		# Skip initial text
-        sig = b""
-        h = self.dev.read(self.HDR_LEN)
         
-        if len(h) == self.HDR_LEN:
-            if self.board_type == 'ADC-8':
-                fmt = f"<4sHBB {2 * self.NUM_CHANNELS}B"
-            elif self.board_type == 'ADC-8x':
-                fmt = f"<8sH {2 * self.NUM_CHANNELS}B"
-            hdr = struct.unpack(fmt, h)
-            sig = hdr[0]		# The signature
-         
-        if sig == b"ADC8":
-            chans = hdr[4:]			# The ADC channel entries
-        elif sig == b"ADC8x-1.":
-            chans = hdr[2:]			# The ADC channel entries
-        else:
-            self.msg_out.emit("Invalid header received, transfer aborted")
-            self.dev.write(b"\n")
-            self.set_request( "LISTEN" )
-            return -1
-        
-        num = 0
-        gains = [chans[2 * i] for i in range(self.NUM_CHANNELS)]
-        bipolar = [chans[2 * i + 1] & self.BIPOLAR for i in range(self.NUM_CHANNELS)]
-        for g in gains:
-            if g > 0:
-                num += 1
-        if num == 0:
-            self.msg_out.emit("Header shows no active ADCs, transfer aborted")
-            self.dev.write(b"\n")
-            self.set_status( "LISTEN" )
-            return -1
-        
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
 
-        blocksize = num * 3
+    vivi_path = os.path.dirname(os.path.abspath(__file__))
+    asset_path = os.path.join( vivi_path, 'assets')
 
-        total_blocks = 0
-        warned = False
-
-        output_data = []
-        # Receive and store the data
+    with open( os.path.join( asset_path,"style.css"),"r") as fh:
+        app.setStyleSheet(fh.read())
 
 
-        time_start = time.time()
-        time_counter = 0
-        cont = True
-        if self.board_type == 'ADC-8x' and self.NUM_CHANNELS==4:
-            self.dev.read(8)
-        while cont:
-            time_cur = time.time()
-            time_elapsed = math.floor(time_cur - time_start)
-            if time_elapsed == time_counter:
-                self.elapsed_time.emit(time_elapsed)
-                time_counter += 1
-            n = self.dev.read(1)		# Read the buffer's length byte
-            
-            if len(n) == 0:
-                self.msg_out.emit("Timeout")
-                break
-            n = n[0]
-            if n == 0:
-                self.msg_out.emit("End of data")
-                break
+    app.setWindowIcon(QIcon(os.path.join(asset_path,"vivi-icon.png")))
+    app.setApplicationName("Vivi")
 
-            d = self.dev.read(n)		# Read the buffer contents
-            if len(d) < n:
-                self.msg_out.emit("Short data buffer received")
-                break
-            
-            if n % blocksize != 0:
-                if not warned:
-                    self.msg_out.emit("Warning: Invalid buffer length", n)
-                    warned = True
-                n -= n % blocksize
 
-            for i in range(0, n, blocksize):
-                # Convert the block data to floats and write them out
-                volts = self.convert_values(d[i:i + blocksize], gains, bipolar, num)
-                output_data.append ( volts )
+    window = MainWindow()
+    window.setWindowIcon(QIcon(os.path.join(asset_path,"vivi-icon.png")))
+    window.show()
+    window.resize(1280,719)
+    window.resize(1280,720)
 
-            total_blocks += n // blocksize
+    app.aboutToQuit.connect( window.on_quit )
 
-            if self.request == "STOP":
-                self.msg_out.emit("Termination requested")
-                self.set_status( "STOPPING")
-                break
 
-        if self.status == "STOPPING":     
-            self.dev.write(b"\n")
-            self.acquire_data.emit( [-1] )
-        else:
-            self.dev.write(b"\n")
-            self.msg_out.emit("Transfer ended")
-            self.msg_out.emit(f"{total_blocks} blocks received")
-
-            self.acquire_data.emit( output_data )
-
-        self.dev.timeout = self.default_timeout#0.01
-        self.dev.read(1000)		# Flush any extra output
-        return output_data
+    app.exec()
