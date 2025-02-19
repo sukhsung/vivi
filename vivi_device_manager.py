@@ -35,6 +35,7 @@ class device_manager():
         self.protocol = 'TCP'
         self.serial_port = None
         self.baudrate = 9600
+        self.board_type = 'ADC-8x'
 
 
         self.UI_device_manager.CB_protocol.activated.connect( self.on_select_protocol )
@@ -44,7 +45,7 @@ class device_manager():
 
         self.UI_device_manager.CB_protocol.setCurrentIndex(0)
 
-        self.UI_device_manager.CB_Baud.setCurrentIndex(6)
+        self.UI_device_manager.CB_Baud.setCurrentIndex(2)
         self.baudrate = int( self.UI_device_manager.CB_Baud.currentText())
         self.UI_device_manager.CB_Baud.currentIndexChanged.connect( self.on_select_baud )
 
@@ -52,6 +53,8 @@ class device_manager():
         self.UI_device_manager.LE_addr.setText( f"{default_ip}:48105")
         self.UI_device_manager.LE_addr.setVisible( True )
         self.UI_device_manager.PB_refresh.setVisible( False )
+        
+        self.UI_device_manager.CB_boardType.activated.connect( self.on_boardType_selected )
 
         # Console Related
         self.console.signal_send_command.connect( self.console_send )
@@ -106,7 +109,7 @@ class device_manager():
 
 
     def on_boardType_selected( self ):
-        self.device.board_type = self.UI_device_manager.CB_boardType.currentText()
+        self.board_type = self.UI_device_manager.CB_boardType.currentText()
 
     def make_disabled_panel(self):
         self.layout_off = QVBoxLayout(self.ui_stack.widget(0))
@@ -157,7 +160,7 @@ class device_manager():
         else:
             portname = self.UI_device_manager.LE_addr.text()
 
-        self.device.connect_device( self.protocol, portname,baudrate=self.baudrate )
+        self.device.connect_device( self.protocol, portname, baudrate=self.baudrate, board_type=self.board_type )
 
 
     def disconnect_device(self):

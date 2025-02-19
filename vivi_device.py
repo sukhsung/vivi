@@ -124,7 +124,7 @@ class Device(QObject):
         self.moveToThread( self.thread_main )
         QThread.currentThread().quit()
 
-    def connect_device( self, protocol, addr, baudrate=9600 ):
+    def connect_device( self, protocol, addr, baudrate, board_type ):
         if protocol == "TCP":
             addr = addr.split(':')
             IP = addr[0]
@@ -133,7 +133,6 @@ class Device(QObject):
             elif len(addr) ==2:
                 port = int(addr[1])
             self.device = serial.serial_for_url( f"socket://{IP}:{port}" )
-            self.device.timeout = 1
         elif protocol == "UDP":
             addr = addr.split(':')
             IP = addr[0]
@@ -145,10 +144,11 @@ class Device(QObject):
             
         elif protocol == "Serial":
             self.device = Serial( addr, baudrate=baudrate, exclusive=True )
-            self.device.timeout = 1
-        
 
-        
+        self.default_timeout = 0.01
+        self.device.timeout = self.default_timeout
+        self.board_type = board_type
+
         if not self.dev_check():
             print( 'Invalid Device, closing')
             self.device.close()
@@ -197,7 +197,7 @@ class Device(QObject):
 
     def read( self ):
         # val = self.device.read_until( self.lineending.encode(self.encoding) ).decode(self.encoding).rstrip()
-        val = self.device.read_all().decode(self.encoding)
+        val = self.device.readall().decode(self.encoding)
         if verbose:
             print(val)
         return val
@@ -237,9 +237,18 @@ class ADC8( Device ):
         try:
             msg = self.get_board_id()
             if msg.startswith("ADC-8"):
-                return True
+                if msg.startswith("ADC-8 driver") and self.board_type==("ADC-8"):
+                    return True
+                elif msg.startswith("ADC-8x driver") and self.board_type==("ADC-8x"):
+                    return True
+                else:
+                    print('Wrong Board Type')
+                    return False
         except:
             return False
+        
+        print( 'Invalid Device' )
+        return False
         
     def get_board_id(self):
         """Return the board's identification string and store its serial_number."""
@@ -297,6 +306,7 @@ class ADC8( Device ):
             self.BIPOLAR = 2
             self.SCALE_24 = 1.0 / (1 << 24)
             self.VREF = 2.5 * 1.02		# Include 2% correction factor
+            self.i_function = False
         elif self.board_type is None:
             self.NUM_CHANNELS = 0
             self.HDR_LEN = 0
@@ -321,17 +331,20 @@ class ADC8( Device ):
         print( self.device.read(1000))
 
     def check_i_function( self ):
-        # Check whether m function exist
-        self.device.read(1000)
-        self.device.write(b'i\n')
-        msg = self.device.read(1000).decode()
-        if msg.startswith('Impedance'):
-            self.i_function = True
-            print( 'I function exists')
-        else:
+        if self.board_type == 'ADC-8':
             self.i_function = False
-            print( 'I function does not exist')
-        _ = self.device.read(1000)
+        else:
+            # Check whether m function exist
+            self.device.read(1000)
+            self.device.write(b'i\n')
+            msg = self.device.read(1000).decode()
+            if msg.startswith('Impedance'):
+                self.i_function = True
+                print( 'I function exists')
+            else:
+                self.i_function = False
+                print( 'I function does not exist')
+            _ = self.device.read(1000)
 
 
     def get_available_NUM_CHANNELS( self ): 
@@ -699,7 +712,10 @@ class ADC8( Device ):
             lines = msg.split('\n')
             for line in lines:
                 if line.startswith('Current settings:'):
-                    self.sampling = float(line.split(' ')[-1])
+                    if self.board_type == 'ADC-8':
+                        self.sampling = float(line.split(' ')[-5][:-1])
+                    elif self.board_type == 'ADC-8x':
+                        self.sampling = float(line.split(' ')[-1])
                 elif line.startswith('ADC '):
                     parts = line.split(': ')
                     ch = int(parts[0][-1])
