@@ -384,6 +384,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 str_out = str_out[:-2]
                 str_out += "\n"
                 acquire_file.write(str_out) # works with any number of elements in a line
+                self.live_file.flush()
+                os.fsync( self.live_file.fileno() )
             
             acquire_file.close()
             print( f"File Saved time stamp: {self.timestamp}")
@@ -402,6 +404,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 str_out = str_out[:-2]
                 str_out += "\n"
                 self.live_file.write(str_out) 
+                self.live_file.flush()
+                os.fsync( self.live_file.fileno() )
 
     def set_plot_enable( self ):
         for i in range(self.dev_vivi.NUM_CHANNELS):
