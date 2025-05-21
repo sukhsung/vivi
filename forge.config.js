@@ -26,13 +26,20 @@ module.exports = {
         options: {
           name: "Vivi",
           maintainer: "https://shsung.com",
-          description: "Vivi - ADC Controller for Geophones"
+          description: "Vivi - ADC Controller for Geophones",
         },
       },
     },
     {
       name: "@electron-forge/maker-rpm",
-      config: {},
+      executableName: "vivi",
+      config: {
+        options: {
+          name: "Vivi",
+          maintainer: "https://shsung.com",
+          description: "Vivi - ADC Controller for Geophones",
+        },
+      },
     },
   ],
   plugins: [
