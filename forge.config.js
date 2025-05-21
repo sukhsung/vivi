@@ -21,10 +21,11 @@ module.exports = {
     },
     {
       name: "@electron-forge/maker-deb",
+      executableName: "vivi",
       config: {
         options: {
-          maintainer: "Suk Hyun Sung",
-          homepage: "https://github.com/sukhsung/vivi",
+          name: "Vivi",
+          maintainer: "https://shsung.com",
           description: "Vivi - ADC Controller for Geophones"
         },
       },
