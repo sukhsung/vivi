@@ -2,6 +2,7 @@
   "name": "vivi",
   "version": "0.0.1",
   "main": "src/main/main.js",
+  "license": "MIT",
   "scripts": {
     "start": "electron-forge start",
     "package": "electron-forge package",
