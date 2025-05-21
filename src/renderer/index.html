@@ -1,0 +1,246 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Vivi - Device Manager</title>
+    <script src="./js/chart.js"></script>
+    <link href="./css/output.css" rel="stylesheet" />
+  </head>
+  <body class="overflow-hidden">
+    <div
+      id="main-container"
+      class="bg-vivi-950 grid h-screen grid-cols-4 grid-rows-1 gap-4 p-2"
+    >
+      <div
+        id="panel_left"
+        class="bg-vivi-500 shadow-box relative col-span-1 px-6 pt-6 pb-0"
+      >
+        <div id="connection" class="flex flex-col">
+          <!-- Connection Manager -->
+          <div id="ui_connect" class="shadow-box bg-white p-6">
+            <!-- Protocol -->
+            <div>
+              <label class="mb-1"> Protocol </label>
+              <select id="protocol" class="w-full">
+                <option>SERIAL</option>
+                <option>TCP</option>
+              </select>
+            </div>
+
+            <!-- Ports -->
+            <div id="UI_portlist">
+              <label class="mb-1"> Ports </label>
+              <div class="flex items-center gap-2">
+                <select id="port_list" class="w-full"></select>
+                <button
+                  id="refresh"
+                  class="flex aspect-square h-9 w-9 text-center text-xl"
+                >
+                  ⟳
+                </button>
+              </div>
+            </div>
+            <!-- Address -->
+            <div id="UI_address" class="hidden">
+              <label class="mb-1"> Address </label>
+              <div class="flex items-center gap-2">
+                <input
+                  id="address"
+                  value="Not Implemented"
+                  class="flex h-9 w-full items-center justify-center rounded border border-slate-200 text-sm hover:border-slate-400"
+                />
+              </div>
+            </div>
+
+            <!-- Baudrate -->
+            <div class="relative my-2">
+              <label class="mb-1 block text-sm text-slate-800">
+                Baudrate
+              </label>
+              <div class="relative">
+                <select id="baudrate" class="w-full"></select>
+              </div>
+            </div>
+            <!-- Connect Button -->
+            <div class="mt-6 text-center">
+              <button id="connect">Connect</button>
+              <button id="disconnect" class="hidden">Disconnect</button>
+            </div>
+          </div>
+
+          <div class="mt-30">
+            <img src="../assets/vivi-main.svg" class="m-auto w-8/12" />
+          </div>
+        </div>
+
+        <!-- Control -->
+        <div
+          id="control"
+          class="grid hidden h-full grid-cols-1 grid-rows-[auto_minmax(500px,1500px)_auto] gap-4 py-4"
+        >
+          <!-- Sampling -->
+          <div
+            id="UI_sampling"
+            class="shadow-box my-2 w-full bg-white px-6 py-2"
+          >
+            <label class="text-sm"> Sampling (Hz): </label>
+            <input id="TB_sampling" value="400" class="w-15" />
+          </div>
+
+          <div class="shadow-box relative bg-white  w-full h-full flex flex-col">
+            <div id="div_scrollbox" class="w-full flex-1 overflow-y-scroll px-6 py-2">
+              <div id="div_ADCs">
+                <div class="mb-3">
+                  <label class="text-black">ADC Settings</label>
+                </div>
+              </div>
+            </div>
+
+            <div
+              id="scroll-indicator"
+              class="text-vivi-500 pointer-events-none absolute bottom-2 left-1/2 z-30 -translate-x-1/2 animate-bounce text-lg"
+            >
+              ↓
+            </div>
+            <div
+              id="adc-gradient"
+              class="pointer-events-none absolute bottom-0 left-0 z-20 h-6 w-full rounded-b-xl bg-gradient-to-t from-gray-400 to-transparent transition-opacity duration-300"
+            ></div>
+          </div>
+
+          <div class="items-center py-2">
+            <button id="terminal">Open Terminal</button>
+          </div>
+        </div>
+
+        <div
+          id="busy_left"
+          class="bg-vivi-500/50 pointer-events-none absolute inset-0 z-50 flex flex-col items-center justify-center rounded-xl opacity-0 backdrop-blur-sm transition-opacity duration-300"
+        >
+          <div class="text-center text-white">Acquisition in Progress...</div>
+          <div class="w-full items-center text-center">
+            <img src="../assets/vivi-main.svg" class="m-auto w-8/12" />
+          </div>
+        </div>
+      </div>
+
+      <div id="panel_right" class="relative col-span-3">
+        <div
+          id="viewer"
+          class="grid h-full min-h-0 grid-rows-[2fr_75px_3fr] gap-2"
+        >
+          <div
+            id="panel_view"
+            class="shadow-box grid h-full min-h-0 grid-cols-[minmax(200px,_1fr)_4fr] grid-rows-1 gap-4 bg-white p-6"
+          >
+            <div
+              class="shadow-box h-full min-h-0 w-full overflow-auto px-2 py-4"
+            >
+              <div class="w-full p-2">
+                <label class="text-sm"># FFT Samples: </label>
+                <input id="TB_NUM_FFT" value="1024" class="w-full" />
+              </div>
+
+              <div class="p-2">
+                <label class="text-sm">Acquisition Time (s): </label>
+                <input
+                  id="TB_acquireTime"
+                  value="120"
+                  class="h-7 w-full rounded border border-slate-200 text-center text-sm hover:border-slate-400"
+                />
+              </div>
+
+              <div class="p-2 text-center">
+                <button id="PB_view_start">Live</button>
+                <button id="PB_acquire_start">Acquire</button>
+                <button id="PB_stop" class="button-pink">
+                  Stop Acquisition
+                </button>
+              </div>
+              <div class="py-3">
+                <div class="h-3 w-full rounded-full bg-slate-200">
+                  <div
+                    id="progress"
+                    class="bg-vivi-500 animate-flicker h-full rounded-full transition-all duration-300"
+                    style="width: 0%"
+                  ></div>
+                </div>
+              </div>
+            </div>
+            <div id="livefft" class="shadow-box h-full w-full bg-white p-4">
+              <canvas id="canvas_live" class="h-full w-full"></canvas>
+            </div>
+          </div>
+          <div
+            id="panel_save"
+            class="shadow-box flex flex-row items-center bg-white px-6 py-2 text-sm"
+          >
+            <div>
+              Save Path:
+              <output id="TB_path" class="w-56"></output>
+            </div>
+            <div class="ml-auto">
+              <button id="PB_browse">Choose Directory</button>
+              <button id="PB_open">Open</button>
+            </div>
+            <div class="ml-4 w-50">
+              <output id="TB_log">Log Status: Not Started</output>
+            </div>
+          </div>
+          <div
+            id="panel_waterfall"
+            class="shadow-box grid h-full min-h-0 grid-cols-[80px_1fr] gap-2 bg-white p-6"
+          >
+            <div class="tab-group flex w-full flex-col">
+              <div id="tabList" class="shadow-box flex flex-col p-1"></div>
+              <div class="shadow-box mt-auto flex flex-col p-1">
+                <a href="#" id="PB_cmap" class="tab tab_black">Inferno</a>
+              </div>
+            </div>
+
+            <div
+              id="waterfall min-h-0 "
+              class="shadow-box h-full min-h-0 w-full overflow-hidden p-6"
+            >
+              <canvas
+                id="canvas_waterfall"
+                class="h-full w-full rounded-xl border bg-black"
+              ></canvas>
+            </div>
+          </div>
+        </div>
+        <div
+          id="busy_right"
+          class="bg-vivi-500/50 pointer-events-none absolute inset-0 z-50 flex flex-col items-center justify-center rounded-xl opacity-0 backdrop-blur-xs transition-opacity duration-300"
+        >
+          <div class="text-white">Connect to a Device to Continue...</div>
+        </div>
+      </div>
+    </div>
+
+    <template id="adc-setting-template">
+      <div
+        class="shadow-box mb-2 grid grid-cols-2 grid-rows-2 gap-2 p-2 shadow-sm"
+      >
+        <div>
+          <label>Label:&nbsp;</label>
+          <input class="w-13" value="Ch 1" />
+        </div>
+        <div>
+          <label>Gain:</label>
+          <select class="h-7 p-1 text-sm"></select>
+        </div>
+        <!-- Polarity -->
+        <select class="h-7 p-1 text-sm">
+          <option>unipolar</option>
+          <option>bipolar</option>
+        </select>
+        <!-- Buffer -->
+        <select class="h-7 p-1 text-sm">
+          <option>unbuffered</option>
+          <option>buffered</option>
+        </select>
+      </div>
+    </template>
+    <script src="js/renderer.js" type="module" defer></script>
+  </body>
+</html>
