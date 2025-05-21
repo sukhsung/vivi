@@ -26,7 +26,6 @@ module.exports = {
         options: {
           name: "Vivi",
           maintainer: "https://shsung.com",
-          description: "Vivi - ADC Controller for Geophones",
         },
       },
     },
@@ -37,7 +36,6 @@ module.exports = {
         options: {
           name: "Vivi",
           maintainer: "https://shsung.com",
-          description: "Vivi - ADC Controller for Geophones",
         },
       },
     },

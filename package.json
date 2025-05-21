@@ -3,6 +3,7 @@
   "version": "0.0.1",
   "main": "src/main/main.js",
   "license": "MIT",
+  "description": "Vivi - ADC Controller for Geophones",
   "scripts": {
     "start": "electron-forge start",
     "package": "electron-forge package",
