@@ -25,6 +25,7 @@ module.exports = {
         options: {
           maintainer: "Suk Hyun Sung",
           homepage: "https://github.com/sukhsung/vivi",
+          description: "Vivi - ADC Controller for Geophones"
         },
       },
     },
