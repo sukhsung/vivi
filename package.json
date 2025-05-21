@@ -1,6 +1,7 @@
 {
   "name": "vivi",
   "version": "0.0.1",
+  "author": "Suk Hyun Sung",
   "main": "src/main/main.js",
   "license": "MIT",
   "description": "Vivi - ADC Controller for Geophones",
