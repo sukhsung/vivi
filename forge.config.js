@@ -3,7 +3,7 @@ const { FuseV1Options, FuseVersion } = require("@electron/fuses");
 
 module.exports = {
   packagerConfig: {
-    name: "Vivi",
+    name: "vivi",
     asar: true,
     icon: "./src/assets/vivi-icon.png",
   },
