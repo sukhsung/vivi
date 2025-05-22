@@ -7,14 +7,22 @@ import { UI_LiveviewManager } from "./UI_LiveView.js";
 import { UI_WaterfallManager } from "./UI_Waterfall.js";
 import { UI_TerminalManager } from "./UI_Terminal.js";
 
+const verbose = true
 const dev_manager = new UI_devManager();
 const path_manager = new UI_PathManager();
-const connection_manager = new UI_ConnectionManager();
-const setting_manager = new UI_SettingManager();
+const connection_manager = new UI_ConnectionManager(verbose);
+const setting_manager = new UI_SettingManager(verbose);
 const acquisition_manager = new UI_AcquisitionManager();
 const liveview_manager = new UI_LiveviewManager();
 const waterfall_manager = new UI_WaterfallManager();
 const terminal_manager = new UI_TerminalManager();
+
+
+function print( message, header='renderer.js') {
+  if (verbose) {
+    console.log( `${header}`, message)
+  }
+}
 
 window.addEventListener("load", () => {
   dev_manager.initialize();
@@ -50,28 +58,36 @@ window.addEventListener("load", () => {
   });
 });
 
+window.api_connection.receivedConnection((data) => {
+  if (data.connected) {
+    print('received connected')
+    dev_manager.received_connected();
+    connection_manager.received_connected();
+    setting_manager.create_ADC_settings(data.NUM_CHANNELS);
+    waterfall_manager.create_tabs( data.NUM_CHANNELS)
+  } else {
+    print('received disconnected')
+    dev_manager.received_disconnected();
+    connection_manager.received_disconnected();
+  }
+})
+
 window.api.receivedLiveData((data) => {
   liveview_manager.received_liveData(data);
   waterfall_manager.received_liveData(data);
 });
 
-window.api.receivedStatus((data) => {
-  if (data.status === "connected") {
-    dev_manager.received_connected();
-    setting_manager.create_ADC_settings(data.NUM_CHANNELS);
-    waterfall_manager.create_tabs( data.NUM_CHANNELS)
-  } else if (data.status === "disconnected") {
-    dev_manager.received_disconnected();
-  } else if (data.status === "started") {
-    dev_manager.received_started();
-    acquisition_manager.received_started(data.file_name);
-  } else if (data.status === "progress") {
-    acquisition_manager.update_progress(data.value);
-  } else if (data.status === "finished") {
-    dev_manager.received_finished();
-    acquisition_manager.received_finished();
-  }
-});
+// window.api.receivedStatus((data) => {
+//    if (data.status === "started") {
+//     dev_manager.received_started();
+//     acquisition_manager.received_started(data.file_name);
+//   } else if (data.status === "progress") {
+//     acquisition_manager.update_progress(data.value);
+//   } else if (data.status === "finished") {
+//     dev_manager.received_finished();
+//     acquisition_manager.received_finished();
+//   }
+// });
 
 window.api.receivedSetting((data) => {
   setting_manager.update_settings(data);

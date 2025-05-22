@@ -8,7 +8,7 @@ module.exports = {
     icon: "./src/assets/vivi-icon.png",
   },
   rebuildConfig: {
-    force: true,
+    // force: true,
   },
   makers: [
     {

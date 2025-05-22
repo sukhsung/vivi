@@ -6,8 +6,8 @@ const BAUDRATES = [
 ];
 
 class UI_ConnectionManager extends UI_Manager {
-  constructor() {
-    super()
+  constructor( verbose=false ) {
+    super(verbose)
     this.protocol = {
       address: null,
       type: null,
@@ -15,6 +15,24 @@ class UI_ConnectionManager extends UI_Manager {
       encoding: "utf8",
       delimiter: "\n",
     };
+  }
+
+  received_connected(){
+    this.print( "received connected")
+    this.PB_connect.disabled = true
+    this.PB_disconnect.disabled = false
+    this.setHidden( this.PB_connect, true )
+    this.setHidden( this.PB_disconnect,false )
+
+  }
+  received_disconnected(){
+    this.print( "received disconnected")
+    this.PB_connect.disabled = false
+    this.PB_disconnect.disabled = true
+    this.setHidden( this.PB_connect, false )
+    this.setHidden( this.PB_disconnect,true )
+
+    this.update_portList()
   }
 
   initialize() {
@@ -71,27 +89,26 @@ class UI_ConnectionManager extends UI_Manager {
   }
 
   async update_portList() {
-    const ports = await window.api.listSerialPorts();
+    const ports = await window.api_connection.listSerialPorts();
     this.CB_remove_all_options(this.CB_port_list);
     this.CB_add_options(this.CB_port_list, ports);
   }
 
   async onclick_refresh() {
-    this.update_portList();
+    await this.update_portList();
+    this.PB_refresh.disabled = true
+    this.PB_refresh.disabled = false
   }
 
   async onclick_connect() {
+    this.PB_connect.disabled = true
     await this.update_protocol();
-    await window.api.connectDevice(this.protocol);
+    window.api_connection.connectDevice(this.protocol);
   }
 
   async onclick_disconnect() {
-    const response = await window.api.disconnectDevice();
-    console.log(response);
-    if (!response.connected) {
-      this.setHidden(this.PB_disconnect, true);
-      this.setHidden(this.PB_connect, false);
-    }
+    this.PB_disconnect.disabled = true
+    window.api_connection.disconnectDevice();
   }
 
 }

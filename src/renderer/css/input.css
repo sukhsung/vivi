@@ -19,6 +19,7 @@
     @apply rounded-md border border-slate-200 bg-white px-4 py-2 text-center items-center justify-center text-sm shadow-sm transition-all;
     @apply hover:bg-vivi-500 hover:text-white hover:shadow-lg;
     @apply focus:bg-vivi-500 focus:shadow-none focus:text-white;
+    @apply active:bg-vivi-700 active:shadow-none active:text-white;
     @apply disabled:pointer-events-none disabled:opacity-50 ;
   }
   select {

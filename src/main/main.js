@@ -5,16 +5,23 @@ const { LogManager } = require("./logManager.js");
 const { FFTManager } = require("./fftManager.js");
 
 const path_main = __dirname;
-const path_preload = path.join(__dirname, "..", "preload");
-const path_renderer = path.join(__dirname, "..", "renderer");
-const path_terminal = path.join(__dirname, "..", "terminal");
+const path_preload = path.join(path_main, "..", "preload");
+const path_renderer = path.join(path_main, "..", "renderer");
+const path_terminal = path.join(path_main, "..", "terminal");
+
+const verbose = true;
 
 let win;
-global.verbose = true;
-
 const fft_manager = new FFTManager();
-const dev_manager = new ADC8Manager("vivi", "utf8", "\n");
+const dev_manager = new ADC8Manager(verbose);
 const log_manager = new LogManager();
+
+function print(message, header='main.js') {
+  if (verbose) {
+      console.log("\x1b[32m%s:\x1b[0m \x1b[33m%s\x1b[0m" , header, message);
+    }
+  }
+
 
 function registerLogHandlers() {
   ipcMain.handle("log_api", async (evt, data) => {
@@ -32,40 +39,52 @@ function registerLogHandlers() {
   });
 }
 
-function registerDeviceHandlers() {
+function registerConnectionHandlers() {
   // Update serial ports
   ipcMain.handle("list-serial-ports", async () => {
     return await list_serial_ports();
   });
 
-  ipcMain.handle("is-connected", async () => {
+  ipcMain.handle("device:isConnected", async () => {
     return dev_manager.connected;
   });
 
-  ipcMain.on("connect-device", async (evt, protocol) => {
-    await dev_manager.connect(protocol);
+  ipcMain.on("device:connect", async (evt, protocol) => {
+    await dev_manager.tryConnect(protocol);
   });
 
-  ipcMain.on("disconnect-device", async () => {
+  ipcMain.on("device:disconnect", async () => {
     await dev_manager.disconnect();
   });
 
-  ipcMain.on("set-sampling", async (evt, sampling) => {
-    dev_manager.set_sampling(sampling);
+  dev_manager.on("connection", async (status) => {
+    const data = {}
+    if (status.connected){
+      print("Sending connected to renderer")
+      data.connected = true
+      data.NUM_CHANNELS = dev_manager.NUM_CHANNELS
+    } else {
+      print("Sending disconnected to renderer")
+      data.connected = false
+    }
+    win.webContents.send("device:connection",data)
+  })
+}
+
+function registerSettingHandlers() {
+
+  ipcMain.on("setting:setSampling", async (evt, sampling) => {
+    dev_manager.setSampling(sampling);
   });
 
-  ipcMain.on("set-ADC", async (evt, data) => {
-    dev_manager.set_ADC(data);
+  ipcMain.on("setting:setADC", async (evt, data) => {
+    dev_manager.setADC(data);
   });
-
-  dev_manager.on("status", (data) => {
-    win.webContents.send("dev:status", data);
-  });
-
   dev_manager.on("settings", () => {
     win.webContents.send("settings", dev_manager.settings);
   });
 }
+
 
 function registerAcquisitionHandlers() {
   ipcMain.handle("start-acquisition", (evt, data) => {
@@ -132,14 +151,15 @@ function createWindow() {
   log_manager.set_win(win);
 
   win.on('close', function (e) {
-    let response = dialog.showMessageBoxSync(this, {
-        type: 'question',
-        buttons: ['Yes', 'No'],
-        title: 'Confirm',
-        message: 'Are you sure you want to quit?'
-    });
+    console.log('closing')
+    // let response = dialog.showMessageBoxSync(this, {
+    //     type: 'question',
+    //     buttons: ['Yes', 'No'],
+    //     title: 'Confirm',
+    //     message: 'Are you sure you want to quit?'
+    // });
 
-    if(response == 1) e.preventDefault();
+    // if(response == 1) e.preventDefault();
 });
 
   win.on("closed", () => {
@@ -150,7 +170,8 @@ function createWindow() {
 
 app.whenReady().then(() => {
   createWindow();
-  registerDeviceHandlers();
+  registerSettingHandlers();
+  registerConnectionHandlers();
   registerAcquisitionHandlers();
   registerTerminalHandlers();
   registerLogHandlers();

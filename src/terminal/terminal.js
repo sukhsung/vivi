@@ -72,7 +72,7 @@ class Terminal {
     }
 
     query_connected() {
-        if (window.api.isConnected()){
+        if (window.api_connection.isConnected()){
             this.connect()
         } else {
             this.disconnect()

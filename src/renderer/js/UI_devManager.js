@@ -2,8 +2,8 @@ import { UI_Manager } from "./UI_Manager.js";
 export { UI_devManager };
 
 class UI_devManager extends UI_Manager {
-  constructor() {
-    super();
+  constructor( verbose=false ) {
+    super( verbose );
   }
 
   initialize() {

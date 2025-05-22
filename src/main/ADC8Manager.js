@@ -1,9 +1,9 @@
-const { DeviceManager, list_serial_ports} = require("./deviceManager.js")
+const { DeviceManager, list_serial_ports } = require("./deviceManager.js");
 const { ADCProtocol } = require("./ADCProtocol.js");
 
 class ADC8Manager extends DeviceManager {
-  constructor() {
-    super();
+  constructor(verbose = false) {
+    super(verbose);
 
     this.settings = { sampling: null, adcs: null };
     this.board_type = null;
@@ -14,15 +14,10 @@ class ADC8Manager extends DeviceManager {
     this.BIPOLAR = 2;
   }
 
-  async check_device() {
-    if (global.verbose) console.log("Checking for valid device");
+  async _check_device() {
+    this.print("Checking for valid device");
 
-    // flush
-    await this.write("");
-    await this.device.read_all();
-
-    await this.write("*");
-    const response = (await this.read()).split(this.delimiter);
+    const response = (await this.query("*")).split(this.delimiter);
 
     const firstLine = response[0];
 
@@ -39,8 +34,7 @@ class ADC8Manager extends DeviceManager {
   }
 
   async initialize() {
-    await this.write("c");
-    const responses = (await this.read()).split(this.delimiter);
+    const responses = (await this.query("c")).split(this.delimiter);
 
     this.settings.adcs = [];
     let ch = 0;
@@ -60,32 +54,48 @@ class ADC8Manager extends DeviceManager {
     this.ADC_Protocol = new ADCProtocol(this.board_type, this.NUM_CHANNELS);
 
     // Default setting
-    this.set_sampling(400);
-    this.set_ADC({ ch: 0, gain: 128, polarity: 2, buffer: "u" });
+    await this.setSampling(400);
+    await this.setADC({ ch: 0, gain: 128, polarity: 2, buffer: "u" });
+    // this.update_settings()
   }
 
-  async set_sampling(sampling) {
-    await this.write(`s ${sampling}`);
-    this.update_settings();
+  async setSampling(sampling) {
+    const response = await this.query (`s ${sampling}`);
+    // response = 'Sampling rate set to 400.00 Hz'
+    const parts = response.split(' ')
+    this.sampling = parseFloat( parts[ parts.length - 2])
+    this.print( `Sampling set to ${this.sampling} Hz`)
   }
 
-  async set_ADC(data) {
+  async setADC(data) {
     // polarity = 1 or 2 (unipolar or bipolar)
     // buffer   = 'b' or 'u' (buffered or unbufferd)
-    await this.write(
+    await this.query(
       `g ${data.ch} ${data.gain} ${data.polarity} ${data.buffer}`,
     );
-    this.update_settings();
-  }
+    
+    if (data.ch == 0) {
+      // set all adcs
+      this.settings.adcs.forEach( adc => {
+        adc.gain = data.gain;
+        adc.polarity = data.polarity;
+        adc.buffer = data.buffer;
+      })
+    } else {
+      this.settings.adcs[ data.ch-1 ].gain = data.gain;
+      this.settings.adcs[ data.ch-1 ].polarity = data.polarity;
+      this.settings.adcs[ data.ch-1 ].buffer = data.buffer;
+    }
 
+  }
+  
   async update_settings() {
     if (global.verbose) console.log("Updating status");
 
     // flush
     await this.device.read_all();
 
-    await this.write("c");
-    const responses = (await this.read()).split(this.delimiter);
+    const responses =  (await this.query("c")).split(this.delimiter);
 
     responses.forEach((line) => {
       if (line.startsWith("Current settings:")) {
@@ -259,7 +269,5 @@ class ADC8Manager extends DeviceManager {
     this.STOP = true;
   }
 }
-
-
 
 module.exports = { ADC8Manager, list_serial_ports };

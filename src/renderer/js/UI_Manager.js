@@ -1,8 +1,9 @@
 export { UI_Manager };
 
 class UI_Manager extends EventTarget {
-  constructor() {
+  constructor(verbose = false) {
     super();
+    this.verbose = verbose
   }
 
   cacheDOM(selectors) {
@@ -28,6 +29,12 @@ class UI_Manager extends EventTarget {
       element.classList.add("hidden");
     } else {
       element.classList.remove("hidden");
+    }
+  }
+
+  print( message, header=this.constructor.name) {
+    if (this.verbose) {
+      console.log( `${header}: ${message}`)
     }
   }
 }

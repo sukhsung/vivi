@@ -1,18 +1,56 @@
 const { SerialPort } = require("serialport");
+const EventEmitter = require("events");
 
-class SerialDevice {
-  constructor(protocol) {
+class SerialDevice extends EventEmitter {
+  constructor(protocol, verbose = false) {
+    super();
+    this.encoding = protocol.encoding;
+    this.verbose = verbose;
+
     this.port = new SerialPort({
       path: protocol.address,
       baudRate: protocol.baudRate,
       autoOpen: false,
     });
-
-    this.encoding = protocol.encoding;
+    // If Port is already open, close
+    if (this.port.isOpen) this.port.close();
+    this.register_event_handlers();
 
     this.timeout = 100; // Default timeout in ms
+
     this._buffer = Buffer.alloc(0);
     this._readResolvers = [];
+  }
+
+  register_event_handlers() {
+    // register event handlers
+    this.port.on("open", (err) => {
+      if (err) {
+        this.print("Fail to open serial port");
+      } else {
+        this.print("Serial Port is open");
+      }
+      this.flush();
+      this.emit("open", { open: true });
+    });
+
+    this.port.on("close", (err) => {
+      if (err) {
+        if (err.disconnected) {
+          this.print("Serial port is disconnected");
+        } else {
+          this.print("Fail to close serial port");
+        }
+      } else {
+        this.print("serial Port is closed");
+      }
+
+      this.emit("open", { open: this.port.isOpen });
+    });
+
+    this.port.on("error", (err) => {
+      this.print(err.message);
+    });
 
     this.port.on("data", (chunk) => {
       this._buffer = Buffer.concat([this._buffer, chunk]);
@@ -28,38 +66,35 @@ class SerialDevice {
         return true;
       });
     });
-
-    this.port.on("open", () => {
-      if (global.verbose) {
-        console.log("Serial Port is Open");
-      }
-    });
-
-    this.port.open((err) => {
-      if (err) {
-        console.error("Error opening serial port:", err.message);
-      } else if (global.verbose) {
-        console.log("Serial Port is Open");
-      }
-    });
   }
 
   set_timeout(timeout) {
     this.timeout = timeout;
   }
-  close() {
-    if (!this.port?.isOpen) return;
 
-    this.port.close((err) => {
-      if (err) console.error("Serial port close error:", err.message);
-      else if (global.verbose) console.log("Serial port closed.");
-    });
+  flush() {
+    if (this.port.isOpen) {
+      this.print('Flushing')
+      this.port.flush();
+    }
+  }
+
+  open() {
+    if (!this.port.isOpen) {
+      this.port.open();
+    } else {
+      this.print("Port is already open");
+    }
+  }
+
+  close() {
+    if (this.port.isOpen) {
+      this.port.close();
+    }
   }
 
   write(msg) {
-    this.port.write(msg, (err) => {
-      if (err) console.error("Write error:", err.message);
-    });
+    this.port.write(msg);
   }
 
   read(size) {
@@ -72,12 +107,12 @@ class SerialDevice {
 
       const timeoutId = setTimeout(() => {
         this._readResolvers = this._readResolvers.filter(
-          (r) => r.resolve !== resolve
+          (r) => r.resolve !== resolve,
         );
         reject(
           new Error(
-            `Timeout: Only received ${this._buffer.length}/${size} bytes`
-          )
+            `Timeout: Only received ${this._buffer.length}/${size} bytes`,
+          ),
         );
       }, this.timeout);
 
@@ -100,6 +135,7 @@ class SerialDevice {
       }, timeout);
     });
   }
+
   read_until(target, timeout = this.timeout) {
     if (!Buffer.isBuffer(target)) {
       target = Buffer.from(target, this.encoding);
@@ -122,7 +158,7 @@ class SerialDevice {
 
       const timeoutId = setTimeout(() => {
         reject(
-          new Error(`read_until timeout: never found "${target.toString()}"`)
+          new Error(`read_until timeout: never found "${target.toString()}"`),
         );
       }, timeout);
 
@@ -136,6 +172,12 @@ class SerialDevice {
 
       poll();
     });
+  }
+
+  print(message, header=this.constructor.name) {
+    if (this.verbose) {
+      console.log("\x1b[32m%s:\x1b[0m \x1b[33m%s\x1b[0m" , header, message);
+    }
   }
 }
 

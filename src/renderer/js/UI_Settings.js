@@ -1,11 +1,11 @@
 import { UI_Manager } from "./UI_Manager.js";
 export { UI_SettingManager };
 
-const GAINS = [1, 8, 16, 32, 64, 128];
+const GAINS = [128, 64, 32, 16, 8, 1];
 
 class UI_SettingManager extends UI_Manager {
-  constructor() {
-    super();
+  constructor(verbose=false) {
+    super(verbose);
     this.scrolled = false;
     this.labels = [];
   }
@@ -111,6 +111,10 @@ class UI_SettingManager extends UI_Manager {
     const selects = wrapper.querySelectorAll("select");
     const [gainSelect, polaritySelect, bufferSelect] = selects;
 
+    gainSelect.selectedIndex = 5
+    polaritySelect.selectedIndex =1
+    bufferSelect.selectedIndex =0
+
     this.CB_add_options(gainSelect, GAINS);
     gainSelect.onchange = () => this.onchange_adc(channel);
     polaritySelect.onchange = () => this.onchange_adc(channel);
@@ -132,7 +136,8 @@ class UI_SettingManager extends UI_Manager {
       buffer: buffer,
     };
 
-    window.api.setADC(data);
+    window.api_setting.setADC(data);
+    this.print("Setting ADCs")
   }
 
   onchange_sampling() {
@@ -141,7 +146,8 @@ class UI_SettingManager extends UI_Manager {
       this.sampling = 400;
     }
 
-    window.api.setSampling(this.sampling);
+    window.api_setting.setSampling(this.sampling);
+    this.print("Setting sampling")
   }
 
   update_settings(data) {
