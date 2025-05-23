@@ -45,7 +45,7 @@ class SerialDevice extends EventEmitter {
         this.print("serial Port is closed");
       }
 
-      this.emit("open", { open: this.port.isOpen });
+      this.emit("open", { open: false});
     });
 
     this.port.on("error", (err) => {

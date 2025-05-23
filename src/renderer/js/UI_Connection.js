@@ -21,6 +21,7 @@ class UI_ConnectionManager extends UI_Manager {
     this.print( "received connected")
     this.PB_connect.disabled = true
     this.PB_disconnect.disabled = false
+    this.PB_disconnect.innerHTML = 'Disconnect'
     this.setHidden( this.PB_connect, true )
     this.setHidden( this.PB_disconnect,false )
 
@@ -28,6 +29,12 @@ class UI_ConnectionManager extends UI_Manager {
   received_disconnected(){
     this.print( "received disconnected")
     this.PB_connect.disabled = false
+    this.PB_refresh.disabled = false
+    this.CB_baudrate.disabled = false
+    this.TB_address.disabled = false
+    this.CB_protocol.disabled = false
+    this.CB_port_list.disabled = false
+    this.PB_connect.innerHTML = 'Connect'
     this.PB_disconnect.disabled = true
     this.setHidden( this.PB_connect, false )
     this.setHidden( this.PB_disconnect,true )
@@ -101,12 +108,20 @@ class UI_ConnectionManager extends UI_Manager {
   }
 
   async onclick_connect() {
+    this.PB_connect.innerHTML = 'Connecting...'
     this.PB_connect.disabled = true
+    this.PB_refresh.disabled = true
+    this.CB_baudrate.disabled = true
+    this.TB_address.disabled = true
+    this.CB_protocol.disabled = true
+    this.CB_port_list.disabled = true
+
     await this.update_protocol();
     window.api_connection.connectDevice(this.protocol);
   }
 
   async onclick_disconnect() {
+    this.PB_connect.innerHTML = 'Disonnecting...'
     this.PB_disconnect.disabled = true
     window.api_connection.disconnectDevice();
   }

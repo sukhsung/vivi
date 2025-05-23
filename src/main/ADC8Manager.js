@@ -12,28 +12,10 @@ class ADC8Manager extends DeviceManager {
     this.NUM_FFT = null;
     this.NUM_CHANNELS = null;
     this.BIPOLAR = 2;
+    this.is_acquiring = false;
   }
 
-  async _check_device() {
-    this.print("Checking for valid device");
-
-    const response = (await this.query("*")).split(this.delimiter);
-
-    const firstLine = response[0];
-
-    if (!firstLine) return false;
-
-    if (firstLine.startsWith("ADC-8 driver")) {
-      this.board_type = "ADC-8";
-      return true;
-    } else if (firstLine.startsWith("ADC-8x driver")) {
-      this.board_type = "ADC-8x";
-      return true;
-    }
-    return false;
-  }
-
-  async initialize() {
+  async _init_device() {
     const responses = (await this.query("c")).split(this.delimiter);
 
     this.settings.adcs = [];
@@ -59,12 +41,39 @@ class ADC8Manager extends DeviceManager {
     // this.update_settings()
   }
 
+  async _check_device() {
+    // ADC8, 8x specific
+    const lines = (await this.query("*")).split(this.delimiter);
+
+    for (let i = 0; i < lines.length; i++) {
+      let line = lines[i];
+      if (line.length > 0) {
+        if (line.startsWith("ADC-8 driver")) {
+          this.board_type = "ADC-8";
+          return true;
+        } else if (line.startsWith("ADC-8x driver")) {
+          this.board_type = "ADC-8x";
+          return true;
+        }
+      }
+    }
+
+    return false;
+  }
+
+  async prepare_disconnect() {
+    if (this.is_acquiring){
+      await this.stop_acquisition();
+    }
+  }
+
+
   async setSampling(sampling) {
-    const response = await this.query (`s ${sampling}`);
+    const response = await this.query(`s ${sampling}`);
     // response = 'Sampling rate set to 400.00 Hz'
-    const parts = response.split(' ')
-    this.sampling = parseFloat( parts[ parts.length - 2])
-    this.print( `Sampling set to ${this.sampling} Hz`)
+    const parts = response.split(" ");
+    this.sampling = parseFloat(parts[parts.length - 2]);
+    this._print(`Sampling set to ${this.sampling} Hz`);
   }
 
   async setADC(data) {
@@ -73,29 +82,28 @@ class ADC8Manager extends DeviceManager {
     await this.query(
       `g ${data.ch} ${data.gain} ${data.polarity} ${data.buffer}`,
     );
-    
+
     if (data.ch == 0) {
       // set all adcs
-      this.settings.adcs.forEach( adc => {
+      this.settings.adcs.forEach((adc) => {
         adc.gain = data.gain;
         adc.polarity = data.polarity;
         adc.buffer = data.buffer;
-      })
+      });
     } else {
-      this.settings.adcs[ data.ch-1 ].gain = data.gain;
-      this.settings.adcs[ data.ch-1 ].polarity = data.polarity;
-      this.settings.adcs[ data.ch-1 ].buffer = data.buffer;
+      this.settings.adcs[data.ch - 1].gain = data.gain;
+      this.settings.adcs[data.ch - 1].polarity = data.polarity;
+      this.settings.adcs[data.ch - 1].buffer = data.buffer;
     }
-
   }
-  
+
   async update_settings() {
     if (global.verbose) console.log("Updating status");
 
     // flush
     await this.device.read_all();
 
-    const responses =  (await this.query("c")).split(this.delimiter);
+    const responses = (await this.query("c")).split(this.delimiter);
 
     responses.forEach((line) => {
       if (line.startsWith("Current settings:")) {
@@ -118,7 +126,7 @@ class ADC8Manager extends DeviceManager {
       }
     });
 
-    this.emit("settings");
+    this.emit("setting:update");
   }
 
   async update_labels(labels) {
@@ -128,7 +136,8 @@ class ADC8Manager extends DeviceManager {
   }
 
   async start_acquisition(t_acquire) {
-    this.emit("status", { status: "started" });
+    this.is_acquiring = true;
+    this.emit("acquire:status", { status: "started" });
     this.STOP = false;
     await this.device.read_all();
 
@@ -153,7 +162,7 @@ class ADC8Manager extends DeviceManager {
       chans = hdr.data;
     } else {
       console.log("Invalid header received, transfer aborted");
-      this._write(Buffer.from("\n"));
+      this._write_buffer(Buffer.from("\n"));
       this.emit("status", { status: "error", message: "Invalid header" });
       return -1;
     }
@@ -174,7 +183,7 @@ class ADC8Manager extends DeviceManager {
 
     if (num === 0) {
       console.log("Header shows no active ADCs, transfer aborted");
-      this._write(Buffer.from("\n"));
+      this._write_buffer(Buffer.from("\n"));
       return -1;
     } else {
       console.log(`Header shows ${num} active ADCs`);
@@ -195,9 +204,9 @@ class ADC8Manager extends DeviceManager {
       if (t_acquire > 0) {
         let dt = Date.now() - t0;
         let progress = parseInt((dt / (t_acquire * 1000)) * 100);
-        this.emit("status", { status: "progress", value: progress });
+        this.emit("acquire:status", { status: "progress", value: progress });
       } else {
-        this.emit("status", { status: "progress", value: 0 });
+        this.emit("acquire:status", { status: "progress", value: 0 });
       }
 
       const nBuf = await this.device.read(1);
@@ -237,7 +246,7 @@ class ADC8Manager extends DeviceManager {
         output_data.push(volts);
 
         if (output_data.length === this.NUM_FFT) {
-          this.emit("live-data", output_data);
+          this.emit("acquire:live-data", output_data);
           output_data = [];
           break;
         }
@@ -246,27 +255,32 @@ class ADC8Manager extends DeviceManager {
       total_blocks += Math.floor(n / blocksize);
 
       if (this.STOP) {
-        console.log("Live View Termination Requested");
+        this._print("Acquisition Termination Requested");
         break;
       }
     }
 
-    this._write(Buffer.from("\n"));
+    this._write_buffer(Buffer.from("\n"));
     this.device.set_timeout(this.default_timeout);
     await this.device.read_all(); // Flush
 
     if (t_acquire > 0) {
-      this.emit("status", { status: "progress", value: 100 });
+      this.emit("acquire:status", { status: "progress", value: 100 });
     }
 
-    this.emit("status", { status: "finished" });
+    this._print("Acquisition has finished");
+    this.is_acquiring = false;
+    this.emit("acquire:status", { status: "finished" });
   }
 
-  stop_acquisition() {
-    if (global.verbose) {
-      console.log("Stopping View");
-    }
+  async stop_acquisition() {
+    this._print("Stopping Acquisition");
     this.STOP = true;
+    while (this.is_acquiring){
+      this._print("Still Acquiring")
+      await this._sleep( 300 )
+    }
+    return
   }
 }
 

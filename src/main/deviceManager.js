@@ -7,121 +7,137 @@ class DeviceManager extends EventEmitter {
     this.verbose = verbose;
     this.connected = false;
     this.default_timeout = 100;
-    this.device = null
+    this.device = null;
   }
 
-  async tryConnect( protocol, retry=true){
-    this.protocol = protocol
-    this.connect( this.protocol )
-
-    this.print( "Waiting 1 s, before checking")
-    await new Promise(res => setTimeout(res, 1000));
-    if (this.connected) {
-      this.print('Actually Connected')
-    } else if (retry) {
-      this.print('Not Connected, Retry')
-      this.tryConnect( this.protocol, false)
-    }
-
-  }
-
-  isConnected() {
-    return this.connected
-  }
-
-  register_event_handlers() {
-    this.device.on("open", (msg) => {
-      if (msg.open) {
-        this.onreceived_open();
-      } else {
-        this.onreceived_close();
-      }
-    });
-  }
-
-  async onreceived_close() {
-    this.print("Port is closed");
-    this.connected = false;
-    this.device = null
-    this.emit("connection", { connected: false });
-  }
-
-  async onreceived_open() {
-    const devValid = await this.check_device();
-
-    if (!devValid) {
-      this.print("Invalid device, closing port");
-      this.device.port.close();
-      this.connected = false;
-
-    } else {
-      this.print("Device check passed");
-      await this.initialize();
-
-      this.connected = true;
-      this.emit("connection", { connected: true });
-    }
-  }
-
-  async disconnect() {
-    this.print("Disconnecting");
-    if (this.connected) {
-      this.device.close();
-    }
-  }
-
-  async connect(protocol) {
-    this.print("Connecting");
+  // Connection Logic
+  async connect_once(protocol) {
+    // Attempt to connect once and return device validity
+    this._print("Connecting");
     this.encoding = protocol.encoding;
     this.delimiter = protocol.delimiter;
 
     if (protocol.type === "SERIAL") {
       try {
         this.device = new SerialDevice(protocol, this.verbose);
-        this.register_event_handlers();
+        // this.register_event_handlers();
         this.device.set_timeout(this.default_timeout);
         await this.device.open();
       } catch (error) {
-        this.print(error.message)
-        this.device = null
-        this.emit("connection", { connected: false });
-      }
+        this._print(error.message);
+        this.device = null;
+        return 
+      }      
     }
+
+    // wait `000 ms then validate device
+    await this._sleep( 1000 )
+    return await this.check_device()
   }
 
-  async query( msg ) {
-    await this.write(msg)
-    return await this.read()
+  async connect(protocol, retry = 2) {
+    this._print(`Try connecting, up to ${retry} more times`);
+
+    const isValid = await this.connect_once(protocol); // Actual Connection Logic
+
+    this._print("Waiting 1 s, before checking");
+    await this._sleep(1000);
+    if (isValid) {
+      this._print("Connected to valid device");
+      this.connected = true
+      await this.init_device()
+      this.emit('connection',{connected:true})
+      return
+    } else if (retry>0) {
+      this._print("Not Connected, Retry");
+      await this.connect(protocol, retry - 1);
+    } else if (retry==0) {
+      this._print("Not Connected, Not retrying")
+      this.connected = false
+      this.emit('connection',{connected:false})
+      return
+    } else {
+      this._print('Weird edge case...')
+    }
+
   }
+
+  // Disconnect Logic
+  async disconnect() {
+    this._print("Disconnecting",undefined, 'r');
+    if (this.connected) {
+      await this.device.close();
+      this.connected = false;
+      this.device = null
+    }
+    this.emit( 'connection', {connected:false})
+  }
+
+
+  async init_device() {
+    this._print("Initializing device...");
+    this.register_event_handlers();
+    await this._init_device();
+    return;
+  }
+
+  async _init_device() {
+    return
+  }
+
+  async prepare_disconnect() {
+    return
+  }
+
+
+  async on_port_close() {
+    this._print( "Received Port Closed",undefined,'r')
+    this.close()
+  }
+
+  async close() {
+    this._print( "Closing",undefined,'r')
+    await this.prepare_disconnect()
+    await this.disconnect()
+    return
+  }
+  
+
+  register_event_handlers() {
+    this.device.on("open", async (msg) => {
+      if (msg.open === false) {
+        await this.on_port_close()
+      } 
+    });
+  }
+
 
   async read() {
     // read everything then decode
     const msg = (await this.device.read_all()).toString(this.encoding);
-    this.print( msg, this.constructor.name +': Reading' )
+    this._print(msg, this.constructor.name + ": Reading");
     return msg;
   }
 
-  async _write(buffer) {
-    this.device.write(buffer);
-  }
-
   async write(msg) {
-    this.print( msg, this.constructor.name +': Writing' )
+    this._print(msg, this.constructor.name + ": Writing");
     const buffer = Buffer.from(msg + this.delimiter, this.encoding);
-    await this._write(buffer);
+    await this._write_buffer(buffer);
   }
 
-  async initialize() {
-    print("Initializing device...");
-    return;
+  async query(msg) {
+    await this.write(msg);
+    return await this.read();
   }
 
   async check_device() {
-    return  await this._check_device()
+    this._print("Checking for valid device");
+    const isValid = await this._check_device()
+    this._print(`Device Validity: ${isValid}`)
+    return isValid;
   }
 
   async _check_device() {
-    print("Checking for valid device");
     return true;
   }
 
@@ -132,17 +148,38 @@ class DeviceManager extends EventEmitter {
     return response;
   }
 
-  print(message, header=this.constructor.name) {
+  isConnected() {
+    return this.connected;
+  }
+
+  async _write_buffer(buffer) {
+    this.device.write(buffer);
+  }
+
+  async _sleep(ms) {
+    this._print( `Sleeping for ${ms} ms`)
+    return await new Promise((res) => setTimeout(res, 1000));
+  }
+
+  _print(message, header = this.constructor.name, color='y') {
+    let col
+    if (color === 'r') {
+      col = '\x1b[31m'  
+    } else if (color === 'g'){
+      col = '\x1b[32m'  
+    } else if (color === 'y'){
+      col = '\x1b[33m'  
+    }
+
     if (this.verbose) {
-      message = message.split('\n')
+      message = message.split("\n");
 
       if (message.length <= 1) {
-        console.log("\x1b[32m%s:\x1b[0m \x1b[33m%s\x1b[0m" , header, message[0]);
-      }
-      else {
-          console.log("\x1b[32m%s:\x1b[0m" , header);
-        message.forEach( m => {
-          console.log("    \x1b[33m%s\x1b[0m" , m);
+        console.log("\x1b[32m%s:\x1b[0m %s%s\x1b[0m", header, col,message[0]);
+      } else {
+        console.log("\x1b[32m%s:\x1b[0m", header);
+        message.forEach((m) => {
+          console.log("    %s%s\x1b[0m", col, m);
         });
       }
     }

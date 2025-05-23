@@ -19,8 +19,21 @@ class LogManager extends EventEmitter {
     this.f_json = null;
   }
 
-  set_win( win ){
-    this.win = win
+  async close() {
+    this._print( "Closing")
+    if (this.f_csv!==null){
+      this.f_csv.end();
+      this.f_csv = null;
+    }
+    if (this.f_json!==null){
+      this.f_json.end();
+      this.f_json = null;
+    }
+    return
+  }
+
+  set_win(win) {
+    this.win = win;
   }
 
   write_data(data) {
@@ -33,14 +46,14 @@ class LogManager extends EventEmitter {
   start_log(t_acquisition, settings) {
     const time_stamp = this.get_time();
 
-    this.fname = `${time_stamp}`
+    this.fname = `${time_stamp}`;
     let path_csv = path.join(this.path, `${this.fname}.csv`);
     let path_json = path.join(this.path, `${this.fname}.json`);
     let counter = 0;
 
     while (fs.existsSync(path_csv)) {
       counter++;
-      this.fname = `${time_stamp}_${counter}`
+      this.fname = `${time_stamp}_${counter}`;
       path_csv = path.join(this.path, `${this.fname}.csv`);
       path_json = path.join(this.path, `${this.fname}.json`);
     }
@@ -56,13 +69,13 @@ class LogManager extends EventEmitter {
     this.f_json.end();
     this.f_json = null;
 
-    this.emit( "status", {status:"started", fname:this.fname })
+    this.emit("status", { status: "started", fname: this.fname });
   }
 
   stop_log() {
     this.f_csv.end();
-    this.f_csv = null
-    this.emit( "status", {status:"finished", fname:this.fname })
+    this.f_csv = null;
+    this.emit("status", { status: "finished", fname: this.fname });
   }
 
   get_time() {
@@ -97,6 +110,30 @@ class LogManager extends EventEmitter {
     console.log("Creating " + path);
     if (!fs.existsSync(path)) {
       fs.mkdirSync(path, { recursive: true });
+    }
+  }
+
+  _print(message, header = this.constructor.name, color = "y") {
+    let col;
+    if (color === "r") {
+      col = "\x1b[31m";
+    } else if (color === "g") {
+      col = "\x1b[32m";
+    } else if (color === "y") {
+      col = "\x1b[33m";
+    }
+
+    if (this.verbose) {
+      message = message.split("\n");
+
+      if (message.length <= 1) {
+        console.log("\x1b[32m%s:\x1b[0m %s%s\x1b[0m", header, col, message[0]);
+      } else {
+        console.log("\x1b[32m%s:\x1b[0m", header);
+        message.forEach((m) => {
+          console.log("    %s%s\x1b[0m", col, m);
+        });
+      }
     }
   }
 }

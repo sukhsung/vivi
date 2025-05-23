@@ -3,14 +3,16 @@ const { contextBridge, ipcRenderer } = require("electron");
 contextBridge.exposeInMainWorld("api", {
   openTerminal: () => ipcRenderer.invoke("terminal-open"),
   terminalCommand: (msg) => ipcRenderer.invoke("terminal-command", msg),
-  startAcquire: (data) => ipcRenderer.invoke("start-acquisition", data),
-  stopAcquire: () => ipcRenderer.invoke("stop-acquisition"),
-  receivedLiveData: (callback) =>
-    ipcRenderer.on("live-data", (event, data) => callback(data)),
-  receivedSetting: (callback) =>
-    ipcRenderer.on("settings", (event, data) => callback(data)),
 });
 
+contextBridge.exposeInMainWorld("api_acquire", {
+  startAcquire: (data) => ipcRenderer.send("acquire:start", data),
+  stopAcquire: () => ipcRenderer.send("acquire:stop"),
+  receivedStatus: (callback) =>
+    ipcRenderer.on("acquire:status", (event, data) => callback(data)),
+  receivedLiveData: (callback) =>
+    ipcRenderer.on("acquire:live-data", (event, data) => callback(data)),
+});
 
 contextBridge.exposeInMainWorld("api_connection", {
   receivedConnection: (callback) =>
@@ -24,6 +26,8 @@ contextBridge.exposeInMainWorld("api_connection", {
 contextBridge.exposeInMainWorld("api_setting", {
   setSampling: (sampling) => ipcRenderer.send("setting:setSampling", sampling),
   setADC: (data) => ipcRenderer.send("setting:setADC", data),
+  receivedSetting: (callback) =>
+    ipcRenderer.on("setting:update", (event, data) => callback(data)),
 });
 
 contextBridge.exposeInMainWorld("log_api", {

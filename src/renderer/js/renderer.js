@@ -72,22 +72,22 @@ window.api_connection.receivedConnection((data) => {
   }
 })
 
-window.api.receivedLiveData((data) => {
+window.api_acquire.receivedStatus((data) =>{
+  print( 'received' + data)
+  if (data.status==="started") {
+    acquisition_manager.received_started()
+  } else if (data.status ==="finished"){
+    acquisition_manager.received_finished()
+  } else if (data.status ==="progress"){
+    acquisition_manager.update_progress( data.value)
+  }
+
+})
+
+window.api_acquire.receivedLiveData((data) => {
   liveview_manager.received_liveData(data);
   waterfall_manager.received_liveData(data);
 });
-
-// window.api.receivedStatus((data) => {
-//    if (data.status === "started") {
-//     dev_manager.received_started();
-//     acquisition_manager.received_started(data.file_name);
-//   } else if (data.status === "progress") {
-//     acquisition_manager.update_progress(data.value);
-//   } else if (data.status === "finished") {
-//     dev_manager.received_finished();
-//     acquisition_manager.received_finished();
-//   }
-// });
 
 window.api.receivedSetting((data) => {
   setting_manager.update_settings(data);

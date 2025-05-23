@@ -3,6 +3,7 @@ const path = require("path");
 const { ADC8Manager, list_serial_ports } = require("./ADC8Manager.js");
 const { LogManager } = require("./logManager.js");
 const { FFTManager } = require("./fftManager.js");
+const { channel } = require("diagnostics_channel");
 
 const path_main = __dirname;
 const path_preload = path.join(path_main, "..", "preload");
@@ -16,12 +17,20 @@ const fft_manager = new FFTManager();
 const dev_manager = new ADC8Manager(verbose);
 const log_manager = new LogManager();
 
-function print(message, header='main.js') {
+function print(message, header = "main.js") {
   if (verbose) {
-      console.log("\x1b[32m%s:\x1b[0m \x1b[33m%s\x1b[0m" , header, message);
-    }
+    console.log("\x1b[32m%s:\x1b[0m \x1b[33m%s\x1b[0m", header, message);
   }
+}
 
+function send_to_renderer( channel, data) {
+    if (win && !win.isDestroyed()) {
+      // console.log("Window is still alive");
+      win.webContents.send(channel, data);
+    } else {
+      print("Window is already destroyed");
+    }
+}
 
 function registerLogHandlers() {
   ipcMain.handle("log_api", async (evt, data) => {
@@ -35,7 +44,7 @@ function registerLogHandlers() {
   });
 
   log_manager.on("status", (data) => {
-    win.webContents.send("log:status", data);
+    send_to_renderer("log:status", data);
   });
 }
 
@@ -50,7 +59,7 @@ function registerConnectionHandlers() {
   });
 
   ipcMain.on("device:connect", async (evt, protocol) => {
-    await dev_manager.tryConnect(protocol);
+    await dev_manager.connect(protocol);
   });
 
   ipcMain.on("device:disconnect", async () => {
@@ -58,21 +67,21 @@ function registerConnectionHandlers() {
   });
 
   dev_manager.on("connection", async (status) => {
-    const data = {}
-    if (status.connected){
-      print("Sending connected to renderer")
-      data.connected = true
-      data.NUM_CHANNELS = dev_manager.NUM_CHANNELS
+    const data = {};
+    if (status.connected) {
+      print("Sending connected to renderer");
+      data.connected = true;
+      data.NUM_CHANNELS = dev_manager.NUM_CHANNELS;
     } else {
-      print("Sending disconnected to renderer")
-      data.connected = false
+      print("Sending disconnected to renderer");
+      data.connected = false;
     }
-    win.webContents.send("device:connection",data)
-  })
+
+    send_to_renderer( "device:connection", data )
+  });
 }
 
 function registerSettingHandlers() {
-
   ipcMain.on("setting:setSampling", async (evt, sampling) => {
     dev_manager.setSampling(sampling);
   });
@@ -80,33 +89,35 @@ function registerSettingHandlers() {
   ipcMain.on("setting:setADC", async (evt, data) => {
     dev_manager.setADC(data);
   });
-  dev_manager.on("settings", () => {
-    win.webContents.send("settings", dev_manager.settings);
+  dev_manager.on("setting:update", () => {
+    send_to_renderer("setting:update", dev_manager.settings);
   });
 }
 
-
 function registerAcquisitionHandlers() {
-  ipcMain.handle("start-acquisition", (evt, data) => {
+  ipcMain.on("acquire:start", (evt, data) => {
+    print("Requested to start");
     dev_manager.update_labels(data.labels);
     fft_manager.initialize(data.NUM_FFT);
     log_manager.start_log(data.t, dev_manager.settings);
-
     dev_manager.NUM_FFT = data.NUM_FFT;
+
     dev_manager.start_acquisition(data.t);
-    return { started: true };
   });
 
-  ipcMain.handle("stop-acquisition", () => {
+  ipcMain.on("acquire:stop", () => {
     dev_manager.stop_acquisition();
     log_manager.stop_log();
-    return { finished: true };
   });
 
-  dev_manager.on("live-data", (data) => {
+  dev_manager.on("acquire:status", (data) => {
+    send_to_renderer("acquire:status", data);
+  });
+
+  dev_manager.on("acquire:live-data", (data) => {
     log_manager.write_data(data);
     const ffts = fft_manager.calc_fft(data);
-    win.webContents.send("live-data", ffts);
+    send_to_renderer("acquire:live-data", ffts);
   });
 }
 
@@ -116,7 +127,7 @@ function registerTerminalHandlers() {
   });
   ipcMain.handle("terminal-command", async (evt, msg) => {
     const return_msg = await dev_manager.run_command(msg.value);
-    win.webContents.send("setting-updated", dev_manager.settings);
+    send_to_renderer("setting-updated", dev_manager.settings);
     return return_msg;
   });
 }
@@ -150,19 +161,24 @@ function createWindow() {
   win.loadFile(path.join(path_renderer, "index.html"));
   log_manager.set_win(win);
 
-  win.on('close', function (e) {
-    console.log('closing')
-    // let response = dialog.showMessageBoxSync(this, {
-    //     type: 'question',
-    //     buttons: ['Yes', 'No'],
-    //     title: 'Confirm',
-    //     message: 'Are you sure you want to quit?'
+  win.on("close", (e) => {
+    // let response = dialog.showMessageBoxSync(win, {
+    //   type: "question",
+    //   buttons: ["No", "Yes"],
+    //   title: "Confirm",
+    //   message: "Are you sure you want to quit?",
     // });
 
-    // if(response == 1) e.preventDefault();
-});
+    // if (response == 0) {
+    //   e.preventDefault();
+    // } else {
+    //   print("Closing");
+    // }
+  });
 
-  win.on("closed", () => {
+  win.on("closed", async () => {
+    await dev_manager.close();
+    await log_manager.close();
     // Closing main window closes everything
     app.quit();
   });

@@ -122,7 +122,7 @@ class UI_AcquisitionManager extends UI_Manager {
   }
 
   async start_acquisition(NUM_FFT, t, labels) {
-    await window.api.startAcquire({
+    await window.api_acquire.startAcquire({
       NUM_FFT: NUM_FFT,
       t: t,
       labels: labels,
@@ -142,7 +142,7 @@ class UI_AcquisitionManager extends UI_Manager {
   }
 
   async onclick_stop() {
-    await window.api.stopAcquire();
+    await window.api_acquire.stopAcquire();
   }
 
   update_progress(progress) {
