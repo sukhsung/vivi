@@ -3,7 +3,6 @@ const path = require("path");
 const { ADC8Manager, list_serial_ports } = require("./ADC8Manager.js");
 const { LogManager } = require("./logManager.js");
 const { FFTManager } = require("./fftManager.js");
-const { channel } = require("diagnostics_channel");
 
 const path_main = __dirname;
 const path_preload = path.join(path_main, "..", "preload");
@@ -15,7 +14,7 @@ const verbose = true;
 let win;
 const fft_manager = new FFTManager();
 const dev_manager = new ADC8Manager(verbose);
-const log_manager = new LogManager();
+const log_manager = new LogManager(verbose);
 
 function print(message, header = "main.js") {
   if (verbose) {
@@ -43,7 +42,7 @@ function registerLogHandlers() {
     }
   });
 
-  log_manager.on("status", (data) => {
+  log_manager.on("log:status", (data) => {
     send_to_renderer("log:status", data);
   });
 }
@@ -98,10 +97,10 @@ function registerAcquisitionHandlers() {
   ipcMain.on("acquire:start", (evt, data) => {
     print("Requested to start");
     dev_manager.update_labels(data.labels);
-    fft_manager.initialize(data.NUM_FFT);
     log_manager.start_log(data.t, dev_manager.settings);
-    dev_manager.NUM_FFT = data.NUM_FFT;
+    fft_manager.initialize(data.NUM_FFT);
 
+    dev_manager.NUM_FFT = data.NUM_FFT;
     dev_manager.start_acquisition(data.t);
   });
 

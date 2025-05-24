@@ -3,7 +3,7 @@ import { colormap } from "./colormap.js";
 
 export { UI_WaterfallManager };
 
-const colormaps = ["Inferno", "Plasma", "Viridis", "Magma", "Gray"];
+const colormaps = ["Viridis", "Inferno", "Plasma", "Magma", "Gray"];
 
 class UI_WaterfallManager extends UI_Manager {
   constructor() {

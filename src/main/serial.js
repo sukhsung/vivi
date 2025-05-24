@@ -26,9 +26,9 @@ class SerialDevice extends EventEmitter {
     // register event handlers
     this.port.on("open", (err) => {
       if (err) {
-        this.print("Fail to open serial port");
+        this._print("Fail to open serial port");
       } else {
-        this.print("Serial Port is open");
+        this._print("Serial Port is open");
       }
       this.flush();
       this.emit("open", { open: true });
@@ -37,19 +37,19 @@ class SerialDevice extends EventEmitter {
     this.port.on("close", (err) => {
       if (err) {
         if (err.disconnected) {
-          this.print("Serial port is disconnected");
+          this._print("Serial port is disconnected");
         } else {
-          this.print("Fail to close serial port");
+          this._print("Fail to close serial port");
         }
       } else {
-        this.print("serial Port is closed");
+        this._print("serial Port is closed");
       }
 
-      this.emit("open", { open: false});
+      this.emit("open", { open: false });
     });
 
     this.port.on("error", (err) => {
-      this.print(err.message);
+      this._print(err.message);
     });
 
     this.port.on("data", (chunk) => {
@@ -74,7 +74,7 @@ class SerialDevice extends EventEmitter {
 
   flush() {
     if (this.port.isOpen) {
-      this.print('Flushing')
+      this._print("Flushing");
       this.port.flush();
     }
   }
@@ -83,7 +83,7 @@ class SerialDevice extends EventEmitter {
     if (!this.port.isOpen) {
       this.port.open();
     } else {
-      this.print("Port is already open");
+      this._print("Port is already open");
     }
   }
 
@@ -98,7 +98,7 @@ class SerialDevice extends EventEmitter {
   }
 
   read(size) {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       if (this._buffer.length >= size) {
         const chunk = this._buffer.slice(0, size);
         this._buffer = this._buffer.slice(size);
@@ -107,21 +107,24 @@ class SerialDevice extends EventEmitter {
 
       const timeoutId = setTimeout(() => {
         this._readResolvers = this._readResolvers.filter(
-          (r) => r.resolve !== resolve,
+          (r) => r.resolve !== wrappedResolve,
         );
-        reject(
-          new Error(
-            `Timeout: Only received ${this._buffer.length}/${size} bytes`,
-          ),
+        const partial = this._buffer;
+        this._buffer = new Uint8Array(); // clear buffer
+        console.warn(
+          `Serial read timeout: returning partial data ${partial.length}/${size} bytes`,
         );
+        resolve(partial);
       }, this.timeout);
+
+      const wrappedResolve = (data) => {
+        clearTimeout(timeoutId);
+        resolve(data);
+      };
 
       this._readResolvers.push({
         size,
-        resolve: (data) => {
-          clearTimeout(timeoutId);
-          resolve(data);
-        },
+        resolve: wrappedResolve,
       });
     });
   }
@@ -174,9 +177,27 @@ class SerialDevice extends EventEmitter {
     });
   }
 
-  print(message, header=this.constructor.name) {
+  _print(message, header = this.constructor.name, color = "y") {
+    let col;
+    if (color === "r") {
+      col = "\x1b[31m";
+    } else if (color === "g") {
+      col = "\x1b[32m";
+    } else if (color === "y") {
+      col = "\x1b[33m";
+    }
+
     if (this.verbose) {
-      console.log("\x1b[32m%s:\x1b[0m \x1b[33m%s\x1b[0m" , header, message);
+      message = message.split("\n");
+
+      if (message.length <= 1) {
+        console.log("\x1b[32m%s:\x1b[0m %s%s\x1b[0m", header, col, message[0]);
+      } else {
+        console.log("\x1b[32m%s:\x1b[0m", header);
+        message.forEach((m) => {
+          console.log("    %s%s\x1b[0m", col, m);
+        });
+      }
     }
   }
 }

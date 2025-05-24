@@ -76,8 +76,10 @@ window.api_acquire.receivedStatus((data) =>{
   print( 'received' + data)
   if (data.status==="started") {
     acquisition_manager.received_started()
+    dev_manager.received_started()
   } else if (data.status ==="finished"){
     acquisition_manager.received_finished()
+    dev_manager.received_finished()
   } else if (data.status ==="progress"){
     acquisition_manager.update_progress( data.value)
   }
@@ -89,7 +91,7 @@ window.api_acquire.receivedLiveData((data) => {
   waterfall_manager.received_liveData(data);
 });
 
-window.api.receivedSetting((data) => {
+window.api_setting.receivedSetting((data) => {
   setting_manager.update_settings(data);
 });
 

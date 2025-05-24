@@ -6,8 +6,9 @@ const os = require("os");
 const fs = require("fs");
 
 class LogManager extends EventEmitter {
-  constructor() {
+  constructor(verbose) {
     super();
+    this.verbose = verbose;
     this.win = null;
     this.home = os.homedir();
 
@@ -20,16 +21,16 @@ class LogManager extends EventEmitter {
   }
 
   async close() {
-    this._print( "Closing")
-    if (this.f_csv!==null){
+    this._print("Closing");
+    if (this.f_csv !== null) {
       this.f_csv.end();
       this.f_csv = null;
     }
-    if (this.f_json!==null){
+    if (this.f_json !== null) {
       this.f_json.end();
       this.f_json = null;
     }
-    return
+    return;
   }
 
   set_win(win) {
@@ -44,6 +45,7 @@ class LogManager extends EventEmitter {
   }
 
   start_log(t_acquisition, settings) {
+    this._print("Starting");
     const time_stamp = this.get_time();
 
     this.fname = `${time_stamp}`;
@@ -69,13 +71,13 @@ class LogManager extends EventEmitter {
     this.f_json.end();
     this.f_json = null;
 
-    this.emit("status", { status: "started", fname: this.fname });
+    this.emit("log:status", { status: "started", fname: this.fname });
   }
 
   stop_log() {
     this.f_csv.end();
     this.f_csv = null;
-    this.emit("status", { status: "finished", fname: this.fname });
+    this.emit("log:status", { status: "finished", fname: this.fname });
   }
 
   get_time() {

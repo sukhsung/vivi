@@ -161,7 +161,7 @@ class ADC8Manager extends DeviceManager {
     } else if (sig === "ADC8x-1.") {
       chans = hdr.data;
     } else {
-      console.log("Invalid header received, transfer aborted");
+      this._print("Invalid header received, transfer aborted",undefined,'r');
       this._write_buffer(Buffer.from("\n"));
       this.emit("status", { status: "error", message: "Invalid header" });
       return -1;
@@ -182,11 +182,11 @@ class ADC8Manager extends DeviceManager {
     }
 
     if (num === 0) {
-      console.log("Header shows no active ADCs, transfer aborted");
+      this._print("Header shows no active ADCs, transfer aborted",undefined,'r');
       this._write_buffer(Buffer.from("\n"));
       return -1;
     } else {
-      console.log(`Header shows ${num} active ADCs`);
+      this._print(`Header shows ${num} active ADCs`);
     }
 
     const blocksize = num * 3;
