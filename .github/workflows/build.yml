@@ -1,9 +1,9 @@
-name: Build Electron App
+name: Build and Release
 
 on:
   push:
-    branches: [main]
-  pull_request:
+    tags:
+      - 'v*'
 
 jobs:
   build:
@@ -24,11 +24,18 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Make Electron app
+      - name: Build app
         run: npm run make
 
-      - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
+      - name: Upload Release Assets
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
         with:
-          name: ${{ matrix.os }}-build
-          path: out/make/
+          files: |
+            out/make/**/*.dmg
+            out/make/**/*.exe
+            out/make/**/*.deb
+            out/make/**/*.AppImage
+            out/make/**/*.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
