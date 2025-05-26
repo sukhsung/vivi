@@ -88,6 +88,11 @@ function registerSettingHandlers() {
   ipcMain.on("setting:setADC", async (evt, data) => {
     dev_manager.setADC(data);
   });
+
+  ipcMain.on("setting:setAllGain", async (evt, data) => {
+    dev_manager.setAllGain(data);
+  });
+
   dev_manager.on("setting:update", () => {
     send_to_renderer("setting:update", dev_manager.settings);
   });

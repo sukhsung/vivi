@@ -26,6 +26,7 @@ contextBridge.exposeInMainWorld("api_connection", {
 contextBridge.exposeInMainWorld("api_setting", {
   setSampling: (sampling) => ipcRenderer.send("setting:setSampling", sampling),
   setADC: (data) => ipcRenderer.send("setting:setADC", data),
+  setAllGain: (data) => ipcRenderer.send("setting:setAllGain", data),
   receivedSetting: (callback) =>
     ipcRenderer.on("setting:update", (event, data) => callback(data)),
 });

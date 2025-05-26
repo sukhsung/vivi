@@ -4,7 +4,7 @@ export { UI_SettingManager };
 const GAINS = [128, 64, 32, 16, 8, 1];
 
 class UI_SettingManager extends UI_Manager {
-  constructor(verbose=false) {
+  constructor(verbose = false) {
     super(verbose);
     this.scrolled = false;
     this.labels = [];
@@ -14,14 +14,18 @@ class UI_SettingManager extends UI_Manager {
     // Load DOM
     this.cacheDOM({
       TB_sampling: "TB_sampling",
+      CB_allGains: "CB_allGains",
       div_scrollbox: "div_scrollbox",
       div_ADCs: "div_ADCs",
       scroll_indicator: "scroll-indicator",
     });
     this.sampling = parseFloat(this.TB_sampling.value);
+    this.CB_allGains.selectedIndex = 5;
+    this.CB_add_options(this.CB_allGains, GAINS);
 
     this.register_handler_scroll();
     this.register_handler_sampling();
+    this.CB_allGains.onchange = () => this.onchange_allGains();
   }
 
   onchange_label() {
@@ -40,6 +44,22 @@ class UI_SettingManager extends UI_Manager {
         this.onchange_label();
       }
     });
+  }
+
+  onchange_allGains() {
+    const idx_option = this.CB_allGains.selectedIndex;
+
+    for (let i = 0; i < this.NUM_CHANNELS; i++) {
+      this.CB_gains[i].selectedIndex = idx_option;
+    }
+
+    const gain = parseInt(this.CB_allGains.value);
+
+    const data = {
+      gain: gain,
+    };
+
+    window.api_setting.setAllGain(data);
   }
 
   register_handler_sampling() {
@@ -88,11 +108,11 @@ class UI_SettingManager extends UI_Manager {
       this.labels.push(TB_label.value);
       this.register_handler_label(TB_label);
     }
-    
-    this.update_scroll_visibility()
+
+    this.update_scroll_visibility();
   }
 
-  update_scroll_visibility(){
+  update_scroll_visibility() {
     if (this.div_scrollbox.scrollHeight > this.div_scrollbox.clientHeight) {
       this.setHidden(this.scroll_indicator, false);
     } else {
@@ -104,16 +124,29 @@ class UI_SettingManager extends UI_Manager {
     const template = document.getElementById("adc-setting-template");
     const clone = template.content.cloneNode(true);
 
+
     const wrapper = clone.querySelector("div");
+    const div_label =  wrapper.querySelector("div").querySelector("div")
+    div_label.innerHTML = `ADC ${channel}`
     const labelInput = wrapper.querySelector("input");
     labelInput.value = `Ch ${channel}`;
+
+    const collapse = wrapper.querySelector("button");
+
+    collapse.onclick = () => {
+      const body = wrapper.querySelector(".adc-settings-body");
+      const icon = wrapper.querySelector("svg");
+
+      body.classList.toggle("hidden");
+      icon.classList.toggle("rotate-180"); // Optional: rotate arrow
+    };
 
     const selects = wrapper.querySelectorAll("select");
     const [gainSelect, polaritySelect, bufferSelect] = selects;
 
-    gainSelect.selectedIndex = 5
-    polaritySelect.selectedIndex =1
-    bufferSelect.selectedIndex =0
+    gainSelect.selectedIndex = 5;
+    polaritySelect.selectedIndex = 1;
+    bufferSelect.selectedIndex = 0;
 
     this.CB_add_options(gainSelect, GAINS);
     gainSelect.onchange = () => this.onchange_adc(channel);
@@ -137,7 +170,7 @@ class UI_SettingManager extends UI_Manager {
     };
 
     window.api_setting.setADC(data);
-    this.print("Setting ADCs")
+    this.print("Setting ADCs");
   }
 
   onchange_sampling() {
@@ -147,7 +180,7 @@ class UI_SettingManager extends UI_Manager {
     }
 
     window.api_setting.setSampling(this.sampling);
-    this.print("Setting sampling")
+    this.print("Setting sampling");
   }
 
   update_settings(data) {

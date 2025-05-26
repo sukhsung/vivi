@@ -97,6 +97,20 @@ class ADC8Manager extends DeviceManager {
     }
   }
 
+  async setAllGain(data) {
+    await this.query(
+      `g 0 ${data.gain}`,
+    );
+
+    // set all adcs
+    this.settings.adcs.forEach((adc) => {
+      adc.gain = data.gain;
+      adc.polarity = data.polarity;
+      adc.buffer = data.buffer;
+    });
+
+  }
+
   async update_settings() {
     if (global.verbose) console.log("Updating status");
 
