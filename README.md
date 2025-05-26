@@ -4,12 +4,12 @@
 
 ---
 
-## 📦 Installation Instructions
+## Installation Instructions
 
-### 🪟 Windows
+### Windows
 _TODO: Add instructions here (e.g., run `.exe`, install path, etc.)_
 
-### 🍎 macOS
+### macOS
 1. Download the `.dmg` file from the [Releases](https://github.com/sukhsung/vivi/releases) page.
 2. Copy `Vivi.app` into the `/Applications` folder.
 3. Open Terminal and run:
@@ -24,7 +24,7 @@ _TODO: Add instructions here (e.g., run `.exe`, install path, etc.)_
 ### Linux:
 _TODO: Add instructions here (e.g., run `.exe`, install path, etc.)_
 
-## 🛠 Development and Build  Instruction
+## Development and Build Instruction
 1. Download and install [`Node.js`](https://nodejs.org)
 2. Clone this repository and navigate into it
    ```
@@ -46,7 +46,7 @@ _TODO: Add instructions here (e.g., run `.exe`, install path, etc.)_
    npm run make
    ```
 
-## 🙏 Acknowledgements
+## Acknowledgements
 
 Special thanks to:
 
