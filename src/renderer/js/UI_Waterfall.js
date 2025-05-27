@@ -51,6 +51,11 @@ class UI_WaterfallManager extends UI_Manager {
     this.tabs[0].classList.add("tab_active");
   }
 
+  received_disconnected() {
+    this.tabs = [];
+    this.div_tabList.innerHTML=""
+  }
+
   toggle_cmap() {
     this.idx_cmap += 1;
     this.idx_cmap %= colormaps.length;

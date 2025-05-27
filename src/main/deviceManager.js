@@ -1,4 +1,5 @@
 const { SerialDevice, list_serial_ports } = require("./serial.js");
+const { TCPDevice } = require("./serial_tcp.js");
 const EventEmitter = require("events");
 
 class DeviceManager extends EventEmitter {
@@ -27,6 +28,18 @@ class DeviceManager extends EventEmitter {
         this.device = null;
         return;
       }
+    } else if (protocol.type === "TCP") {
+      try {
+        this.device = new TCPDevice(protocol, this.verbose);
+        this.device.set_timeout(this.default_timeout);
+        await this.device.open();
+      } catch (error) {
+        this._print(error.message);
+        this.device = null;
+        return;
+      }
+    } else {
+      this._print("Invalid protocol");
     }
 
     // wait `000 ms then validate device

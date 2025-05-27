@@ -7,7 +7,7 @@ import { UI_LiveviewManager } from "./UI_LiveView.js";
 import { UI_WaterfallManager } from "./UI_Waterfall.js";
 import { UI_TerminalManager } from "./UI_Terminal.js";
 
-const verbose = true
+const verbose = true;
 const dev_manager = new UI_devManager();
 const path_manager = new UI_PathManager();
 const connection_manager = new UI_ConnectionManager(verbose);
@@ -17,10 +17,9 @@ const liveview_manager = new UI_LiveviewManager();
 const waterfall_manager = new UI_WaterfallManager();
 const terminal_manager = new UI_TerminalManager();
 
-
-function print( message, header='renderer.js') {
+function print(message, header = "renderer.js") {
   if (verbose) {
-    console.log( `${header}`, message)
+    console.log(`${header}`, message);
   }
 }
 
@@ -30,7 +29,7 @@ window.addEventListener("load", () => {
   connection_manager.initialize();
   setting_manager.initialize();
   acquisition_manager.initialize();
-  liveview_manager.initialize()
+  liveview_manager.initialize();
   waterfall_manager.initialize();
   terminal_manager.initialize();
 
@@ -40,9 +39,8 @@ window.addEventListener("load", () => {
     const labels = setting_manager.labels;
     const NUM_CHANNELS = setting_manager.NUM_CHANNELS;
     const sampling = setting_manager.sampling;
-
     liveview_manager.init_plot(NUM_CHANNELS, NUM_FFT, sampling, labels);
-    waterfall_manager.init_plot( NUM_CHANNELS, NUM_FFT);
+    waterfall_manager.init_plot(NUM_CHANNELS, NUM_FFT);
     acquisition_manager.start_acquisition(NUM_FFT, t, labels);
   });
   acquisition_manager.addEventListener("start-acquire", () => {
@@ -53,38 +51,38 @@ window.addEventListener("load", () => {
     const sampling = setting_manager.sampling;
 
     liveview_manager.init_plot(NUM_CHANNELS, NUM_FFT, sampling, labels);
-    waterfall_manager.init_plot( NUM_CHANNELS, NUM_FFT);
+    waterfall_manager.init_plot(NUM_CHANNELS, NUM_FFT);
     acquisition_manager.start_acquisition(NUM_FFT, t, labels);
   });
 });
 
 window.api_connection.receivedConnection((data) => {
   if (data.connected) {
-    print('received connected')
+    print("received connected");
     dev_manager.received_connected();
     connection_manager.received_connected();
     setting_manager.create_ADC_settings(data.NUM_CHANNELS);
-    waterfall_manager.create_tabs( data.NUM_CHANNELS)
+    waterfall_manager.create_tabs(data.NUM_CHANNELS);
   } else {
-    print('received disconnected')
+    print("received disconnected");
     dev_manager.received_disconnected();
     connection_manager.received_disconnected();
+    setting_manager.received_disconnected();
+    waterfall_manager.received_disconnected();
   }
-})
+});
 
-window.api_acquire.receivedStatus((data) =>{
-  print( 'received' + data)
-  if (data.status==="started") {
-    acquisition_manager.received_started()
-    dev_manager.received_started()
-  } else if (data.status ==="finished"){
-    acquisition_manager.received_finished()
-    dev_manager.received_finished()
-  } else if (data.status ==="progress"){
-    acquisition_manager.update_progress( data.value)
+window.api_acquire.receivedStatus((data) => {
+  if (data.status === "started") {
+    acquisition_manager.received_started();
+    dev_manager.received_started();
+  } else if (data.status === "finished") {
+    acquisition_manager.received_finished();
+    dev_manager.received_finished();
+  } else if (data.status === "progress") {
+    acquisition_manager.update_progress(data.value);
   }
-
-})
+});
 
 window.api_acquire.receivedLiveData((data) => {
   liveview_manager.received_liveData(data);

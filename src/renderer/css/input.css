@@ -62,7 +62,6 @@
   .tab_black {
     @apply rounded-lg border-transparent px-0 text-center text-black;
   }
-
 }
 
 @layer utilities {

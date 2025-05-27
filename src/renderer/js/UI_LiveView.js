@@ -76,7 +76,6 @@ class UI_LiveviewManager extends UI_Manager {
 
   set_data(specs) {
     var maxX = Number.NEGATIVE_INFINITY;
-
     for (let i = 0; i < this.NUM_CHANNELS; i++) {
       const dataset = this.chart.data.datasets[i].data;
       for (let j = 0; j < this.NUM_FFT / 2; j++) {

@@ -18,14 +18,28 @@ class UI_SettingManager extends UI_Manager {
       div_scrollbox: "div_scrollbox",
       div_ADCs: "div_ADCs",
       scroll_indicator: "scroll-indicator",
+      PB_disconnect: "PB_disconnect2",
+      gradient_t: "adc-gradient-t",
+      gradient_b: "adc-gradient-b",
     });
     this.sampling = parseFloat(this.TB_sampling.value);
     this.CB_allGains.selectedIndex = 5;
     this.CB_add_options(this.CB_allGains, GAINS);
+    this.PB_disconnect.onclick = () => this.onclick_disconnect();
 
     this.register_handler_scroll();
     this.register_handler_sampling();
     this.CB_allGains.onchange = () => this.onchange_allGains();
+  }
+
+  received_disconnected() {
+    this.remove_ADC_settings()
+  }
+
+  async onclick_disconnect() {
+    // this.PB_connect.innerHTML = 'Disonnecting...'
+    // this.PB_disconnect.disabled = true
+    window.api_connection.disconnectDevice();
   }
 
   onchange_label() {
@@ -85,7 +99,18 @@ class UI_SettingManager extends UI_Manager {
       } else {
         this.scroll_indicator.style.opacity = 1;
       }
+      this.update_scroll_visibility()
     });
+  }
+
+  remove_ADC_settings(){
+    this.NUM_CHANNELS = null
+    this.CB_gains = [];
+    this.CB_buffers = [];
+    this.CB_polarity = [];
+    this.TB_labels = [];
+    this.labels = [];
+    this.div_ADCs.innerHTML = ""
   }
 
   create_ADC_settings(NUM_CHANNELS) {
@@ -113,33 +138,58 @@ class UI_SettingManager extends UI_Manager {
   }
 
   update_scroll_visibility() {
-    if (this.div_scrollbox.scrollHeight > this.div_scrollbox.clientHeight) {
-      this.setHidden(this.scroll_indicator, false);
+    const scrollHeight = this.div_scrollbox.scrollHeight;
+    const clientHeight = this.div_scrollbox.clientHeight;
+
+    const scroll_available = scrollHeight > clientHeight;
+
+    this.setHidden(this.scroll_indicator, !scroll_available);
+
+    if (scroll_available) {
+      const atTop = this.div_scrollbox.scrollTop <= 10;
+      const atBot =
+        this.div_scrollbox.scrollTop + clientHeight >= scrollHeight - 10;
+
+      if (atTop) {
+        this.setHidden(this.gradient_t, true);
+      } else {
+        this.setHidden(this.gradient_t, false);
+      }
+
+      if (atBot) {
+        this.setHidden(this.gradient_b, true);
+      } else {
+        this.setHidden(this.gradient_b, false);
+      }
+
     } else {
-      this.setHidden(this.scroll_indicator, true);
+      this.setHidden(this.gradient_t, true);
+      this.setHidden(this.gradient_b, true);
     }
+  }
+
+  onclick_collapse(channel) {
+    const wrapper = this.div_ADCs.childNodes[channel - 1];
+    const body = wrapper.querySelector(".adc-settings-body");
+    const icon = wrapper.querySelector("svg");
+
+    body.classList.toggle("hidden");
+    icon.classList.toggle("rotate-180"); // Optional: rotate arrow
+
+    this.update_scroll_visibility();
   }
 
   _create_ADC_setting(channel) {
     const template = document.getElementById("adc-setting-template");
     const clone = template.content.cloneNode(true);
 
-
     const wrapper = clone.querySelector("div");
-    const div_label =  wrapper.querySelector("div").querySelector("div")
-    div_label.innerHTML = `ADC ${channel}`
+    const div_label = wrapper.querySelector("div").querySelector("div");
+    div_label.innerHTML = `ADC ${channel}`;
     const labelInput = wrapper.querySelector("input");
     labelInput.value = `Ch ${channel}`;
 
     const collapse = wrapper.querySelector("button");
-
-    collapse.onclick = () => {
-      const body = wrapper.querySelector(".adc-settings-body");
-      const icon = wrapper.querySelector("svg");
-
-      body.classList.toggle("hidden");
-      icon.classList.toggle("rotate-180"); // Optional: rotate arrow
-    };
 
     const selects = wrapper.querySelectorAll("select");
     const [gainSelect, polaritySelect, bufferSelect] = selects;
@@ -152,6 +202,7 @@ class UI_SettingManager extends UI_Manager {
     gainSelect.onchange = () => this.onchange_adc(channel);
     polaritySelect.onchange = () => this.onchange_adc(channel);
     bufferSelect.onchange = () => this.onchange_adc(channel);
+    collapse.onclick = () => this.onclick_collapse(channel);
 
     return [wrapper, gainSelect, polaritySelect, bufferSelect, labelInput];
   }

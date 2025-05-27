@@ -72,17 +72,17 @@
           </div>
         </div>
 
-        <!-- Control -->
+        <!-- Control  -->
         <div
           id="control"
-          class="grid hidden h-full grid-cols-1 grid-rows-[auto_minmax(500px,1500px)_auto] gap-4 py-4"
+          class="grid hidden h-full grid-cols-1 grid-rows-[1fr_5fr_1fr] gap-4 py-4"
         >
           <!-- All Channel Settings-->
           <div
             class="shadow-box my-2 grid w-full grid-cols-2 gap-4 bg-white p-6"
           >
             <!-- Address -->
-            <div id="TB_sampling">
+            <div>
               <label class="mb-1"> Sampling (Hz) </label>
               <div class="flex items-center gap-2">
                 <input
@@ -99,32 +99,33 @@
             </div>
           </div>
 
-          <div class="shadow-box relative flex h-full w-full flex-col bg-white">
-            <div
-              id="div_scrollbox"
-              class="w-full flex-1 overflow-y-scroll p-4"
-            >
-              <div id="div_ADCs">
-                <!-- <div class="mb-3">
-                  <label class="text-black">ADC Settings</label>
-                </div> -->
-              </div>
+          <!-- ADC Settings -->
+          <div
+            class="shadow-box relative flex h-full w-full flex-col overflow-hidden bg-white"
+          >
+            <div id="div_scrollbox" class="w-full flex-1 overflow-y-scroll p-4">
+              <div id="div_ADCs"></div>
             </div>
 
             <div
               id="scroll-indicator"
-              class="text-vivi-500 pointer-events-none absolute bottom-2 left-1/2 z-30 -translate-x-1/2 animate-bounce text-lg"
+              class="text-vivi-500 bg-white w-7 h-7 border-vivi-500 border rounded-full text-center pointer-events-none absolute bottom-2 left-1/2 z-30 -translate-x-1/2 animate-bounce text-lg"
             >
               ↓
             </div>
             <div
-              id="adc-gradient"
-              class="pointer-events-none absolute bottom-0 left-0 z-20 h-6 w-full rounded-b-xl bg-gradient-to-t from-gray-400 to-transparent transition-opacity duration-300"
+              id="adc-gradient-t"
+              class="pointer-events-none absolute top-0 left-0 z-20 hidden h-6 w-full rounded-t-xl bg-gradient-to-b from-gray-300 to-transparent transition-opacity duration-300"
+            ></div>
+            <div
+              id="adc-gradient-b"
+              class="pointer-events-none absolute bottom-0 left-0 z-20 hidden h-6 w-full rounded-b-xl bg-gradient-to-t from-gray-300 to-transparent transition-opacity duration-300"
             ></div>
           </div>
 
-          <div class="items-center py-2">
-            <button id="terminal">Open Terminal</button>
+          <div class="grid grid-cols-2 items-center gap-4 self-end py-2">
+            <button id="terminal">Open Console</button>
+            <button id="PB_disconnect2">Disconnect</button>
           </div>
         </div>
 
@@ -232,58 +233,59 @@
         </div>
       </div>
     </div>
-<template id="adc-setting-template">
-  <div class="adc-setting shadow-box mb-2 grid gap-2 py-2 pl-6 pr-2 shadow-sm ">
-    <!-- Top Row: Label + Collapse Button -->
-    <div class="flex justify-between items-center text-sm">
-      <div class="adc_name">ADC X</div>
-      <div>
-        <label>Label:</label>
-        <input class="w-20" value="Ch 1" />
-      </div>
-      <button
-        class="collapse-btn flex h-5 w-5 items-center justify-center rounded-full p-0"
+    <template id="adc-setting-template">
+      <div
+        class="adc-setting shadow-box mb-2 grid gap-2 py-2 pr-2 pl-6 shadow-sm"
       >
-        <svg
-          class="h-4 w-4 transition-transform"
-          viewBox="0 0 24 24"
-          fill="currentColor"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <path d="M7 10l5 5 5-5H7z" />
-        </svg>
-      </button>
-    </div>
+        <!-- Top Row: Label + Collapse Button -->
+        <div class="flex items-center justify-between text-sm">
+          <div class="adc_name">ADC X</div>
+          <div>
+            <label>Label:</label>
+            <input class="w-20" value="Ch 1" />
+          </div>
+          <button
+            class="collapse-btn flex h-5 w-5 items-center justify-center rounded-full p-0"
+          >
+            <svg
+              class="h-4 w-4 transition-transform"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path d="M7 10l5 5 5-5H7z" />
+            </svg>
+          </button>
+        </div>
 
-    <!-- Collapsible Content -->
-    <div class="adc-settings-body flex flex-col gap-2 hidden">
-      <!-- Gain -->
-      <div>
-        <label>Gain:</label>
-        <select class="h-7 p-1 text-sm">
-        </select>
-      </div>
+        <!-- Collapsible Content -->
+        <div class="adc-settings-body flex hidden flex-col gap-2">
+          <!-- Gain -->
+          <div>
+            <label>Gain:</label>
+            <select class="h-7 p-1 text-sm"></select>
+          </div>
 
-      <!-- Polarity -->
-      <div>
-        <label>Polarity:</label>
-        <select class="h-7 p-1 text-sm">
-          <option>unipolar</option>
-          <option>bipolar</option>
-        </select>
-      </div>
+          <!-- Polarity -->
+          <div>
+            <label>Polarity:</label>
+            <select class="h-7 p-1 text-sm">
+              <option>unipolar</option>
+              <option>bipolar</option>
+            </select>
+          </div>
 
-      <!-- Buffer -->
-      <div>
-        <label>Buffer:</label>
-        <select class="h-7 p-1 text-sm">
-          <option>unbuffered</option>
-          <option>buffered</option>
-        </select>
+          <!-- Buffer -->
+          <div>
+            <label>Buffer:</label>
+            <select class="h-7 p-1 text-sm">
+              <option>unbuffered</option>
+              <option>buffered</option>
+            </select>
+          </div>
+        </div>
       </div>
-    </div>
-  </div>
-</template>
+    </template>
 
     <script src="js/renderer.js" type="module" defer></script>
   </body>
