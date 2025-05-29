@@ -109,7 +109,7 @@
 
             <div
               id="scroll-indicator"
-              class="text-vivi-500 bg-white w-7 h-7 border-vivi-500 border rounded-full text-center pointer-events-none absolute bottom-2 left-1/2 z-30 -translate-x-1/2 animate-bounce text-lg"
+              class="text-vivi-500 border-vivi-500 pointer-events-none absolute bottom-2 left-1/2 z-30 h-7 w-7 -translate-x-1/2 animate-bounce rounded-full border bg-white text-center text-lg"
             >
               ↓
             </div>
@@ -153,8 +153,11 @@
               class="shadow-box h-full min-h-0 w-full overflow-auto px-2 py-4"
             >
               <div class="w-full p-2">
-                <label class="text-sm"># FFT Samples: </label>
-                <input id="TB_NUM_FFT" value="1024" class="w-full" />
+                <label class="text-sm"># FFT # Average </label>
+                <div class="w-full grid grid-cols-1 gap-2">
+                  <input id="TB_NUM_FFT" value="1024" class="w-full" />
+                  <!-- <input id="TB_NUM_AVE" value="5" class="w-full" /> -->
+                </div>
               </div>
 
               <div class="p-2">
