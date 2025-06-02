@@ -7,7 +7,9 @@
 ## Installation Instructions
 
 ### Windows
-_TODO: Add instructions here (e.g., run `.exe`, install path, etc.)_
+1. Download the `.exe` file from the [Releases](https://github.com/sukhsung/vivi/releases) page.
+2. Run `vivi-x.x.x.Setup.exe`. The software wil auto-install this might take a couple minutes.
+3. By default a ahortcut should be auto-generated, but if you can't find it, the software is installed to `C:\Users\user-name\AppData\Local\vivi\vivi.exe`. 
 
 ### macOS
 1. Download the `.dmg` file from the [Releases](https://github.com/sukhsung/vivi/releases) page.
