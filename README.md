@@ -21,8 +21,16 @@ _TODO: Add instructions here (e.g., run `.exe`, install path, etc.)_
 
 4. Launch Vivi.app.
 
-### Linux:
-_TODO: Add instructions here (e.g., run `.exe`, install path, etc.)_
+### Linux (.deb):
+1. Download and install .deb file from the [Releases](https://github.com/sukhsung/vivi/releases) page.
+2. Launch the software from terminal
+   ```
+   vivi
+   ```
+3. If the device can't be connected with `Error: Permission denied, cannot open /dev/your-device`, run following command to grant read/write access to your serial port
+   ```
+   sudo chmod 666 /dev/your-device
+   ```
 
 ## Development and Build Instruction
 1. Download and install [`Node.js`](https://nodejs.org)
