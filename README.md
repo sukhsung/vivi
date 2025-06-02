@@ -23,7 +23,8 @@
 
 4. Launch Vivi.app.
 
-### Linux (.deb):
+### Linux (.deb, .rpm):
+rpm installer has not been tested at all.
 1. Download and install .deb file from the [Releases](https://github.com/sukhsung/vivi/releases) page.
 2. Launch the software from terminal
    ```
@@ -33,6 +34,7 @@
    ```
    sudo chmod 666 /dev/your-device
    ```
+
 
 ## Development and Build Instruction
 1. Download and install [`Node.js`](https://nodejs.org)
