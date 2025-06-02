@@ -4,6 +4,8 @@ const { ADC8Manager, list_serial_ports } = require("./ADC8Manager.js");
 const { LogManager } = require("./logManager.js");
 const { FFTManager } = require("./fftManager.js");
 
+if (require('electron-squirrel-startup')) app.quit();
+
 const path_main = __dirname;
 const path_preload = path.join(path_main, "..", "preload");
 const path_renderer = path.join(path_main, "..", "renderer");
