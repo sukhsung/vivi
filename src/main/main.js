@@ -146,7 +146,7 @@ function openTerminal() {
       contextIsolation: true,
       nodeIntegration: false,
       preload: path.join(path_preload, "preload.js"),
-      // devTools: !app.isPackaged,
+      devTools: !app.isPackaged,
     },
   });
   termWin.loadFile(path.join(path_terminal, "terminal.html"));
@@ -160,7 +160,7 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       preload: path.join(path_preload, "preload.js"),
-      // devTools: !app.isPackaged,
+      devTools: !app.isPackaged,
     },
   });
 
@@ -168,18 +168,18 @@ function createWindow() {
   log_manager.set_win(win);
 
   win.on("close", (e) => {
-    // let response = dialog.showMessageBoxSync(win, {
-    //   type: "question",
-    //   buttons: ["No", "Yes"],
-    //   title: "Confirm",
-    //   message: "Are you sure you want to quit?",
-    // });
+    let response = dialog.showMessageBoxSync(win, {
+      type: "question",
+      buttons: ["No", "Yes"],
+      title: "Confirm",
+      message: "Are you sure you want to quit?",
+    });
 
-    // if (response == 0) {
-    //   e.preventDefault();
-    // } else {
-    //   print("Closing");
-    // }
+    if (response == 0) {
+      e.preventDefault();
+    } else {
+      print("Closing");
+    }
   });
 
   win.on("closed", async () => {
