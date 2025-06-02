@@ -14,7 +14,17 @@ module.exports = {
   makers: [
     {
       name: "@electron-forge/maker-squirrel",
-      config: {},
+      config: {
+        name: "vivi",
+        authors: "Suk Hyun Sung",
+        shortcutName: "Vivi",
+        setupIcon: "./src/assets/vivi-icon.ico", // optional
+        iconUrl: "https://raw.githubusercontent.com/sukhsung/vivi/refs/heads/main/src/assets/vivi-icon.ico", // required if setupIcon is used
+        noMsi: true,
+        createDesktopShortcut: true,
+        createStartMenuShortcut: true,
+        shortcutFolderName: "Vivi",
+      },
     },
     {
       name: "@electron-forge/maker-zip",

@@ -147,6 +147,7 @@ function openTerminal() {
       nodeIntegration: false,
       preload: path.join(path_preload, "preload.js"),
       devTools: !app.isPackaged,
+      autoHideMenuBar: app.isPackaged,
     },
   });
   termWin.loadFile(path.join(path_terminal, "terminal.html"));
@@ -160,6 +161,7 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       preload: path.join(path_preload, "preload.js"),
+      autoHideMenuBar: app.isPackaged,
       devTools: !app.isPackaged,
     },
   });

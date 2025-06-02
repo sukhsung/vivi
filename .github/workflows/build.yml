@@ -39,6 +39,7 @@ jobs:
             out/make/**/*.exe
             out/make/**/*.deb
             out/make/**/*.AppImage
+            out/make/**/*.rpm
             out/make/**/*.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
