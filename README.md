@@ -40,15 +40,11 @@ rpm installer has not been tested at all.
 1. Download and install [`Node.js`](https://nodejs.org)
 2. Clone this repository and navigate into it
    ```
-   git clone git@github.com:sukhsung/vivi.git
+   git clone https://github.com/sukhsung/vivi.git
    cd vivi
    ```
 3. Install dependenceis
    ```npm install`
-4. Compile Tailwind CSS (required for UI styling):
-   ```
-   npx @tailwindcss/cli -i ./src/renderer/css/input.css -o ./src/renderer/css/output.css --watch
-   ```
 5. Run the app in development mode:
    ```
    npm start
@@ -56,6 +52,10 @@ rpm installer has not been tested at all.
 6. Build platform-specific distributables locally
    ```
    npm run make
+   ```
+7. Optional: Compile Tailwind CSS during developments (required for UI styling):
+   ```
+   npx @tailwindcss/cli -i ./src/renderer/css/input.css -o ./src/renderer/css/output.css --watch
    ```
 
 ## Acknowledgements
