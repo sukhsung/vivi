@@ -4,6 +4,7 @@ const { ADC8Manager, list_serial_ports } = require("./ADC8Manager.js");
 const { LogManager } = require("./logManager.js");
 const { FFTManager } = require("./fftManager.js");
 
+app.commandLine.appendSwitch('ozone-platform', 'x11'); // <--- add this line
 if (require('electron-squirrel-startup')) app.quit();
 
 const path_main = __dirname;

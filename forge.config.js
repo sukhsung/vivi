@@ -19,8 +19,7 @@ module.exports = {
         authors: "Suk Hyun Sung",
         shortcutName: "Vivi",
         setupIcon: "./src/assets/vivi-icon.ico", // optional
-        iconUrl:
-          "https://raw.githubusercontent.com/sukhsung/vivi/refs/heads/main/src/assets/vivi-icon.ico", // required if setupIcon is used
+        iconUrl: "https://raw.githubusercontent.com/sukhsung/vivi/refs/heads/main/src/assets/vivi-icon.ico", // required if setupIcon is used
         noMsi: true,
         createDesktopShortcut: true,
         createStartMenuShortcut: true,
@@ -42,9 +41,6 @@ module.exports = {
         options: {
           name: "Vivi",
           maintainer: "https://shsung.com",
-          desktopTemplate: {
-            Exec: "vivi --ozone-platform=x11",
-          },
         },
       },
     },
@@ -55,9 +51,6 @@ module.exports = {
         options: {
           name: "Vivi",
           maintainer: "https://shsung.com",
-          desktopTemplate: {
-            Exec: "vivi --ozone-platform=x11",
-          },
         },
       },
     },
