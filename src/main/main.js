@@ -4,8 +4,10 @@ const { ADC8Manager, list_serial_ports } = require("./ADC8Manager.js");
 const { LogManager } = require("./logManager.js");
 const { FFTManager } = require("./fftManager.js");
 
-app.commandLine.appendSwitch('ozone-platform', 'x11'); // <--- add this line
-if (require('electron-squirrel-startup')) app.quit();
+if (process.platform === "linux") {
+  app.commandLine.appendSwitch("gtk-version", "3");
+}
+if (require("electron-squirrel-startup")) app.quit();
 
 const path_main = __dirname;
 const path_preload = path.join(path_main, "..", "preload");
@@ -25,13 +27,13 @@ function print(message, header = "main.js") {
   }
 }
 
-function send_to_renderer( channel, data) {
-    if (win && !win.isDestroyed()) {
-      // console.log("Window is still alive");
-      win.webContents.send(channel, data);
-    } else {
-      print("Window is already destroyed");
-    }
+function send_to_renderer(channel, data) {
+  if (win && !win.isDestroyed()) {
+    // console.log("Window is still alive");
+    win.webContents.send(channel, data);
+  } else {
+    print("Window is already destroyed");
+  }
 }
 
 function registerLogHandlers() {
@@ -79,7 +81,7 @@ function registerConnectionHandlers() {
       data.connected = false;
     }
 
-    send_to_renderer( "device:connection", data )
+    send_to_renderer("device:connection", data);
   });
 }
 
