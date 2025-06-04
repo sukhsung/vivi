@@ -10,10 +10,19 @@ permissions:
   
 jobs:
   build:
-    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        include:
+          - os: ubuntu-latest
+            arch: x64
+          - os: ubuntu-latest
+            arch: arm64
+          - os: windows-latest
+            arch: x64
+          - os: macos-latest
+            arch: universal
+
+    runs-on: ${{ matrix.os }}
 
     steps:
       - name: Checkout code
@@ -28,18 +37,17 @@ jobs:
         run: npm install
 
       - name: Build app
-        run: npm run make
+        run: |
+          if [[ "${{ matrix.arch }}" == "universal" ]]; then
+            npm run make -- --arch=universal
+          else
+            npm run make -- --arch=${{ matrix.arch }}
+          fi
 
-      - name: Upload Release Assets
-        uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/')
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
         with:
-          files: |
-            out/make/**/*.dmg
-            out/make/**/*.exe
-            out/make/**/*.deb
-            out/make/**/*.AppImage
-            out/make/**/*.rpm
-            out/make/**/*.zip
+          name: ${{ matrix.os }}-${{ matrix.arch }}
+          path: out/make/
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
