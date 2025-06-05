@@ -36,6 +36,9 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Rebuild native modules
+        run: npx electron-rebuild -f -w @serialport/bindings-cpp
+
       - name: Build app
         run: |
           if [ "${{ matrix.arch }}" = "universal" ]; then

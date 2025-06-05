@@ -31,6 +31,7 @@
     "@electron/fuses": "^1.8.0",
     "@tailwindcss/cli": "^4.1.7",
     "electron": "^36.2.1",
+    "electron-installer-redhat": "^3.4.0",
     "prettier": "^3.5.3",
     "prettier-plugin-tailwindcss": "^0.6.11",
     "tailwindcss": "^4.1.7"
