@@ -7,7 +7,7 @@ module.exports = {
     executableName: "vivi", // File name of the actual binary
     asar: true,
     icon: "./src/assets/vivi-icon.png",
-    osxSign: {} // object must exist even if empty
+    osxSign: {}, // object must exist even if empty
   },
   rebuildConfig: {
     // force: true,
@@ -20,7 +20,8 @@ module.exports = {
         authors: "Suk Hyun Sung",
         shortcutName: "Vivi",
         setupIcon: "./src/assets/vivi-icon.ico", // optional
-        iconUrl: "https://raw.githubusercontent.com/sukhsung/vivi/refs/heads/main/src/assets/vivi-icon.ico", // required if setupIcon is used
+        iconUrl:
+          "https://raw.githubusercontent.com/sukhsung/vivi/refs/heads/main/src/assets/vivi-icon.ico", // required if setupIcon is used
         noMsi: true,
         createDesktopShortcut: true,
         createStartMenuShortcut: true,
@@ -30,10 +31,16 @@ module.exports = {
     {
       name: "@electron-forge/maker-zip",
       platforms: ["darwin"],
+      config: {
+        arch: "universal",
+      },
     },
     {
       name: "@electron-forge/maker-dmg",
       platforms: ["darwin"],
+      config: {
+        arch: "universal",
+      },
     },
     {
       name: "@electron-forge/maker-deb",
