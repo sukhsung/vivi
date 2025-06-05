@@ -10,7 +10,7 @@ module.exports = {
     osxSign: {}, // object must exist even if empty
   },
   rebuildConfig: {
-    // force: true,
+    force: true,
   },
   makers: [
     {
