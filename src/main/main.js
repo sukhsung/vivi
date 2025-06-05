@@ -145,6 +145,7 @@ function openTerminal() {
   const termWin = new BrowserWindow({
     width: 800,
     height: 600,
+    autoHideMenuBar: true,  
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
@@ -153,6 +154,9 @@ function openTerminal() {
       autoHideMenuBar: app.isPackaged,
     },
   });
+
+  termWin.setMenu(null)
+
   termWin.loadFile(path.join(path_terminal, "terminal.html"));
 }
 
@@ -160,6 +164,7 @@ function createWindow() {
   win = new BrowserWindow({
     width: 1400,
     height: 900,
+    autoHideMenuBar: true,  
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
@@ -168,6 +173,7 @@ function createWindow() {
       devTools: !app.isPackaged,
     },
   });
+  win.setMenu(null)
 
   win.loadFile(path.join(path_renderer, "index.html"));
   log_manager.set_win(win);
