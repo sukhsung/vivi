@@ -37,7 +37,12 @@ jobs:
         run: npm install
 
       - name: Build app
-        run: npm run make -- --arch=${{ matrix.arch }}
+        run: |
+          if [[ "${{ matrix.arch }}" == "universal" ]]; then
+            npm run make
+          else
+            npm run make -- --arch=${{ matrix.arch }}
+          fi
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
