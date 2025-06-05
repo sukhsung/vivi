@@ -6,6 +6,9 @@ module.exports = {
     name: "vivi",
     executableName: "vivi", // File name of the actual binary
     asar: true,
+    asarUnpack: [
+      "**/node_modules/@serialport/bindings-cpp/**"
+    ],
     icon: "./src/assets/vivi-icon.png",
     osxSign: {}, // object must exist even if empty
   },
@@ -18,14 +21,14 @@ module.exports = {
       config: {
         name: "vivi",
         authors: "Suk Hyun Sung",
-        shortcutName: "Vivi",
+        shortcutName: "vivi",
         setupIcon: "./src/assets/vivi-icon.ico", // optional
         iconUrl:
           "https://raw.githubusercontent.com/sukhsung/vivi/refs/heads/main/src/assets/vivi-icon.ico", // required if setupIcon is used
         noMsi: true,
         createDesktopShortcut: true,
         createStartMenuShortcut: true,
-        shortcutFolderName: "Vivi",
+        shortcutFolderName: "vivi",
       },
     },
     {
@@ -41,7 +44,7 @@ module.exports = {
       executableName: "vivi",
       config: {
         options: {
-          name: "Vivi",
+          name: "vivi",
           maintainer: "https://shsung.com",
         },
       },
@@ -51,7 +54,7 @@ module.exports = {
       executableName: "vivi",
       config: {
         options: {
-          name: "Vivi",
+          name: "vivi",
           maintainer: "https://shsung.com",
         },
       },
