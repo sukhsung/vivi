@@ -3,11 +3,11 @@ name: Build and Release
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
 
 permissions:
   contents: write
-  
+
 jobs:
   build:
     strategy:
@@ -38,11 +38,12 @@ jobs:
 
       - name: Build app
         run: |
-          if [[ "${{ matrix.arch }}" == "universal" ]]; then
+          if [ "${{ matrix.arch }}" = "universal" ]; then
             npm run make
           else
             npm run make -- --arch=${{ matrix.arch }}
           fi
+        shell: bash
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
