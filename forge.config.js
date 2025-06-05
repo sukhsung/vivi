@@ -7,7 +7,7 @@ module.exports = {
     executableName: "vivi", // File name of the actual binary
     asar: true,
     asarUnpack: [
-      "**/node_modules/@serialport/bindings-cpp/**"
+      "**/node_modules/@serialport/bindings-cpp/build/Release/bindings.node"
     ],
     icon: "./src/assets/vivi-icon.png",
     osxSign: {}, // object must exist even if empty
