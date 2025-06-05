@@ -20,7 +20,9 @@ jobs:
           - os: windows-latest
             arch: x64
           - os: macos-latest
-            arch: universal
+            arch: x64
+          - os: macos-latest
+            arch: arm64
 
     runs-on: ${{ matrix.os }}
 
@@ -40,13 +42,7 @@ jobs:
         run: npx electron-rebuild -f -w @serialport/bindings-cpp
 
       - name: Build app
-        run: |
-          if [ "${{ matrix.arch }}" = "universal" ]; then
-            npm run make
-          else
-            npm run make -- --arch=${{ matrix.arch }}
-          fi
-        shell: bash
+        run:  npm run make -- --arch=${{ matrix.arch }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4

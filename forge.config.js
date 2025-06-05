@@ -7,7 +7,7 @@ module.exports = {
     executableName: "vivi", // File name of the actual binary
     asar: true,
     asarUnpack: [
-      "**/node_modules/@serialport/bindings-cpp/build/Release/bindings.node"
+      "**/node_modules/@serialport/bindings-cpp/build/Release/bindings.node",
     ],
     icon: "./src/assets/vivi-icon.png",
     osxSign: {}, // object must exist even if empty
@@ -33,7 +33,7 @@ module.exports = {
     },
     {
       name: "@electron-forge/maker-zip",
-      platforms: ["darwin"],
+      platforms: [], // ["darwin"],
     },
     {
       name: "@electron-forge/maker-dmg",
@@ -56,6 +56,29 @@ module.exports = {
         options: {
           name: "vivi",
           maintainer: "https://shsung.com",
+        },
+      },
+    },
+    {
+      name: "@electron-forge/maker-flatpak",
+      config: {
+        options: {
+          id: "com.shsung.vivi", // reverse-DNS style
+          productName: "vivi",
+          runtime: "org.freedesktop.Platform",
+          runtimeVersion: "23.08",
+          sdk: "org.freedesktop.Sdk",
+          branch: "stable",
+          base: "org.electronjs.Electron2.BaseApp",
+          baseVersion: "23.08",
+          finishArgs: [
+            "--socket=wayland",
+            "--socket=x11",
+            "--device=dri",
+            "--share=network",
+            "--filesystem=home",
+            "--persist=vivi",
+          ],
         },
       },
     },
