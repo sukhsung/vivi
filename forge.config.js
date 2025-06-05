@@ -59,29 +59,29 @@ module.exports = {
         },
       },
     },
-    {
-      name: "@electron-forge/maker-flatpak",
-      config: {
-        options: {
-          id: "com.shsung.vivi", // reverse-DNS style
-          productName: "vivi",
-          runtime: "org.freedesktop.Platform",
-          runtimeVersion: "23.08",
-          sdk: "org.freedesktop.Sdk",
-          branch: "stable",
-          base: "org.electronjs.Electron2.BaseApp",
-          baseVersion: "23.08",
-          finishArgs: [
-            "--socket=wayland",
-            "--socket=x11",
-            "--device=dri",
-            "--share=network",
-            "--filesystem=home",
-            "--persist=vivi",
-          ],
-        },
-      },
-    },
+    // {
+    //   name: "@electron-forge/maker-flatpak",
+    //   config: {
+    //     options: {
+    //       id: "com.shsung.vivi", // reverse-DNS style
+    //       productName: "vivi",
+    //       runtime: "org.freedesktop.Platform",
+    //       runtimeVersion: "23.08",
+    //       sdk: "org.freedesktop.Sdk",
+    //       branch: "stable",
+    //       base: "org.electronjs.Electron2.BaseApp",
+    //       baseVersion: "23.08",
+    //       finishArgs: [
+    //         "--socket=wayland",
+    //         "--socket=x11",
+    //         "--device=dri",
+    //         "--share=network",
+    //         "--filesystem=home",
+    //         "--persist=vivi",
+    //       ],
+    //     },
+    //   },
+    // },
   ],
   plugins: [
     {
