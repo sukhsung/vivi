@@ -5,7 +5,7 @@ module.exports = {
   packagerConfig: {
     name: "vivi",
     executableName: "vivi", // File name of the actual binary
-    asar: true,
+    asar: false,
     icon: "./src/assets/vivi-icon.png",
     osxSign: {}, // object must exist even if empty
   },
@@ -70,7 +70,7 @@ module.exports = {
       [FuseV1Options.EnableCookieEncryption]: true,
       [FuseV1Options.EnableNodeOptionsEnvironmentVariable]: false,
       [FuseV1Options.EnableNodeCliInspectArguments]: false,
-      [FuseV1Options.EnableEmbeddedAsarIntegrityValidation]: true,
+      [FuseV1Options.EnableEmbeddedAsarIntegrityValidation]: true,  
     }),
   ],
 };
