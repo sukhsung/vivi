@@ -67,5 +67,7 @@ rpm installer has not been tested at all.
 Special thanks to:
 
 Winfield Hill – Hardware design and assembly (Rowland Institute at Harvard)
+
 Alan Stern – Firmware and initial data acquisition code (Rowland Institute at Harvard)
+
 William Millsaps and Miti Shah – Testing support (Hovden Lab, University of Michigan)
