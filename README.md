@@ -17,7 +17,7 @@
 3. Open Terminal and run:
 
    ```
-   xattr -cr /Applications/Vivi.app
+   xattr -cr /Applications/vivi.app
    ```
    This removes macOS Gatekeeper's quarantine since the app is not code-signed.
 
