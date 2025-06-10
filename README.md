@@ -34,6 +34,10 @@ rpm installer has not been tested at all.
    ```
    sudo chmod 666 /dev/your-device
    ```
+   This is temporary fix and might be resetted after a reboot. Alternatively, you can add the current user to `dialout` user group
+   ```
+   sudo usermod -a -G dialout $USER
+   ```
 
 
 ## Development and Build Instruction
