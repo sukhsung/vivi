@@ -17,7 +17,7 @@
 3. Open Terminal and run:
 
    ```
-   xattr -cr /Applications/Vivi.app
+   xattr -cr /Applications/vivi.app
    ```
    This removes macOS Gatekeeper's quarantine since the app is not code-signed.
 
@@ -33,6 +33,10 @@ rpm installer has not been tested at all.
 3. If the device can't be connected with `Error: Permission denied, cannot open /dev/your-device`, run following command to grant read/write access to your serial port
    ```
    sudo chmod 666 /dev/your-device
+   ```
+   This is temporary fix and might be resetted after a reboot. Alternatively, you can add the current user to `dialout` user group
+   ```
+   sudo usermod -a -G dialout $USER
    ```
 
 
@@ -62,6 +66,6 @@ rpm installer has not been tested at all.
 
 Special thanks to:
 
-Winfield Hill – Hardware design and assembly (Rowland Institute at Harvard)
-Alan Stern – Firmware and initial data acquisition code (Rowland Institute at Harvard)
-William Millsaps and Miti Shah – Testing support (Hovden Lab, University of Michigan)
+- Winfield Hill – Hardware design and assembly (Rowland Institute at Harvard)
+- Alan Stern – Firmware and initial data acquisition code (Rowland Institute at Harvard)
+- William Millsaps and Miti Shah – Testing support (Hovden Lab, University of Michigan)
