@@ -163,9 +163,11 @@ class DeviceManager extends EventEmitter {
     this.device.write(buffer);
   }
 
-  async _sleep(ms) {
-    this._print(`Sleeping for ${ms} ms`);
-    return await new Promise((res) => setTimeout(res, 1000));
+  async _sleep(ms, verbose=true) {
+    if (verbose) {
+      this._print(`Sleeping for ${ms} ms`);
+    }
+    return await new Promise((res) => setTimeout(res, ms));
   }
 
   _print(message, header = this.constructor.name, color = "y") {

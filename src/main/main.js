@@ -111,7 +111,7 @@ function registerAcquisitionHandlers() {
     fft_manager.initialize(data.NUM_FFT);
 
     dev_manager.NUM_FFT = data.NUM_FFT;
-    dev_manager.start_acquisition(data.t);
+    dev_manager.start_acquisition(data.t_acquire, data.t_delay);
   });
 
   ipcMain.on("acquire:stop", () => {

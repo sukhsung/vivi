@@ -133,7 +133,7 @@
           id="busy_left"
           class="bg-vivi-500/50 pointer-events-none absolute inset-0 z-50 flex flex-col items-center justify-center rounded-xl opacity-0 backdrop-blur-sm transition-opacity duration-300"
         >
-          <div class="text-center text-white">Acquisition in Progress...</div>
+          <div id="busy_left_status" class="text-center text-white">Acquisition in Progress...</div>
           <div class="w-full items-center text-center">
             <img src="../assets/vivi-main.svg" class="m-auto w-8/12" />
           </div>
@@ -147,32 +147,43 @@
         >
           <div
             id="panel_view"
-            class="shadow-box grid h-full min-h-0 grid-cols-[minmax(200px,_1fr)_4fr] grid-rows-1 gap-4 bg-white p-6"
+            class="shadow-box grid h-full min-h-0 grid-cols-[minmax(200px,1fr)_4fr] grid-rows-1 gap-4 bg-white p-6"
           >
             <div
               class="shadow-box h-full min-h-0 w-full overflow-auto px-2 py-4"
             >
-              <div class="w-full p-2">
-                <label class="text-sm"># FFT # Average </label>
-                <div class="w-full grid grid-cols-1 gap-2">
-                  <input id="TB_NUM_FFT" value="1024" class="w-full" />
-                  <!-- <input id="TB_NUM_AVE" value="5" class="w-full" /> -->
-                </div>
+              <div class="w-full grid grid-cols-5 p-2">
+                <label class="text-sm col-span-3"># FFT Samples </label>
+                <input
+                  id="TB_NUM_FFT"
+                  value="1024"
+                  class="h-7 col-span-2 rounded border border-slate-200 text-center text-sm hover:border-slate-400"
+                />
+                <!-- <input id="TB_NUM_AVE" value="5" class="w-full" /> -->
               </div>
 
-              <div class="p-2">
-                <label class="text-sm">Acquisition Time (s): </label>
+              <div class="w-full grid grid-cols-5 p-2">
+                <label class="text-sm col-span-3">Acquisition (s) </label>
                 <input
                   id="TB_acquireTime"
                   value="120"
-                  class="h-7 w-full rounded border border-slate-200 text-center text-sm hover:border-slate-400"
+                  class="h-7 col-span-2 rounded border border-slate-200 text-center text-sm hover:border-slate-400"
                 />
               </div>
 
-              <div class="p-2 text-center">
-                <button id="PB_view_start">Live</button>
-                <button id="PB_acquire_start">Acquire</button>
-                <button id="PB_stop" class="button-pink">
+              <div class="w-full grid grid-cols-5 p-2">
+                <label class="text-sm col-span-3">Delay (s) </label>
+                <input
+                  id="TB_delayTime"
+                  value="3"
+                  class="h-7 col-span-2 rounded border border-slate-200 text-center text-sm hover:border-slate-400"
+                />
+              </div>
+
+              <div class="p-2 gap-4 text-center flex">
+                <button id="PB_view_start" class="flex-1">Live</button>
+                <button id="PB_acquire_start" class="flex-1">Acquire</button>
+                <button id="PB_stop" class="flex-1 button-pink">
                   Stop Acquisition
                 </button>
               </div>
@@ -180,7 +191,7 @@
                 <div class="h-3 w-full rounded-full bg-slate-200">
                   <div
                     id="progress"
-                    class="bg-vivi-500 animate-flicker h-full rounded-full transition-all duration-300"
+                    class="bg-vivi-500 animate-flicker h-full rounded-full transition-all duration-10"
                     style="width: 0%"
                   ></div>
                 </div>

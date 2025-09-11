@@ -62,11 +62,10 @@ class ADC8Manager extends DeviceManager {
   }
 
   async prepare_disconnect() {
-    if (this.is_acquiring){
+    if (this.is_acquiring) {
       await this.stop_acquisition();
     }
   }
-
 
   async setSampling(sampling) {
     const response = await this.query(`s ${sampling}`);
@@ -98,9 +97,7 @@ class ADC8Manager extends DeviceManager {
   }
 
   async setAllGain(data) {
-    await this.query(
-      `g 0 ${data.gain}`,
-    );
+    await this.query(`g 0 ${data.gain}`);
 
     // set all adcs
     this.settings.adcs.forEach((adc) => {
@@ -108,7 +105,6 @@ class ADC8Manager extends DeviceManager {
       adc.polarity = data.polarity;
       adc.buffer = data.buffer;
     });
-
   }
 
   async update_settings() {
@@ -149,10 +145,46 @@ class ADC8Manager extends DeviceManager {
     }
   }
 
-  async start_acquisition(t_acquire) {
+  async start_acquisition(t_acquire, t_delay) {
     this.is_acquiring = true;
-    this.emit("acquire:status", { status: "started" });
     this.STOP = false;
+
+    // Delay Logic
+    this._print(`Delay for ${t_delay}s`);
+    this.emit("acquire:status", { status: "delay" });
+
+    let delay = true;
+    let t0 = Date.now();
+    let t_elapsed = 0;
+    let progress = 100;
+    while (delay) {
+      t_elapsed = (Date.now() - t0) / 1000;
+      progress = parseInt((t_elapsed / t_delay) * 100);
+
+      this.emit("acquire:status", {
+        status: "progress",
+        value: 100 - progress,
+      });
+      if (t_elapsed >= t_delay) {
+        delay = false;
+      } else {
+        await this._sleep(10, false);
+      }
+
+      if (this.STOP) {
+        this._print("Acquisition Termination Requested");
+        break;
+      }
+    }
+
+    // Acquisition Cycle
+    let mode
+    if (t_acquire == 0) {
+      mode = "live";
+    } else if (t_acquire > 0) {
+      mode = "acquire";
+    }
+    this.emit("acquire:status", { status: "started", mode: mode });
     await this.device.read_all();
 
     await this.write(`b${t_acquire}`);
@@ -175,7 +207,7 @@ class ADC8Manager extends DeviceManager {
     } else if (sig === "ADC8x-1.") {
       chans = hdr.data;
     } else {
-      this._print("Invalid header received, transfer aborted",undefined,'r');
+      this._print("Invalid header received, transfer aborted", undefined, "r");
       this._write_buffer(Buffer.from("\n"));
       this.emit("status", { status: "error", message: "Invalid header" });
       return -1;
@@ -196,7 +228,11 @@ class ADC8Manager extends DeviceManager {
     }
 
     if (num === 0) {
-      this._print("Header shows no active ADCs, transfer aborted",undefined,'r');
+      this._print(
+        "Header shows no active ADCs, transfer aborted",
+        undefined,
+        "r",
+      );
       this._write_buffer(Buffer.from("\n"));
       return -1;
     } else {
@@ -212,7 +248,7 @@ class ADC8Manager extends DeviceManager {
       await this.device.read(8); // Skip extra header
     }
 
-    let t0 = Date.now();
+    t0 = Date.now();
     let cont = true;
     while (cont) {
       if (t_acquire > 0) {
@@ -290,11 +326,11 @@ class ADC8Manager extends DeviceManager {
   async stop_acquisition() {
     this._print("Stopping Acquisition");
     this.STOP = true;
-    while (this.is_acquiring){
-      this._print("Still Acquiring")
-      await this._sleep( 300 )
+    while (this.is_acquiring) {
+      this._print("Still Acquiring");
+      await this._sleep(300);
     }
-    return
+    return;
   }
 }
 

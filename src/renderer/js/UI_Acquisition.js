@@ -10,6 +10,7 @@ class UI_AcquisitionManager extends UI_Manager {
     this.cacheDOM({
       TB_NUM_FFT: "TB_NUM_FFT",
       TB_acquireTime: "TB_acquireTime",
+      TB_delayTime: "TB_delayTime",
       PB_view_start: "PB_view_start",
       PB_view_stop: "PB_view_stop",
       PB_acquire_start: "PB_acquire_start",
@@ -18,10 +19,12 @@ class UI_AcquisitionManager extends UI_Manager {
     });
 
     this.t_acquire = parseInt(this.TB_acquireTime.value);
+    this.t_delay = parseInt(this.TB_delayTime.value);
     this.NUM_FFT = parseInt(this.TB_NUM_FFT.value);
 
     this.register_handler_NUM_FFT();
     this.register_handler_t_acquire();
+    this.register_handler_t_delay();
 
     this.PB_view_start.onclick = () => {
       this.onclick_view();
@@ -60,12 +63,37 @@ class UI_AcquisitionManager extends UI_Manager {
     });
   }
 
+  register_handler_t_delay() {
+    this.TB_delayTime.addEventListener("blur", () => {
+      this.onchange_t_delay();
+    });
+
+    this.TB_delayTime.addEventListener("keydown", (evt) => {
+      if (evt.key === "Enter") {
+        this.onchange_t_delay();
+      }
+    });
+  }
+
+
   onchange_t_acquire() {
     this.t_acquire = parseInt(this.TB_acquireTime.value);
     if (isNaN(this.t_acquire)) {
       this.t_acquire = 120;
+    } else if (this.t_delay<1) {
+      this.t_delay == 1;
     }
     this.TB_acquireTime.value = this.t_acquire.toString();
+  }
+
+  onchange_t_delay() {
+    this.t_delay = parseInt(this.TB_delayTime.value);
+    if (isNaN(this.t_delay)) {
+      this.t_delay = 5;
+    } else if (this.t_delay<0) {
+      this.t_delay == 0;
+    }
+    this.TB_delayTime.value = this.t_delay.toString();
   }
 
   onchange_NUM_FFT() {
@@ -100,19 +128,27 @@ class UI_AcquisitionManager extends UI_Manager {
     }
   }
 
-  received_started() {
+  received_started( mode ) {
     this.TB_NUM_FFT.disabled = true;
     this.TB_acquireTime.disabled = true;
+    this.TB_delayTime.disabled = true;
 
     // UI logic
     this.setHidden(this.PB_view_start, true);
     this.setHidden(this.PB_acquire_start, true);
     this.setHidden(this.PB_stop, false);
+
+    if (mode === "acquire") {
+      this.set_progress_mode("acquire");
+    } else if (mode ==="live") {
+      this.set_progress_mode("live");
+    }
   }
 
   received_finished() {
     this.TB_NUM_FFT.disabled = false;
     this.TB_acquireTime.disabled = false;
+    this.TB_delayTime.disabled = false;
 
     // UI logic
     this.setHidden(this.PB_view_start, false);
@@ -121,22 +157,36 @@ class UI_AcquisitionManager extends UI_Manager {
     this.set_progress_mode("finished");
   }
 
-  async start_acquisition(NUM_FFT, t, labels) {
+  received_delay() {
+    this.TB_NUM_FFT.disabled = true;
+    this.TB_acquireTime.disabled = true;
+    this.TB_delayTime.disabled = true;
+
+    // UI logic
+    this.setHidden(this.PB_view_start, true);
+    this.setHidden(this.PB_acquire_start, true);
+    this.setHidden(this.PB_stop, false);
+
+    this.set_progress_mode("delay");
+  }
+
+  async start_acquisition(NUM_FFT, t_acquire, t_delay, labels) {
     await window.api_acquire.startAcquire({
       NUM_FFT: NUM_FFT,
-      t: t,
+      t_acquire: t_acquire,
+      t_delay: t_delay,
       labels: labels,
     });
   }
 
   async onclick_view() {
     this.dispatchEvent(new Event("start-view"));
-    this.set_progress_mode("live");
+    // this.set_progress_mode("live");
   }
 
   async onclick_acquire() {
     if (this.t_acquire > 0) {
-      this.set_progress_mode("acquire");
+      // this.set_progress_mode("acquire");
       this.dispatchEvent(new Event("start-acquire"));
     }
   }
@@ -148,7 +198,7 @@ class UI_AcquisitionManager extends UI_Manager {
   update_progress(progress) {
     // this.progress.value = progress.toString();
     // const percent = (value / max) * 100;
-    if (this.mode === "acquire") {
+    if (this.mode === "acquire" || this.mode ==="delay") {
       this.progress.style.width = `${progress}%`;
     }
   }
@@ -157,13 +207,24 @@ class UI_AcquisitionManager extends UI_Manager {
     this.mode = mode;
     if (mode === "acquire") {
       this.progress.classList.remove("animate-flicker");
+      this.progress.classList.remove("bg-pink-700")
+      this.progress.classList.add("bg-vivi-500")
       this.progress.style.width = "0%"; // reset or update as needed
-      // example update later: progress.style.width = "50%";
+    }
+    else if (mode === "delay"){
+      this.progress.classList.remove("animate-flicker");
+      this.progress.classList.remove("bg-vivi-500")
+      this.progress.classList.add("bg-pink-700")
+      this.progress.style.width = "0%"; // reset or update as needed
     } else if (mode === "live") {
       this.progress.style.width = "100%"; // or any fixed value to show full bar
       this.progress.classList.add("animate-flicker");
+      this.progress.classList.remove("bg-pink-700")
+      this.progress.classList.add("bg-vivi-500")
     } else if (mode === "finished") {
       this.progress.classList.remove("animate-flicker");
+      this.progress.classList.remove("bg-pink-700")
+      this.progress.classList.add("bg-vivi-500")
       this.progress.style.width = "100%"; // reset or update as needed
     }
   }

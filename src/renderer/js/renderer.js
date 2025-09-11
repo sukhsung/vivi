@@ -35,24 +35,26 @@ window.addEventListener("load", () => {
 
   acquisition_manager.addEventListener("start-view", () => {
     const NUM_FFT = acquisition_manager.NUM_FFT;
-    const t = 0;
+    const t_acquire = 0;
+    const t_delay = acquisition_manager.t_delay;
     const labels = setting_manager.labels;
     const NUM_CHANNELS = setting_manager.NUM_CHANNELS;
     const sampling = setting_manager.sampling;
     liveview_manager.init_plot(NUM_CHANNELS, NUM_FFT, sampling, labels);
     waterfall_manager.init_plot(NUM_CHANNELS, NUM_FFT);
-    acquisition_manager.start_acquisition(NUM_FFT, t, labels);
+    acquisition_manager.start_acquisition(NUM_FFT, t_acquire, t_delay, labels);
   });
   acquisition_manager.addEventListener("start-acquire", () => {
     const NUM_FFT = acquisition_manager.NUM_FFT;
-    const t = acquisition_manager.t_acquire;
+    const t_acquire = acquisition_manager.t_acquire;
+    const t_delay = acquisition_manager.t_delay;
     const labels = setting_manager.labels;
     const NUM_CHANNELS = setting_manager.NUM_CHANNELS;
     const sampling = setting_manager.sampling;
 
     liveview_manager.init_plot(NUM_CHANNELS, NUM_FFT, sampling, labels);
     waterfall_manager.init_plot(NUM_CHANNELS, NUM_FFT);
-    acquisition_manager.start_acquisition(NUM_FFT, t, labels);
+    acquisition_manager.start_acquisition(NUM_FFT, t_acquire, t_delay, labels);
   });
 });
 
@@ -74,13 +76,16 @@ window.api_connection.receivedConnection((data) => {
 
 window.api_acquire.receivedStatus((data) => {
   if (data.status === "started") {
-    acquisition_manager.received_started();
-    dev_manager.received_started();
+    acquisition_manager.received_started( data.mode );
+    dev_manager.received_started(data.mode);
   } else if (data.status === "finished") {
     acquisition_manager.received_finished();
     dev_manager.received_finished();
   } else if (data.status === "progress") {
     acquisition_manager.update_progress(data.value);
+  } else if (data.status === "delay") {
+    acquisition_manager.received_delay();
+    dev_manager.received_delay();
   }
 });
 
