@@ -18,17 +18,16 @@ class LogManager extends EventEmitter {
     this.fname = null;
     this.f_csv = null;
     this.f_json = null;
+    this.f_fft = null;
   }
 
   async close() {
     this._print("Closing");
     if (this.f_csv !== null) {
       this.f_csv.end();
-      this.f_csv = null;
     }
     if (this.f_json !== null) {
       this.f_json.end();
-      this.f_json = null;
     }
     return;
   }
@@ -44,6 +43,14 @@ class LogManager extends EventEmitter {
     });
   }
 
+  write_fft( ffts ){
+    // Format Data
+    ffts.forEach((line) => {
+      this.f_fft.write(line.toString() + "\n");
+    });
+
+  }
+
   start_log(t_acquisition, settings) {
     this._print("Starting");
     const time_stamp = this.get_time();
@@ -57,11 +64,17 @@ class LogManager extends EventEmitter {
       counter++;
       this.fname = `${time_stamp}_${counter}`;
       path_csv = path.join(this.path, `${this.fname}.csv`);
+      path_fft = path.join(this.path, `${this.fname}_fft.csv`);
       path_json = path.join(this.path, `${this.fname}.json`);
     }
 
     this.f_csv = fs.createWriteStream(path_csv, { flags: "a" }); // 'a' = append
     this.f_json = fs.createWriteStream(path_json, { flags: "a" }); // 'a' = append
+    this.f_fft  = fs.createWriteStream( path_fft, {flags: "a"});
+
+    this.f_csv.addListener( 'close', () => {this.f_csv = null} )
+    this.f_json.addListener('close', () => {this.f_json = null})
+    this.f_fft.addListener('close', () => {this.f_fft = null})
 
     let metadata = {
       acquisition_time: t_acquisition == 0 ? "live" : t_acquisition,
@@ -69,7 +82,6 @@ class LogManager extends EventEmitter {
     };
     this.f_json.write(JSON.stringify(metadata, null, 2));
     this.f_json.end();
-    this.f_json = null;
 
     this.emit("log:status", { status: "started", fname: this.fname });
   }
@@ -109,7 +121,7 @@ class LogManager extends EventEmitter {
   }
 
   mkdir(path) {
-    console.log("Creating " + path);
+    this._("Creating " + path);
     if (!fs.existsSync(path)) {
       fs.mkdirSync(path, { recursive: true });
     }
