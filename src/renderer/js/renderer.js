@@ -35,6 +35,7 @@ window.addEventListener("load", () => {
 
   acquisition_manager.addEventListener("start-view", () => {
     const NUM_FFT = acquisition_manager.NUM_FFT;
+    const NUM_AVE = acquisition_manager.NUM_AVE;
     const t_acquire = 0;
     const t_delay = acquisition_manager.t_delay;
     const labels = setting_manager.labels;
@@ -42,10 +43,11 @@ window.addEventListener("load", () => {
     const sampling = setting_manager.sampling;
     liveview_manager.init_plot(NUM_CHANNELS, NUM_FFT, sampling, labels);
     waterfall_manager.init_plot(NUM_CHANNELS, NUM_FFT);
-    acquisition_manager.start_acquisition(NUM_FFT, t_acquire, t_delay, labels);
+    acquisition_manager.start_acquisition(NUM_FFT, NUM_AVE, t_acquire, t_delay, labels);
   });
   acquisition_manager.addEventListener("start-acquire", () => {
     const NUM_FFT = acquisition_manager.NUM_FFT;
+    const NUM_AVE = acquisition_manager.NUM_AVE;
     const t_acquire = acquisition_manager.t_acquire;
     const t_delay = acquisition_manager.t_delay;
     const labels = setting_manager.labels;
@@ -54,7 +56,7 @@ window.addEventListener("load", () => {
 
     liveview_manager.init_plot(NUM_CHANNELS, NUM_FFT, sampling, labels);
     waterfall_manager.init_plot(NUM_CHANNELS, NUM_FFT);
-    acquisition_manager.start_acquisition(NUM_FFT, t_acquire, t_delay, labels);
+    acquisition_manager.start_acquisition(NUM_FFT, NUM_AVE, t_acquire, t_delay, labels);
   });
 });
 

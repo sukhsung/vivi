@@ -9,6 +9,7 @@ class UI_AcquisitionManager extends UI_Manager {
   initialize() {
     this.cacheDOM({
       TB_NUM_FFT: "TB_NUM_FFT",
+      TB_NUM_AVE: "TB_NUM_AVE",
       TB_acquireTime: "TB_acquireTime",
       TB_delayTime: "TB_delayTime",
       PB_view_start: "PB_view_start",
@@ -21,8 +22,11 @@ class UI_AcquisitionManager extends UI_Manager {
     this.t_acquire = parseInt(this.TB_acquireTime.value);
     this.t_delay = parseInt(this.TB_delayTime.value);
     this.NUM_FFT = parseInt(this.TB_NUM_FFT.value);
+    this.NUM_AVE = parseInt(this.TB_NUM_AVE.value);
+
 
     this.register_handler_NUM_FFT();
+    this.register_handler_NUM_AVE();
     this.register_handler_t_acquire();
     this.register_handler_t_delay();
 
@@ -47,6 +51,19 @@ class UI_AcquisitionManager extends UI_Manager {
     this.TB_NUM_FFT.addEventListener("keydown", (evt) => {
       if (evt.key === "Enter") {
         this.onchange_NUM_FFT();
+      }
+    });
+  }
+
+  
+  register_handler_NUM_AVE() {
+    this.TB_NUM_AVE.addEventListener("blur", () => {
+      this.onchange_NUM_AVE();
+    });
+
+    this.TB_NUM_AVE.addEventListener("keydown", (evt) => {
+      if (evt.key === "Enter") {
+        this.onchange_NUM_AVE();
       }
     });
   }
@@ -96,6 +113,14 @@ class UI_AcquisitionManager extends UI_Manager {
     this.TB_delayTime.value = this.t_delay.toString();
   }
 
+  onchange_NUM_AVE() {
+    this.NUM_AVE = parseInt(this.TB_NUM_AVE.value);
+    if (this.NUM_AVE<1) {
+      this.NUM_AVE = 1;
+    }
+    this.TB_NUM_AVE.value = this.NUM_AVE.toString();
+  }
+
   onchange_NUM_FFT() {
     this.NUM_FFT = parseInt(this.TB_NUM_FFT.value);
     if (isNaN(this.NUM_FFT)) {
@@ -130,6 +155,7 @@ class UI_AcquisitionManager extends UI_Manager {
 
   received_started( mode ) {
     this.TB_NUM_FFT.disabled = true;
+    this.TB_NUM_AVE.disabled = true;
     this.TB_acquireTime.disabled = true;
     this.TB_delayTime.disabled = true;
 
@@ -147,6 +173,7 @@ class UI_AcquisitionManager extends UI_Manager {
 
   received_finished() {
     this.TB_NUM_FFT.disabled = false;
+    this.TB_NUM_AVE.disabled = false;
     this.TB_acquireTime.disabled = false;
     this.TB_delayTime.disabled = false;
 
@@ -159,6 +186,7 @@ class UI_AcquisitionManager extends UI_Manager {
 
   received_delay() {
     this.TB_NUM_FFT.disabled = true;
+    this.TB_NUM_AVE.disabled = true;
     this.TB_acquireTime.disabled = true;
     this.TB_delayTime.disabled = true;
 
@@ -170,9 +198,10 @@ class UI_AcquisitionManager extends UI_Manager {
     this.set_progress_mode("delay");
   }
 
-  async start_acquisition(NUM_FFT, t_acquire, t_delay, labels) {
+  async start_acquisition(NUM_FFT, NUM_AVE, t_acquire, t_delay, labels) {
     await window.api_acquire.startAcquire({
       NUM_FFT: NUM_FFT,
+      NUM_AVE: NUM_AVE,
       t_acquire: t_acquire,
       t_delay: t_delay,
       labels: labels,

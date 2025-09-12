@@ -76,7 +76,7 @@ class LogManager extends EventEmitter {
 
   stop_log() {
     this.f_csv.end();
-    this.f_csv = null;
+    // this.f_csv = null;
     this.emit("log:status", { status: "finished", fname: this.fname });
   }
 

@@ -400,6 +400,9 @@
   .grid-cols-\[minmax\(200px\,_1fr\)_4fr\] {
     grid-template-columns: minmax(200px, 1fr) 4fr;
   }
+  .grid-cols-\[minmax\(240px\,1fr\)_4fr\] {
+    grid-template-columns: minmax(240px,1fr) 4fr;
+  }
   .grid-cols-\[minmax\(250px\,1fr\)_4fr\] {
     grid-template-columns: minmax(250px,1fr) 4fr;
   }
@@ -417,6 +420,15 @@
   }
   .grid-rows-\[2fr_75px_3fr\] {
     grid-template-rows: 2fr 75px 3fr;
+  }
+  .grid-rows-\[3fr_75px_3fr\] {
+    grid-template-rows: 3fr 75px 3fr;
+  }
+  .grid-rows-\[3fr_75px_4fr\] {
+    grid-template-rows: 3fr 75px 4fr;
+  }
+  .grid-rows-\[3fr_75px_5fr\] {
+    grid-template-rows: 3fr 75px 5fr;
   }
   .flex-col {
     flex-direction: column;

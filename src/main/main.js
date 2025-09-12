@@ -108,7 +108,7 @@ function registerAcquisitionHandlers() {
     print("Requested to start");
     dev_manager.update_labels(data.labels);
     log_manager.start_log(data.t, dev_manager.settings);
-    fft_manager.initialize(data.NUM_FFT);
+    fft_manager.initialize(data.NUM_FFT, dev_manager.NUM_CHANNELS, data.NUM_AVE);
 
     dev_manager.NUM_FFT = data.NUM_FFT;
     dev_manager.start_acquisition(data.t_acquire, data.t_delay);
@@ -125,9 +125,14 @@ function registerAcquisitionHandlers() {
 
   dev_manager.on("acquire:live-data", (data) => {
     log_manager.write_data(data);
-    const ffts = fft_manager.calc_fft(data);
-    send_to_renderer("acquire:live-data", ffts);
+    fft_manager.calc_fft(data);
+    // send_to_renderer("acquire:live-data", ffts);
   });
+
+  fft_manager.on("fft:live-data", (data) => {
+    console.log('Emitting, main.js')
+    send_to_renderer("acquire:live-data", data.ffts);
+  })
 }
 
 function registerTerminalHandlers() {
