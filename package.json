@@ -17,6 +17,7 @@
     "binary-parser": "^2.2.1",
     "electron-squirrel-startup": "^1.0.1",
     "fftw-js": "^0.1.4",
+    "node-abi": "^4.14.0",
     "serialport": "^13.0.0"
   },
   "devDependencies": {
@@ -31,7 +32,7 @@
     "@electron-forge/plugin-fuses": "^7.8.1",
     "@electron/fuses": "^1.8.0",
     "@tailwindcss/cli": "^4.1.7",
-    "electron": "^36.2.1",
+    "electron": "^38.1.0",
     "prettier": "^3.5.3",
     "prettier-plugin-tailwindcss": "^0.6.11",
     "tailwindcss": "^4.1.7"

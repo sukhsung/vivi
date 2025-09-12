@@ -5,7 +5,7 @@ module.exports = {
   packagerConfig: {
     name: "vivi",
     executableName: "vivi", // File name of the actual binary
-    asar: false,
+    asar: true,
     icon: "./src/assets/vivi-icon.png",
     osxSign: {}, // object must exist even if empty
   },
