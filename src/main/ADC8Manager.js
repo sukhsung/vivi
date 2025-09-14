@@ -71,8 +71,9 @@ class ADC8Manager extends DeviceManager {
     const response = await this.query(`s ${sampling}`);
     // response = 'Sampling rate set to 400.00 Hz'
     const parts = response.split(" ");
-    this.sampling = parseFloat(parts[parts.length - 2]);
-    this._print(`Sampling set to ${this.sampling} Hz`);
+    this.settings.sampling = parseFloat(parts[parts.length - 2]);
+    this.settings.sampling = this.settings.sampling
+    this._print(`Sampling set to ${this.settings.sampling} Hz`);
   }
 
   async setADC(data) {
