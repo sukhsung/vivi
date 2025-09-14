@@ -5,11 +5,13 @@ class FFTManager extends EventEmitter {
   constructor() {
     super();
     this.NUM_FFT = null;
-    this.plan = null;
     this.NUM_AVE = null;
-    this.fft_aves = null;
     this.NUM_CHANNELS = null;
-    this.ave_counter = null;
+    this.plan = null;
+    this.fft_live = null;
+    this.counter_live = null;
+    this.fft_sum = null
+    this.counter_ave = null;
   }
 
   initialize(NUM_FFT, NUM_CHANNELS, NUM_AVE) {
@@ -22,25 +24,21 @@ class FFTManager extends EventEmitter {
     // TODO: INIT WITH INPUT
     this.NUM_AVE = NUM_AVE;
     this.NUM_CHANNELS = NUM_CHANNELS;
-    this.fft_aves = [];
-    let fft_ave;
-    for (let ch = 0; ch < this.NUM_CHANNELS; ch++) {
-      fft_ave = [];
-      for (let j = 0; j < this.NUM_FFT; j++) {
-        fft_ave.push(0.0);
-      }
-      this.fft_aves.push(fft_ave);
-    }
-    this.ave_counter = 0;
+
+    this.fft_live = this.create2DArray(NUM_CHANNELS, NUM_FFT/2)
+    this.fft_sum = this.create2DArray(NUM_CHANNELS, NUM_FFT/2)
+    this.fft_ave = this.create2DArray(NUM_CHANNELS, NUM_FFT/2)
+
+    this.counter_live = 0;
   }
 
-  reset_average() {
+  reset_live() {
     for (let ch = 0; ch < this.NUM_CHANNELS; ch++) {
-      for (let j = 0; j < this.NUM_FFT; j++) {
-        this.fft_aves[ch][j] = 0.0;
+      for (let j = 0; j < this.NUM_FFT/2; j++) {
+        this.fft_live[ch][j] = 0.0;
       }
     }
-    this.ave_counter = 0;
+    this.counter_live = 0;
   }
 
   fft(data) {
@@ -73,23 +71,67 @@ class FFTManager extends EventEmitter {
       // Compute magnitude from real/imag pairs
       const magnitudes = this.calculate_mag(output);
 
-      for (let j = 0; j < this.NUM_FFT; j++) {
-        this.fft_aves[ch][j] += magnitudes[j] / this.NUM_AVE;
+      for (let j = 0; j < this.NUM_FFT/2; j++) {
+        this.fft_live[ch][j] += magnitudes[j] / this.NUM_AVE;
+        this.fft_sum[ch][j] += magnitudes[j] / this.NUM_AVE;
       }
 
     }
-    this.ave_counter += 1;
+    this.counter_live += 1;
+    this.counter_ave += 1;
 
-    console.log( "Counter "+ this.ave_counter )
-    if (this.ave_counter == this.NUM_AVE) {
-      this.emit( 'fft:live-data', {ffts: this.fft_aves})
-      this.reset_average();
+    this._print( "Counter "+ this.counter_live )
+    if (this.counter_live == this.NUM_AVE) {
+      this.emit( 'fft:live-data', {ffts: this.fft_live})
+      this.reset_live();
+    }
+  }
+
+  async calc_ave() {
+
+    for (let ch = 0; ch < this.NUM_CHANNELS; ch++) {
+      for (let j = 0; j < this.NUM_FFT/2; j++) {
+        this.fft_ave[ch][j] = this.fft_sum[ch][j]/this.counter_ave;
+      }
+
+    }
+
+    this.emit( 'fft:live-data', {ffts: this.fft_ave})
+  }
+
+  _print(message, header = this.constructor.name, color = "y") {
+    let col;
+    if (color === "r") {
+      col = "\x1b[31m";
+    } else if (color === "g") {
+      col = "\x1b[32m";
+    } else if (color === "y") {
+      col = "\x1b[33m";
+    }
+
+    if (this.verbose) {
+      message = message.split("\n");
+
+      if (message.length <= 1) {
+        console.log("\x1b[32m%s:\x1b[0m %s%s\x1b[0m", header, col, message[0]);
+      } else {
+        console.log("\x1b[32m%s:\x1b[0m", header);
+        message.forEach((m) => {
+          console.log("    %s%s\x1b[0m", col, m);
+        });
+      }
     }
   }
 
   transpose(matrix) {
     return matrix[0].map((_, colIndex) => matrix.map((row) => row[colIndex]));
   }
+
+  // Preallocate a 2D array with given rows and cols
+  create2DArray(rows, cols, fill = 0) {
+    return Array.from({ length: rows }, () => Array(cols).fill(fill));
+  }
+
 }
 
 module.exports = { FFTManager };

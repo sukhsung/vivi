@@ -116,21 +116,23 @@ function registerAcquisitionHandlers() {
 
   ipcMain.on("acquire:stop", () => {
     dev_manager.stop_acquisition();
-    log_manager.stop_log();
   });
 
-  dev_manager.on("acquire:status", (data) => {
+  dev_manager.on("acquire:status", async (data) => {
     send_to_renderer("acquire:status", data);
+    if (data['status']==="finished"){
+      await fft_manager.calc_ave()
+      await log_manager.write_data_fft( fft_manager.fft_ave )
+      log_manager.stop_log();
+    }
   });
 
   dev_manager.on("acquire:live-data", (data) => {
-    log_manager.write_data(data);
+    log_manager.write_data_raw(data);
     fft_manager.calc_fft(data);
-    // send_to_renderer("acquire:live-data", ffts);
   });
 
   fft_manager.on("fft:live-data", (data) => {
-    console.log('Emitting, main.js')
     send_to_renderer("acquire:live-data", data.ffts);
   })
 }

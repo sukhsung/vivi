@@ -29,6 +29,9 @@ class LogManager extends EventEmitter {
     if (this.f_json !== null) {
       this.f_json.end();
     }
+    if (this.f_fft !== null) {
+      this.f_fft.end();
+    }
     return;
   }
 
@@ -36,19 +39,19 @@ class LogManager extends EventEmitter {
     this.win = win;
   }
 
-  write_data(data) {
+  write_data_raw(data) {
     // Format Data
     data.forEach((line) => {
       this.f_csv.write(line.toString() + "\n");
     });
   }
 
-  write_fft( ffts ){
+  async write_data_fft(ffts) {
+    ffts = this.transpose(ffts);
     // Format Data
     ffts.forEach((line) => {
       this.f_fft.write(line.toString() + "\n");
     });
-
   }
 
   start_log(t_acquisition, settings) {
@@ -58,6 +61,7 @@ class LogManager extends EventEmitter {
     this.fname = `${time_stamp}`;
     let path_csv = path.join(this.path, `${this.fname}.csv`);
     let path_json = path.join(this.path, `${this.fname}.json`);
+    let path_fft = path.join(this.path, `${this.fname}_fft.csv`);
     let counter = 0;
 
     while (fs.existsSync(path_csv)) {
@@ -69,12 +73,21 @@ class LogManager extends EventEmitter {
     }
 
     this.f_csv = fs.createWriteStream(path_csv, { flags: "a" }); // 'a' = append
-    this.f_json = fs.createWriteStream(path_json, { flags: "a" }); // 'a' = append
-    this.f_fft  = fs.createWriteStream( path_fft, {flags: "a"});
+    this.f_json = fs.createWriteStream(path_json, { flags: "a" });
+    this.f_fft = fs.createWriteStream(path_fft, { flags: "a" });
 
-    this.f_csv.addListener( 'close', () => {this.f_csv = null} )
-    this.f_json.addListener('close', () => {this.f_json = null})
-    this.f_fft.addListener('close', () => {this.f_fft = null})
+    this.f_csv.addListener("close", () => {
+      this._print( 'f_csv closing')
+      this.f_csv = null;
+    });
+    this.f_json.addListener("close", () => {
+      this._print( 'f_json closing')
+      this.f_json = null;
+    });
+    this.f_fft.addListener("close", () => {
+      this._print( 'f_fft closing')
+      this.f_fft = null;
+    });
 
     let metadata = {
       acquisition_time: t_acquisition == 0 ? "live" : t_acquisition,
@@ -88,7 +101,7 @@ class LogManager extends EventEmitter {
 
   stop_log() {
     this.f_csv.end();
-    // this.f_csv = null;
+    this.f_fft.end();
     this.emit("log:status", { status: "finished", fname: this.fname });
   }
 
@@ -121,10 +134,14 @@ class LogManager extends EventEmitter {
   }
 
   mkdir(path) {
-    this._("Creating " + path);
+    this._print("Creating " + path);
     if (!fs.existsSync(path)) {
       fs.mkdirSync(path, { recursive: true });
     }
+  }
+
+  transpose(matrix) {
+    return matrix[0].map((_, colIndex) => matrix.map((row) => row[colIndex]));
   }
 
   _print(message, header = this.constructor.name, color = "y") {
