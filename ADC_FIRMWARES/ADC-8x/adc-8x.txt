@@ -1,0 +1,133 @@
+		ADC-8x driver (version 4h)
+
+The driver program accepts the following commands (lowercase only):
+
+*	Print the driver name and version number, along with the Feather
+	and memory chip ID values.
+
+b T	[This command is not meant for interactive use.]
+	Begin continuous acquisition of data for T seconds (0 means
+	continue indefinitely, limit is 100000).  After a confirmation
+	message is printed, if all is well the driver sends a '+'
+	character and the 16-byte structured binary header.  The
+	header is followed by buffers containing the voltage data.
+	Acquisition can be stopped early by sending any data
+	(typically a newline character) over the USB serial link.  If
+	an error prevents the acquisition from starting properly, the
+	driver sends an invalid short header and no data.
+
+c [N]	Print the current ADC board settings.  If N is omitted or 0, uses
+	free-form text.  If N is 1, uses the following computer-friendly
+	fixed text format (each line contains comma-separated values):
+
+	Line 1:
+		Sampling rate (Hz, floating point)
+		DAC voltage (mV)
+		EnVc setting (0/1)
+		Vc=0V setting (0/1)
+		x4 setting (0/1)
+
+	Lines 2-9 (eight channels even when no daughterboard is present):
+		Gain (1 - 128 or 0 for disabled)
+		Polarity (1/2)
+		Buffering (0/1)
+		Damping Rd setting (0/1)
+
+d [YYYY-MM-DD] [HH:MM:SS[±ZZZZ]]	Get/set the current date and/or
+	time.  The first time this command is issued, both date and time
+	must be specified.  The first two digits of YYYY may be omitted
+	(assumed to lie between 2020 and 2119), as may the :SS field
+	(assumed to be ":00") and the ±ZZZZ time-zone offset field.
+	HH is in 24-hour format.
+
+e N	Set the DAC output voltage to N mV.  The actual bias voltage
+	will be N/2 mV.
+
+f N	Turn the 50-µA current sources on (N is 1) or off (N is 0).
+	The RdH LD4 LED is set correspondingly.
+
+g C G P B	Set the gain and other properties for ADC channel C
+	(1 - 8, or 0 to affect all the ADCs).  G is the gain (1, 8, 16,
+	32, 64, 128, or 0 to disable the ADC).  P is the polarity:
+	1 for unipolar (single-ended) or 2 for bipolar (differential).
+	B is the buffer setting ('b' for buffered or 'u' for unbuffered).
+	If B or both P and B is omitted their current settings remain
+	unchanged.
+
+i settings	Change the Rd damping impedance settings.  Each setting
+	has the form S+ or S-, where S contains digits from 1 - 8 (for
+	Rd1 - Rd8) or 0 (for all the Rd's), and S+ turns on the switches
+	for all the channels listed in S while S- turns them all off.
+	There can be multiple entries in S, and multiple settings in the
+	command line.
+
+l V1 V2 V4	Set the green LD1 LED to V1, the red LD2 LED to V2, and
+	the green LD4 (RdH) LED to V4 (each 0 or 1).
+
+m N	Measure and report the Rs signal resistances.  The LEDs on the
+	front panel are turned off for two seconds, then the resistances
+	are measured and reported.  The LEDs for channels with a sensor
+	connected illuminate for five seconds (or until the pushbutton
+	is pressed and released).  Then the LEDs for channels with high-
+	resistanece sensors illuminate for five seconds, along with the
+	RdH LED.  If N is 1 then channels not connected to a sensor are
+	disabled, channels connected to a sensor are set to a gain of 128,
+	and the damping resistor is enabled if the measured resistance is
+	high.
+
+	Pressing the pushbutton is equivalent to an "m0" command, and
+	a double-press is equivalent to an "m1" command.
+
+r	Reset all the ADCs and LEDs.
+
+s R	Set the sampling rate for all the ADCs.  R is the rate in
+	samples/second (4 - 4800); the number gets rounded up to a value
+	the ADC supports.
+
+t	Test the active ADCs by performing a single voltage reading.
+	Also read the pushbutton state.
+
+v B E	Set the Vc voltage to 0 V if B is 0, or to the Vc-bias value
+	otherwise.  Disable the amplified Sensor Power output to J11
+	if E is 0 and enable it otherwise.
+
+x N	Enable (N is 1) or disable (N is 0) the extra on-board geophone
+	input (J9 connector) for channel 4.
+
+z N	Set the Boff (battery off) signal high (N is 1) or low (N is 0).
+	Normally Boff is high.  Meant for testing.
+
+The driver performs an "internal" calibration (both zero and full-scale)
+on each active ADC before carrying out the b and t commands.
+
+Data transfer: The structured binary header format is as follows:
+
+	8 bytes:	Signature string "ADC8x-1.".
+	2 bytes:	Rate_divisor (little-endian).  The actual sampling
+			rate is (4800 / rate_divisor) samples per second.
+	1 byte:		Sinc filter order (3 or 4).
+	1 byte:		Unused.
+
+	1 byte:		Gain for ADC 1 (1 - 128, or 0 if the ADC is inactive).
+	1 byte:		Flag bits for ADC 1:
+				0x01 bit for buffered;
+				0x02 bit for bipolar.
+	2 bytes:	Gain and flags for ADC 2.
+	...
+	2 bytes:	Gain and flags for ADC 8.
+
+The voltage data following the header is divided into buffers, each
+preceded by a byte containing the buffer's length.  A zero-length
+buffer indicates the end of the data stream.  A buffer holds a
+variable number of blocks, each of which is an array of 24-bit raw
+values stored in little-endian byte order; there is one value in the
+block for each active ADC.  The algorithm to convert one of these raw
+values R to its corresponding voltage reading is:
+
+	Set X := R / (2^24).
+	If the ADC is in bipolar mode, set X := (2 * X) - 1.
+	Voltage := X * Vref / G,
+
+where G is the ADC's gain and Vref is the reference voltage (nominally
+2500 mV, but the signal conditioning on the ADC-8 reduces input
+voltages by about 2%, so a value of 2550 mV should be used).
