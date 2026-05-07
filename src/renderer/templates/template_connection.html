@@ -1,0 +1,43 @@
+<!-- Connection Manager -->
+<div id="connection" class="shadow-box h-full flex flex-col bg-sand-50 p-4 gap-4">
+  <div id="label" class="text-md font-semibold">Label</div>
+
+  <div id="ui_connect" class="flex flex-col gap-2 my-auto ">
+    <!-- Protocol -->
+    <div>
+      <label class="field-label"> Protocol </label>
+      <select id="protocol" class="w-full">
+        <option>TCP</option>
+        <option>SERIAL</option>
+      </select>
+    </div>
+
+    <!-- Ports -->
+    <div id="UI_portlist" class="hidden">
+      <label class="field-label"> Ports </label>
+      <div class="flex items-center gap-2">
+        <select id="port_list" class="w-full"></select>
+        <button id="refresh" class="flex aspect-square h-9 w-9 text-center text-xl">
+          ⟳
+        </button>
+      </div>
+    </div>
+    <!-- Address -->
+    <div id="UI_address">
+      <label class="field-label"> Address </label>
+      <input id="address" placeholder="<IP>:<PORT>" value="192.168.0.2:23" class="shadow-input w-full text-left px-2" />
+    </div>
+
+    <!-- Baudrate -->
+    <div class="relative">
+      <label class="field-label"> Baudrate </label>
+      <select id="baudrate" class="w-full"></select>
+    </div>
+  </div>
+
+  <!-- Connect Button -->
+  <div class="text-center">
+    <button id="connect">Connect</button>
+    <button id="disconnect" class="hidden">Disconnect</button>
+  </div>
+</div>

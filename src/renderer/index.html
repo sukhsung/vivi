@@ -1,257 +1,278 @@
 <!doctype html>
 <html>
   <head>
-    <title>Vivi - Device Manager</title>
+    <title>Vivi</title>
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data:; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' ws: http://localhost:*"
+    />
+
     <script src="./js/chart.js"></script>
     <link href="./css/output.css" rel="stylesheet" />
   </head>
-  <body class="overflow-hidden">
+
+  <body>
+    <div class="title-bar">
+      <span class="title-text">vivi</span>
+      <div class="ml-auto flex">
+        <button id="PB_win_min" class="win-btn">&#x2212;</button>
+        <button id="PB_win_max" class="win-btn">&#x25A1;</button>
+        <button id="PB_win_close" class="win-btn win-btn-close">
+          &#x2715;
+        </button>
+      </div>
+    </div>
+
     <div
       id="main-container"
-      class="bg-vivi-950 grid h-screen grid-cols-4 grid-rows-1 gap-4 p-2"
+      class="grid h-full min-h-0 grid-rows-[1fr_65px] gap-3 overflow-hidden"
     >
       <div
-        id="panel_left"
-        class="bg-vivi-500 shadow-box relative col-span-1 px-6 pt-6 pb-0"
+        id="panel_top"
+        class="grid min-h-0 grid-cols-4 gap-3 overflow-hidden"
       >
-        <div id="connection" class="flex flex-col">
-          <!-- Connection Manager -->
-          <div id="ui_connect" class="shadow-box bg-white p-6">
-            <!-- Protocol -->
-            <div>
-              <label class="mb-1"> Protocol </label>
-              <select id="protocol" class="w-full">
-                <option>SERIAL</option>
-                <option>TCP</option>
-              </select>
-            </div>
-
-            <!-- Ports -->
-            <div id="UI_portlist">
-              <label class="mb-1"> Ports </label>
-              <div class="flex items-center gap-2">
-                <select id="port_list" class="w-full"></select>
-                <button
-                  id="refresh"
-                  class="flex aspect-square h-9 w-9 text-center text-xl"
-                >
-                  ⟳
-                </button>
-              </div>
-            </div>
-            <!-- Address -->
-            <div id="UI_address" class="hidden">
-              <label class="mb-1"> Address </label>
-              <div class="flex items-center gap-2">
-                <input
-                  id="address"
-                  value="<IP>:<PORT>"
-                  class="flex h-9 w-full items-center justify-center rounded border border-slate-200 text-sm hover:border-slate-400"
-                />
-              </div>
-            </div>
-
-            <!-- Baudrate -->
-            <div class="relative my-2">
-              <label class="mb-1 block text-sm text-slate-800">
-                Baudrate
-              </label>
-              <div class="relative">
-                <select id="baudrate" class="w-full"></select>
-              </div>
-            </div>
-            <!-- Connect Button -->
-            <div class="mt-6 text-center">
-              <button id="connect">Connect</button>
-              <button id="disconnect" class="hidden">Disconnect</button>
-            </div>
-          </div>
-
-          <div class="mt-30">
-            <img src="../assets/vivi-main.svg" class="m-auto w-8/12" />
-          </div>
-        </div>
-
-        <!-- Control  -->
         <div
-          id="control"
-          class="grid hidden h-full grid-cols-1 grid-rows-[1fr_5fr_1fr] gap-4 py-4"
+          id="panel_left"
+          class="bg-vivi-500 shadow-box relative col-span-1 min-h-0 overflow-hidden px-6 pt-6 pb-0"
         >
-          <!-- All Channel Settings-->
           <div
-            class="shadow-box my-2 grid w-full grid-cols-2 gap-4 bg-white p-6"
+            id="connection"
+            class="flex h-full flex-col items-center justify-center"
           >
-            <!-- Address -->
-            <div>
-              <label class="mb-1"> Sampling (Hz) </label>
-              <div class="flex items-center gap-2">
-                <input
-                  id="TB_sampling"
-                  value="400"
-                  class="flex h-9 w-full items-center justify-center"
-                />
-              </div>
-            </div>
-            <!-- All Channel Gains -->
-            <div>
-              <label class="mb-1"> All Gains </label>
-              <select id="CB_allGains" class="w-full"></select>
+            <div class="w-full">
+              <img src="../assets/vivi-main.svg" class="m-auto w-8/12" />
             </div>
           </div>
 
-          <!-- ADC Settings -->
+          <!-- Control  -->
           <div
-            class="shadow-box relative flex h-full w-full flex-col overflow-hidden bg-white"
+            id="control"
+            class="grid hidden h-full grid-cols-1 grid-rows-[1fr_5fr_1fr] gap-4 py-4"
           >
-            <div id="div_scrollbox" class="w-full flex-1 overflow-y-scroll p-4">
-              <div id="div_ADCs"></div>
-            </div>
-
+            <!-- All Channel Settings-->
             <div
-              id="scroll-indicator"
-              class="text-vivi-500 border-vivi-500 pointer-events-none absolute bottom-2 left-1/2 z-30 h-7 w-7 -translate-x-1/2 animate-bounce rounded-full border bg-white text-center text-lg"
+              class="shadow-box my-2 grid w-full grid-cols-2 gap-4 bg-white p-6"
             >
-              ↓
+              <!-- Address -->
+              <div>
+                <label class="mb-1"> Sampling (Hz) </label>
+                <div class="flex items-center gap-2">
+                  <input
+                    id="TB_sampling"
+                    value="400"
+                    class="flex h-9 w-full items-center justify-center"
+                  />
+                </div>
+              </div>
+              <!-- All Channel Gains -->
+              <div>
+                <label class="mb-1"> All Gains </label>
+                <select id="CB_allGains" class="w-full"></select>
+              </div>
             </div>
+
+            <!-- ADC Settings -->
             <div
-              id="adc-gradient-t"
-              class="pointer-events-none absolute top-0 left-0 z-20 hidden h-6 w-full rounded-t-xl bg-gradient-to-b from-gray-300 to-transparent transition-opacity duration-300"
-            ></div>
-            <div
-              id="adc-gradient-b"
-              class="pointer-events-none absolute bottom-0 left-0 z-20 hidden h-6 w-full rounded-b-xl bg-gradient-to-t from-gray-300 to-transparent transition-opacity duration-300"
-            ></div>
+              class="shadow-box relative flex h-full w-full flex-col overflow-hidden bg-white"
+            >
+              <div
+                id="div_scrollbox"
+                class="w-full flex-1 overflow-y-scroll p-4"
+              >
+                <div id="div_ADCs"></div>
+              </div>
+
+              <div
+                id="scroll-indicator"
+                class="text-vivi-500 border-vivi-500 pointer-events-none absolute bottom-2 left-1/2 z-30 h-7 w-7 -translate-x-1/2 animate-bounce rounded-full border bg-white text-center text-lg"
+              >
+                ↓
+              </div>
+              <div
+                id="adc-gradient-t"
+                class="pointer-events-none absolute top-0 left-0 z-20 hidden h-6 w-full rounded-t-xl bg-gradient-to-b from-gray-300 to-transparent transition-opacity duration-300"
+              ></div>
+              <div
+                id="adc-gradient-b"
+                class="pointer-events-none absolute bottom-0 left-0 z-20 hidden h-6 w-full rounded-b-xl bg-gradient-to-t from-gray-300 to-transparent transition-opacity duration-300"
+              ></div>
+            </div>
+
+            <div class="grid grid-cols-2 items-center gap-4 self-end py-2">
+              <button id="terminal">Open Console</button>
+              <button id="PB_disconnect2">Disconnect</button>
+            </div>
           </div>
 
-          <div class="grid grid-cols-2 items-center gap-4 self-end py-2">
-            <button id="terminal">Open Console</button>
-            <button id="PB_disconnect2">Disconnect</button>
+          <div
+            id="busy_left"
+            class="bg-vivi-500/50 pointer-events-none absolute inset-0 z-50 flex flex-col items-center justify-center rounded-xl opacity-0 backdrop-blur-sm transition-opacity duration-300"
+          >
+            <div id="busy_left_status" class="text-center text-white">
+              Acquisition in Progress...
+            </div>
+            <div class="w-full items-center text-center">
+              <img src="../assets/vivi-main.svg" class="m-auto w-8/12" />
+            </div>
           </div>
         </div>
 
         <div
-          id="busy_left"
-          class="bg-vivi-500/50 pointer-events-none absolute inset-0 z-50 flex flex-col items-center justify-center rounded-xl opacity-0 backdrop-blur-sm transition-opacity duration-300"
+          id="panel_right"
+          class="relative col-span-3 min-h-0 overflow-hidden"
         >
-          <div id="busy_left_status" class="text-center text-white">Acquisition in Progress...</div>
-          <div class="w-full items-center text-center">
-            <img src="../assets/vivi-main.svg" class="m-auto w-8/12" />
+          <div
+            id="viewer"
+            class="grid h-full min-h-0 grid-rows-[3fr_4fr] gap-2"
+          >
+            <div
+              id="panel_view"
+              class="shadow-box grid h-full min-h-0 grid-cols-[minmax(240px,1fr)_4fr] grid-rows-1 gap-4 bg-white p-6"
+            >
+              <div
+                class="shadow-box h-full min-h-0 w-full overflow-hidden px-2 py-2"
+              >
+                <div class="grid w-full grid-cols-5 p-2">
+                  <label class="col-span-3 text-sm"># FFT Samples </label>
+                  <input
+                    id="TB_NUM_FFT"
+                    value="1024"
+                    class="col-span-2 h-7 rounded border border-slate-200 text-center text-sm hover:border-slate-400"
+                  />
+                </div>
+
+                <div class="grid w-full grid-cols-5 p-2">
+                  <label class="col-span-3 text-sm"># Average </label>
+                  <input
+                    id="TB_NUM_AVE"
+                    value="1"
+                    class="col-span-2 h-7 rounded border border-slate-200 text-center text-sm hover:border-slate-400"
+                  />
+                </div>
+
+                <div class="grid w-full grid-cols-5 p-2">
+                  <label class="col-span-3 text-sm">Acquisition (s) </label>
+                  <input
+                    id="TB_acquireTime"
+                    value="120"
+                    class="col-span-2 h-7 rounded border border-slate-200 text-center text-sm hover:border-slate-400"
+                  />
+                </div>
+
+                <div class="grid w-full grid-cols-5 p-2">
+                  <label class="col-span-3 text-sm">Delay (s) </label>
+                  <input
+                    id="TB_delayTime"
+                    value="0"
+                    class="col-span-2 h-7 rounded border border-slate-200 text-center text-sm hover:border-slate-400"
+                  />
+                </div>
+
+                <div class="flex gap-4 p-2 text-center">
+                  <button id="PB_view_start" class="flex-1">Live</button>
+                  <button id="PB_acquire_start" class="flex-1">Acquire</button>
+                  <button id="PB_stop" class="button-pink flex-1">
+                    Stop Acquisition
+                  </button>
+                </div>
+                <div class="py-3">
+                  <div class="h-3 w-full rounded-full bg-slate-200">
+                    <div
+                      id="progress"
+                      class="bg-vivi-500 animate-flicker h-full rounded-full transition-all duration-10"
+                      style="width: 0%"
+                    ></div>
+                  </div>
+                </div>
+              </div>
+              <div id="livefft" class="shadow-box h-full w-full bg-white p-4">
+                <canvas id="canvas_live" class="h-full w-full"></canvas>
+              </div>
+            </div>
+            <div
+              id="panel_waterfall"
+              class="shadow-box grid h-full min-h-0 grid-cols-[80px_1fr] gap-2 bg-white p-6"
+            >
+              <div class="tab-group flex w-full flex-col">
+                <div id="tabList" class="shadow-box flex flex-col p-1"></div>
+                <div class="shadow-box mt-auto flex flex-col p-1">
+                  <a href="#" id="PB_cmap" class="tab tab_black">Viridis</a>
+                </div>
+              </div>
+
+              <div
+                id="waterfall min-h-0 "
+                class="shadow-box h-full min-h-0 w-full overflow-hidden p-6"
+              >
+                <canvas
+                  id="canvas_waterfall"
+                  class="h-full w-full rounded-xl border bg-black"
+                ></canvas>
+              </div>
+            </div>
+          </div>
+          <div
+            id="busy_right"
+            class="bg-vivi-500/50 pointer-events-none absolute inset-0 z-50 flex flex-col items-center justify-center rounded-xl opacity-0 backdrop-blur-xs transition-opacity duration-300"
+          >
+            <div class="text-white">Connect to a Device to Continue...</div>
           </div>
         </div>
       </div>
 
-      <div id="panel_right" class="relative col-span-3">
-        <div
-          id="viewer"
-          class="grid h-full min-h-0 grid-rows-[3fr_75px_4fr] gap-2"
-        >
-          <div
-            id="panel_view"
-            class="shadow-box grid h-full min-h-0 grid-cols-[minmax(240px,1fr)_4fr] grid-rows-1 gap-4 bg-white p-6"
-          >
-            <div
-              class="shadow-box h-full min-h-0 w-full px-2 py-2 overflow-hidden"
-            >
-              <div class="w-full grid grid-cols-5 p-2">
-                <label class="text-sm col-span-3"># FFT Samples </label>
-                <input
-                  id="TB_NUM_FFT"
-                  value="1024"
-                  class="h-7 col-span-2 rounded border border-slate-200 text-center text-sm hover:border-slate-400"
-                />
-              </div>
-
-              <div class="w-full grid grid-cols-5 p-2">
-                <label class="text-sm col-span-3"># Average </label>
-                <input
-                  id="TB_NUM_AVE"
-                  value="1"
-                  class="h-7 col-span-2 rounded border border-slate-200 text-center text-sm hover:border-slate-400"
-                />
-              </div>
-
-              <div class="w-full grid grid-cols-5 p-2">
-                <label class="text-sm col-span-3">Acquisition (s) </label>
-                <input
-                  id="TB_acquireTime"
-                  value="120"
-                  class="h-7 col-span-2 rounded border border-slate-200 text-center text-sm hover:border-slate-400"
-                />
-              </div>
-
-              <div class="w-full grid grid-cols-5 p-2">
-                <label class="text-sm col-span-3">Delay (s) </label>
-                <input
-                  id="TB_delayTime"
-                  value="0"
-                  class="h-7 col-span-2 rounded border border-slate-200 text-center text-sm hover:border-slate-400"
-                />
-              </div>
-
-              <div class="p-2 gap-4 text-center flex">
-                <button id="PB_view_start" class="flex-1">Live</button>
-                <button id="PB_acquire_start" class="flex-1">Acquire</button>
-                <button id="PB_stop" class="flex-1 button-pink">
-                  Stop Acquisition
-                </button>
-              </div>
-              <div class="py-3">
-                <div class="h-3 w-full rounded-full bg-slate-200">
-                  <div
-                    id="progress"
-                    class="bg-vivi-500 animate-flicker h-full rounded-full transition-all duration-10"
-                    style="width: 0%"
-                  ></div>
+      <div id="panel_bottom">
+        <div class="shadow-box bg-sand-50 grid h-full gap-3">
+          <div class="grid grid-cols-[1fr_auto_auto_auto] gap-1">
+            <div id="panel_path" class="my-auto px-4">
+              <div class="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+                <div class="my-auto">
+                  <div id="div_path" class="w-full truncate">
+                    Save Path: <output id="TB_path">Not Selected</output>
+                  </div>
+                </div>
+                <div class="ml-auto">
+                  <button id="PB_browse">Select</button>
+                  <button id="PB_open">Open</button>
                 </div>
               </div>
             </div>
-            <div id="livefft" class="shadow-box h-full w-full bg-white p-4">
-              <canvas id="canvas_live" class="h-full w-full"></canvas>
-            </div>
-          </div>
-          <div
-            id="panel_save"
-            class="shadow-box flex flex-row items-center bg-white px-6 py-2 text-sm"
-          >
-            <div>
-              Save Path:
-              <output id="TB_path" class="w-56"></output>
-            </div>
-            <div class="ml-auto">
-              <button id="PB_browse">Choose Directory</button>
-              <button id="PB_open">Open</button>
-            </div>
-            <div class="ml-4 w-50">
-              <output id="TB_log">Log Status: Not Started</output>
-            </div>
-          </div>
-          <div
-            id="panel_waterfall"
-            class="shadow-box grid h-full min-h-0 grid-cols-[80px_1fr] gap-2 bg-white p-6"
-          >
-            <div class="tab-group flex w-full flex-col">
-              <div id="tabList" class="shadow-box flex flex-col p-1"></div>
-              <div class="shadow-box mt-auto flex flex-col p-1">
-                <a href="#" id="PB_cmap" class="tab tab_black">Viridis</a>
+
+            <div class="border-vivi-800 my-auto border-r px-4">
+              <div class="grid grid-cols-[auto_minmax(0,1fr)] gap-2">
+                <div class="my-auto">
+                  <div id="div_log_status" class="w-full truncate">
+                    <output id="TB_log">Log Status: Not Started</output>
+                  </div>
+                </div>
               </div>
             </div>
 
-            <div
-              id="waterfall min-h-0 "
-              class="shadow-box h-full min-h-0 w-full overflow-hidden p-6"
-            >
-              <canvas
-                id="canvas_waterfall"
-                class="h-full w-full rounded-xl border bg-black"
-              ></canvas>
+            <div class="ml-auto flex w-full gap-2 px-4 py-3 text-center">
+              <button id="PB_device_manager" class="">Device Manager</button>
+              <button
+                id="PB_keyboard"
+                class="aspect-square h-full items-center p-0"
+              >
+                <img
+                  src="../assets/UI_icons/keyboard_on.svg"
+                  class="keyboard-icon-on mx-auto h-10 w-10"
+                />
+                <img
+                  src="../assets/UI_icons/keyboard_off.svg"
+                  class="keyboard-icon-off mx-auto h-10 w-10"
+                />
+              </button>
+              <button
+                id="PB_info"
+                class="aspect-square h-full items-center p-0"
+              >
+                <img
+                  src="../assets/UI_icons/info.svg"
+                  class="keyboard-icon-on mx-auto h-8 w-8"
+                />
+              </button>
             </div>
           </div>
-        </div>
-        <div
-          id="busy_right"
-          class="bg-vivi-500/50 pointer-events-none absolute inset-0 z-50 flex flex-col items-center justify-center rounded-xl opacity-0 backdrop-blur-xs transition-opacity duration-300"
-        >
-          <div class="text-white">Connect to a Device to Continue...</div>
         </div>
       </div>
     </div>

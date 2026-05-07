@@ -1,7 +1,7 @@
-const { FFT } = require("fftw-js");
-const EventEmitter = require("events");
+import { FFT } from "fftw-js";
+import { EventEmitter } from "node:events";
 
-class FFTManager extends EventEmitter {
+export class FFTManager extends EventEmitter {
   constructor() {
     super();
     this.NUM_FFT = null;
@@ -10,7 +10,7 @@ class FFTManager extends EventEmitter {
     this.plan = null;
     this.fft_live = null;
     this.counter_live = null;
-    this.fft_sum = null
+    this.fft_sum = null;
     this.counter_ave = null;
   }
 
@@ -25,16 +25,16 @@ class FFTManager extends EventEmitter {
     this.NUM_AVE = NUM_AVE;
     this.NUM_CHANNELS = NUM_CHANNELS;
 
-    this.fft_live = this.create2DArray(NUM_CHANNELS, NUM_FFT/2)
-    this.fft_sum = this.create2DArray(NUM_CHANNELS, NUM_FFT/2)
-    this.fft_ave = this.create2DArray(NUM_CHANNELS, NUM_FFT/2)
+    this.fft_live = this.create2DArray(NUM_CHANNELS, NUM_FFT / 2);
+    this.fft_sum = this.create2DArray(NUM_CHANNELS, NUM_FFT / 2);
+    this.fft_ave = this.create2DArray(NUM_CHANNELS, NUM_FFT / 2);
 
     this.counter_live = 0;
   }
 
   reset_live() {
     for (let ch = 0; ch < this.NUM_CHANNELS; ch++) {
-      for (let j = 0; j < this.NUM_FFT/2; j++) {
+      for (let j = 0; j < this.NUM_FFT / 2; j++) {
         this.fft_live[ch][j] = 0.0;
       }
     }
@@ -71,32 +71,29 @@ class FFTManager extends EventEmitter {
       // Compute magnitude from real/imag pairs
       const magnitudes = this.calculate_mag(output);
 
-      for (let j = 0; j < this.NUM_FFT/2; j++) {
+      for (let j = 0; j < this.NUM_FFT / 2; j++) {
         this.fft_live[ch][j] += magnitudes[j] / this.NUM_AVE;
         this.fft_sum[ch][j] += magnitudes[j] / this.NUM_AVE;
       }
-
     }
     this.counter_live += 1;
     this.counter_ave += 1;
 
-    this._print( "Counter "+ this.counter_live )
+    this._print("Counter " + this.counter_live);
     if (this.counter_live == this.NUM_AVE) {
-      this.emit( 'fft:live-data', {ffts: this.fft_live})
+      this.emit("fft:live-data", { ffts: this.fft_live });
       this.reset_live();
     }
   }
 
   async calc_ave() {
-
     for (let ch = 0; ch < this.NUM_CHANNELS; ch++) {
-      for (let j = 0; j < this.NUM_FFT/2; j++) {
-        this.fft_ave[ch][j] = this.fft_sum[ch][j]/this.counter_ave;
+      for (let j = 0; j < this.NUM_FFT / 2; j++) {
+        this.fft_ave[ch][j] = this.fft_sum[ch][j] / this.counter_ave;
       }
-
     }
 
-    this.emit( 'fft:live-data', {ffts: this.fft_ave})
+    this.emit("fft:live-data", { ffts: this.fft_ave });
   }
 
   _print(message, header = this.constructor.name, color = "y") {
@@ -131,7 +128,4 @@ class FFTManager extends EventEmitter {
   create2DArray(rows, cols, fill = 0) {
     return Array.from({ length: rows }, () => Array(cols).fill(fill));
   }
-
 }
-
-module.exports = { FFTManager };

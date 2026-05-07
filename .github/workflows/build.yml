@@ -1,6 +1,7 @@
 name: Build and Release
 
 on:
+  workflow_dispatch:
   push:
     tags:
       - "v*"
@@ -15,14 +16,24 @@ jobs:
         include:
           - os: ubuntu-latest
             arch: x64
-          - os: ubuntu-24.04-arm
+            targets: "@electron-forge/maker-deb"
+            artifact_suffix: deb
+          - os: ubuntu-latest
+            arch: x64
+            targets: "@electron-forge/maker-rpm"
+            artifact_suffix: rpm
+            install_rpm: true
+          - os: macos-latest
             arch: arm64
+            artifact_suffix: dmg
           - os: windows-latest
             arch: x64
-          - os: macos-latest
+            targets: "@electron-forge/maker-squirrel"
+            artifact_suffix: squirrel
+          - os: windows-latest
             arch: x64
-          - os: macos-latest
-            arch: arm64
+            targets: "@rabbitholesyndrome/electron-forge-maker-portable"
+            artifact_suffix: portable
 
     runs-on: ${{ matrix.os }}
 
@@ -38,13 +49,17 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Install RPM tools
+        if: matrix.install_rpm
+        run: sudo apt-get install -y rpm
+
       - name: Build app
-        run:  npm run make -- --arch=${{ matrix.arch }}
+        run: npm run make -- --arch=${{ matrix.arch }}${{ matrix.targets && format(' --targets {0}', matrix.targets) || '' }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.os }}-${{ matrix.arch }}
+          name: ${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.artifact_suffix }}
           path: out/make/
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

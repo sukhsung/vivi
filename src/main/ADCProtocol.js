@@ -1,8 +1,6 @@
+import { Parser } from "binary-parser";
 
-const { Parser } = require("binary-parser");
-
-
-class ADCProtocol {
+export class ADCProtocol {
   constructor(board_type, num_channels) {
     this.board_type = board_type;
     this.NUM_CHANNELS = num_channels;
@@ -62,6 +60,3 @@ class ADCProtocol {
     return volts;
   }
 }
-
-
-module.exports = { ADCProtocol };

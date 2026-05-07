@@ -1,11 +1,10 @@
-const { dialog, shell } = require("electron");
-const EventEmitter = require("events");
+import { dialog, shell } from "electron";
+import EventEmitter from "node:events";
+import path from "node:path";
+import os from "node:os";
+import fs from "node:fs";
 
-const path = require("path");
-const os = require("os");
-const fs = require("fs");
-
-class LogManager extends EventEmitter {
+export class LogManager extends EventEmitter {
   constructor(verbose) {
     super();
     this.verbose = verbose;
@@ -168,5 +167,3 @@ class LogManager extends EventEmitter {
     }
   }
 }
-
-module.exports = { LogManager };

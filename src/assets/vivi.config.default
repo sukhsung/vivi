@@ -1,0 +1,8 @@
+{
+  "connections": {
+    "vivi": {
+      "protocol": "SERIAL",
+      "baudrate": 9600
+    }
+  }
+}

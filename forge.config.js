@@ -1,41 +1,41 @@
-const { FusesPlugin } = require("@electron-forge/plugin-fuses");
-const { FuseV1Options, FuseVersion } = require("@electron/fuses");
+import pluginFuses from "@electron-forge/plugin-fuses";
+import fuses from "@electron/fuses";
 
-module.exports = {
+const { FusesPlugin } = pluginFuses;
+const { FuseV1Options, FuseVersion } = fuses;
+
+const config = {
   packagerConfig: {
     name: "vivi",
     executableName: "vivi", // File name of the actual binary
     asar: true,
-    icon: "./src/assets/vivi-icon.png",
-    osxSign: false,//{}, // object must exist even if empty
+    icon: "./src/assets/vivi-icon",
+    osxSign: false, //{}, // object must exist even if empty
   },
   rebuildConfig: {
     force: true,
   },
   makers: [
+    { name: "@electron-forge/maker-dmg", platforms: ["darwin"] },
+
     {
       name: "@electron-forge/maker-squirrel",
+      platforms: ["win32"],
       config: {
         name: "vivi",
-        authors: "Suk Hyun Sung",
-        shortcutName: "vivi",
-        setupIcon: "./src/assets/vivi-icon.ico", // optional
-        iconUrl:
-          "https://raw.githubusercontent.com/sukhsung/vivi/refs/heads/main/src/assets/vivi-icon.ico", // required if setupIcon is used
-        noMsi: true,
-        createDesktopShortcut: true,
-        createStartMenuShortcut: true,
-        shortcutFolderName: "vivi",
+        setupExe: "vivi-${version}-setup.exe",
       },
     },
+
     {
-      name: "@electron-forge/maker-zip",
-      platforms: [], // ["darwin"],
+      name: "@rabbitholesyndrome/electron-forge-maker-portable",
+      platforms: ["win32"],
+      config: {
+        productName: "vivi",
+        artifactName: "vivi-${version}-portable.exe",
+      },
     },
-    {
-      name: "@electron-forge/maker-dmg",
-      platforms: ["darwin"],
-    },
+
     {
       name: "@electron-forge/maker-deb",
       executableName: "vivi",
@@ -43,9 +43,11 @@ module.exports = {
         options: {
           name: "vivi",
           maintainer: "https://shsung.com",
+          icon: "./src/assets/vivi-icon.png",
         },
       },
     },
+
     {
       name: "@electron-forge/maker-rpm",
       executableName: "vivi",
@@ -53,24 +55,21 @@ module.exports = {
         options: {
           name: "vivi",
           maintainer: "https://shsung.com",
+          icon: "./src/assets/vivi-icon.png",
         },
       },
     },
   ],
   plugins: [
-    // {
-    //   name: "@electron-forge/plugin-auto-unpack-natives",
-    //   config: {},
-    // },
-    // Fuses are used to enable/disable various Electron functionality
-    // at package time, before code signing the application
     new FusesPlugin({
       version: FuseVersion.V1,
       [FuseV1Options.RunAsNode]: false,
       [FuseV1Options.EnableCookieEncryption]: true,
       [FuseV1Options.EnableNodeOptionsEnvironmentVariable]: false,
       [FuseV1Options.EnableNodeCliInspectArguments]: false,
-      [FuseV1Options.EnableEmbeddedAsarIntegrityValidation]: true,  
+      [FuseV1Options.EnableEmbeddedAsarIntegrityValidation]: true,
     }),
   ],
 };
+
+export default config;

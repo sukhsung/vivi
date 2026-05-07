@@ -1,7 +1,7 @@
-const { DeviceManager, list_serial_ports } = require("./deviceManager.js");
-const { ADCProtocol } = require("./ADCProtocol.js");
+import { DeviceManager } from "./deviceManager.js";
+import { ADCProtocol } from "./ADCProtocol.js";
 
-class ADC8Manager extends DeviceManager {
+export class ADC8Manager extends DeviceManager {
   constructor(verbose = false) {
     super(verbose);
 
@@ -72,7 +72,7 @@ class ADC8Manager extends DeviceManager {
     // response = 'Sampling rate set to 400.00 Hz'
     const parts = response.split(" ");
     this.settings.sampling = parseFloat(parts[parts.length - 2]);
-    this.settings.sampling = this.settings.sampling
+    this.settings.sampling = this.settings.sampling;
     this._print(`Sampling set to ${this.settings.sampling} Hz`);
   }
 
@@ -179,7 +179,7 @@ class ADC8Manager extends DeviceManager {
     }
 
     // Acquisition Cycle
-    let mode
+    let mode;
     if (t_acquire == 0) {
       mode = "live";
     } else if (t_acquire > 0) {
@@ -334,5 +334,3 @@ class ADC8Manager extends DeviceManager {
     return;
   }
 }
-
-module.exports = { ADC8Manager, list_serial_ports };

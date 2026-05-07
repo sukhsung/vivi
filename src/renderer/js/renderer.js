@@ -1,21 +1,26 @@
-import { UI_devManager } from "./UI_devManager.js";
+import { UI_DeviceManager } from "./splash/UI_DeviceManager.js";
+import { UI_InfoManager } from "./splash/UI_InfoManager.js";
+
 import { UI_PathManager } from "./UI_Path.js";
-import { UI_ConnectionManager } from "./UI_Connection.js";
 import { UI_SettingManager } from "./UI_Settings.js";
 import { UI_AcquisitionManager } from "./UI_Acquisition.js";
 import { UI_LiveviewManager } from "./UI_LiveView.js";
 import { UI_WaterfallManager } from "./UI_Waterfall.js";
 import { UI_TerminalManager } from "./UI_Terminal.js";
+import { UI_KeyboardManager } from "./UI_Keyboard.js";
 
 const verbose = true;
-const dev_manager = new UI_devManager();
+let CONFIG = {};
+const device_manager = new UI_DeviceManager();
 const path_manager = new UI_PathManager();
-const connection_manager = new UI_ConnectionManager(verbose);
 const setting_manager = new UI_SettingManager(verbose);
 const acquisition_manager = new UI_AcquisitionManager();
 const liveview_manager = new UI_LiveviewManager();
 const waterfall_manager = new UI_WaterfallManager();
 const terminal_manager = new UI_TerminalManager();
+
+const info_manager = new UI_InfoManager();
+const keyboard_manager = new UI_KeyboardManager();
 
 function print(message, header = "renderer.js") {
   if (verbose) {
@@ -23,15 +28,31 @@ function print(message, header = "renderer.js") {
   }
 }
 
-window.addEventListener("load", () => {
-  dev_manager.initialize();
+async function initialize() {
+  CONFIG = await window.api_app.get_config();
+  await device_manager.initialize(CONFIG);
   path_manager.initialize();
-  connection_manager.initialize();
   setting_manager.initialize();
   acquisition_manager.initialize();
   liveview_manager.initialize();
   waterfall_manager.initialize();
   terminal_manager.initialize();
+  await info_manager.initialize();
+  await keyboard_manager.initialize();
+}
+
+window.addEventListener("load", async () => {
+  document
+    .getElementById("PB_win_min")
+    .addEventListener("click", () => window.api_window.minimize());
+  document
+    .getElementById("PB_win_max")
+    .addEventListener("click", () => window.api_window.maximize());
+  document
+    .getElementById("PB_win_close")
+    .addEventListener("click", () => window.api_window.close());
+
+  await initialize();
 
   acquisition_manager.addEventListener("start-view", () => {
     const NUM_FFT = acquisition_manager.NUM_FFT;
@@ -43,7 +64,13 @@ window.addEventListener("load", () => {
     const sampling = setting_manager.sampling;
     liveview_manager.init_plot(NUM_CHANNELS, NUM_FFT, sampling, labels);
     waterfall_manager.init_plot(NUM_CHANNELS, NUM_FFT);
-    acquisition_manager.start_acquisition(NUM_FFT, NUM_AVE, t_acquire, t_delay, labels);
+    acquisition_manager.start_acquisition(
+      NUM_FFT,
+      NUM_AVE,
+      t_acquire,
+      t_delay,
+      labels,
+    );
   });
   acquisition_manager.addEventListener("start-acquire", () => {
     const NUM_FFT = acquisition_manager.NUM_FFT;
@@ -56,11 +83,17 @@ window.addEventListener("load", () => {
 
     liveview_manager.init_plot(NUM_CHANNELS, NUM_FFT, sampling, labels);
     waterfall_manager.init_plot(NUM_CHANNELS, NUM_FFT);
-    acquisition_manager.start_acquisition(NUM_FFT, NUM_AVE, t_acquire, t_delay, labels);
+    acquisition_manager.start_acquisition(
+      NUM_FFT,
+      NUM_AVE,
+      t_acquire,
+      t_delay,
+      labels,
+    );
   });
 });
 
-window.api_connection.receivedConnection((data) => {
+window.api_vivi.evt_connection((data) => {
   if (data.connected) {
     print("received connected");
     dev_manager.received_connected();
@@ -78,7 +111,7 @@ window.api_connection.receivedConnection((data) => {
 
 window.api_acquire.receivedStatus((data) => {
   if (data.status === "started") {
-    acquisition_manager.received_started( data.mode );
+    acquisition_manager.received_started(data.mode);
     dev_manager.received_started(data.mode);
   } else if (data.status === "finished") {
     acquisition_manager.received_finished();

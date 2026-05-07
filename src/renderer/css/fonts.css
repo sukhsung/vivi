@@ -1,0 +1,259 @@
+/* ── Satoshi ── */
+@font-face {
+  font-family: "Satoshi";
+  src: url("../../assets/fonts/Satoshi/Satoshi-Light.otf") format("opentype");
+  font-weight: 300;
+  font-style: normal;
+}
+@font-face {
+  font-family: "Satoshi";
+  src: url("../../assets/fonts/Satoshi/Satoshi-LightItalic.otf")
+    format("opentype");
+  font-weight: 300;
+  font-style: italic;
+}
+@font-face {
+  font-family: "Satoshi";
+  src: url("../../assets/fonts/Satoshi/Satoshi-Regular.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+}
+@font-face {
+  font-family: "Satoshi";
+  src: url("../../assets/fonts/Satoshi/Satoshi-Italic.otf") format("opentype");
+  font-weight: 400;
+  font-style: italic;
+}
+@font-face {
+  font-family: "Satoshi";
+  src: url("../../assets/fonts/Satoshi/Satoshi-Medium.otf") format("opentype");
+  font-weight: 500;
+  font-style: normal;
+}
+@font-face {
+  font-family: "Satoshi";
+  src: url("../../assets/fonts/Satoshi/Satoshi-MediumItalic.otf")
+    format("opentype");
+  font-weight: 500;
+  font-style: italic;
+}
+@font-face {
+  font-family: "Satoshi";
+  src: url("../../assets/fonts/Satoshi/Satoshi-Bold.otf") format("opentype");
+  font-weight: 700;
+  font-style: normal;
+}
+@font-face {
+  font-family: "Satoshi";
+  src: url("../../assets/fonts/Satoshi/Satoshi-BoldItalic.otf")
+    format("opentype");
+  font-weight: 700;
+  font-style: italic;
+}
+@font-face {
+  font-family: "Satoshi";
+  src: url("../../assets/fonts/Satoshi/Satoshi-Black.otf") format("opentype");
+  font-weight: 900;
+  font-style: normal;
+}
+@font-face {
+  font-family: "Satoshi";
+  src: url("../../assets/fonts/Satoshi/Satoshi-BlackItalic.otf")
+    format("opentype");
+  font-weight: 900;
+  font-style: italic;
+}
+
+/* ── Instrument Sans ── */
+@font-face {
+  font-family: "Instrument Sans";
+  src: url("../../assets/fonts/InstrumentSans/InstrumentSans-Regular.ttf")
+    format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-stretch: normal;
+}
+@font-face {
+  font-family: "Instrument Sans";
+  src: url("../../assets/fonts/InstrumentSans/InstrumentSans-Italic.ttf")
+    format("truetype");
+  font-weight: 400;
+  font-style: italic;
+  font-stretch: normal;
+}
+@font-face {
+  font-family: "Instrument Sans";
+  src: url("../../assets/fonts/InstrumentSans/InstrumentSans-Medium.ttf")
+    format("truetype");
+  font-weight: 500;
+  font-style: normal;
+  font-stretch: normal;
+}
+@font-face {
+  font-family: "Instrument Sans";
+  src: url("../../assets/fonts/InstrumentSans/InstrumentSans-MediumItalic.ttf")
+    format("truetype");
+  font-weight: 500;
+  font-style: italic;
+  font-stretch: normal;
+}
+@font-face {
+  font-family: "Instrument Sans";
+  src: url("../../assets/fonts/InstrumentSans/InstrumentSans-SemiBold.ttf")
+    format("truetype");
+  font-weight: 600;
+  font-style: normal;
+  font-stretch: normal;
+}
+@font-face {
+  font-family: "Instrument Sans";
+  src: url("../../assets/fonts/InstrumentSans/InstrumentSans-SemiBoldItalic.ttf")
+    format("truetype");
+  font-weight: 600;
+  font-style: italic;
+  font-stretch: normal;
+}
+@font-face {
+  font-family: "Instrument Sans";
+  src: url("../../assets/fonts/InstrumentSans/InstrumentSans-Bold.ttf")
+    format("truetype");
+  font-weight: 700;
+  font-style: normal;
+  font-stretch: normal;
+}
+@font-face {
+  font-family: "Instrument Sans";
+  src: url("../../assets/fonts/InstrumentSans/InstrumentSans-BoldItalic.ttf")
+    format("truetype");
+  font-weight: 700;
+  font-style: italic;
+  font-stretch: normal;
+}
+@font-face {
+  font-family: "Instrument Sans";
+  src: url("../../assets/fonts/InstrumentSans/InstrumentSans_SemiCondensed-Regular.ttf")
+    format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-stretch: semi-condensed;
+}
+@font-face {
+  font-family: "Instrument Sans";
+  src: url("../../assets/fonts/InstrumentSans/InstrumentSans_SemiCondensed-Italic.ttf")
+    format("truetype");
+  font-weight: 400;
+  font-style: italic;
+  font-stretch: semi-condensed;
+}
+@font-face {
+  font-family: "Instrument Sans";
+  src: url("../../assets/fonts/InstrumentSans/InstrumentSans_SemiCondensed-Medium.ttf")
+    format("truetype");
+  font-weight: 500;
+  font-style: normal;
+  font-stretch: semi-condensed;
+}
+@font-face {
+  font-family: "Instrument Sans";
+  src: url("../../assets/fonts/InstrumentSans/InstrumentSans_SemiCondensed-MediumItalic.ttf")
+    format("truetype");
+  font-weight: 500;
+  font-style: italic;
+  font-stretch: semi-condensed;
+}
+@font-face {
+  font-family: "Instrument Sans";
+  src: url("../../assets/fonts/InstrumentSans/InstrumentSans_SemiCondensed-SemiBold.ttf")
+    format("truetype");
+  font-weight: 600;
+  font-style: normal;
+  font-stretch: semi-condensed;
+}
+@font-face {
+  font-family: "Instrument Sans";
+  src: url("../../assets/fonts/InstrumentSans/InstrumentSans_SemiCondensed-SemiBoldItalic.ttf")
+    format("truetype");
+  font-weight: 600;
+  font-style: italic;
+  font-stretch: semi-condensed;
+}
+@font-face {
+  font-family: "Instrument Sans";
+  src: url("../../assets/fonts/InstrumentSans/InstrumentSans_SemiCondensed-Bold.ttf")
+    format("truetype");
+  font-weight: 700;
+  font-style: normal;
+  font-stretch: semi-condensed;
+}
+@font-face {
+  font-family: "Instrument Sans";
+  src: url("../../assets/fonts/InstrumentSans/InstrumentSans_SemiCondensed-BoldItalic.ttf")
+    format("truetype");
+  font-weight: 700;
+  font-style: italic;
+  font-stretch: semi-condensed;
+}
+@font-face {
+  font-family: "Instrument Sans";
+  src: url("../../assets/fonts/InstrumentSans/InstrumentSans_Condensed-Regular.ttf")
+    format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-stretch: condensed;
+}
+@font-face {
+  font-family: "Instrument Sans";
+  src: url("../../assets/fonts/InstrumentSans/InstrumentSans_Condensed-Italic.ttf")
+    format("truetype");
+  font-weight: 400;
+  font-style: italic;
+  font-stretch: condensed;
+}
+@font-face {
+  font-family: "Instrument Sans";
+  src: url("../../assets/fonts/InstrumentSans/InstrumentSans_Condensed-Medium.ttf")
+    format("truetype");
+  font-weight: 500;
+  font-style: normal;
+  font-stretch: condensed;
+}
+@font-face {
+  font-family: "Instrument Sans";
+  src: url("../../assets/fonts/InstrumentSans/InstrumentSans_Condensed-MediumItalic.ttf")
+    format("truetype");
+  font-weight: 500;
+  font-style: italic;
+  font-stretch: condensed;
+}
+@font-face {
+  font-family: "Instrument Sans";
+  src: url("../../assets/fonts/InstrumentSans/InstrumentSans_Condensed-SemiBold.ttf")
+    format("truetype");
+  font-weight: 600;
+  font-style: normal;
+  font-stretch: condensed;
+}
+@font-face {
+  font-family: "Instrument Sans";
+  src: url("../../assets/fonts/InstrumentSans/InstrumentSans_Condensed-SemiBoldItalic.ttf")
+    format("truetype");
+  font-weight: 600;
+  font-style: italic;
+  font-stretch: condensed;
+}
+@font-face {
+  font-family: "Instrument Sans";
+  src: url("../../assets/fonts/InstrumentSans/InstrumentSans_Condensed-Bold.ttf")
+    format("truetype");
+  font-weight: 700;
+  font-style: normal;
+  font-stretch: condensed;
+}
+@font-face {
+  font-family: "Instrument Sans";
+  src: url("../../assets/fonts/InstrumentSans/InstrumentSans_Condensed-BoldItalic.ttf")
+    format("truetype");
+  font-weight: 700;
+  font-style: italic;
+  font-stretch: condensed;
+}
