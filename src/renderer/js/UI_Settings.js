@@ -18,14 +18,12 @@ class UI_SettingManager extends UI_Manager {
       div_scrollbox: "div_scrollbox",
       div_ADCs: "div_ADCs",
       scroll_indicator: "scroll-indicator",
-      PB_disconnect: "PB_disconnect2",
       gradient_t: "adc-gradient-t",
       gradient_b: "adc-gradient-b",
     });
     this.sampling = parseFloat(this.TB_sampling.value);
     this.CB_allGains.selectedIndex = 5;
     this.CB_add_options(this.CB_allGains, GAINS);
-    this.PB_disconnect.onclick = () => this.onclick_disconnect();
 
     this.register_handler_scroll();
     this.register_handler_sampling();
@@ -33,12 +31,11 @@ class UI_SettingManager extends UI_Manager {
   }
 
   received_disconnected() {
-    this.remove_ADC_settings()
+    this.remove_ADC_settings();
   }
 
   async onclick_disconnect() {
     // this.PB_connect.innerHTML = 'Disonnecting...'
-    // this.PB_disconnect.disabled = true
     window.api_connection.disconnectDevice();
   }
 
@@ -99,18 +96,18 @@ class UI_SettingManager extends UI_Manager {
       } else {
         this.scroll_indicator.style.opacity = 1;
       }
-      this.update_scroll_visibility()
+      this.update_scroll_visibility();
     });
   }
 
-  remove_ADC_settings(){
-    this.NUM_CHANNELS = null
+  remove_ADC_settings() {
+    this.NUM_CHANNELS = null;
     this.CB_gains = [];
     this.CB_buffers = [];
     this.CB_polarity = [];
     this.TB_labels = [];
     this.labels = [];
-    this.div_ADCs.innerHTML = ""
+    this.div_ADCs.innerHTML = "";
   }
 
   create_ADC_settings(NUM_CHANNELS) {
@@ -161,7 +158,6 @@ class UI_SettingManager extends UI_Manager {
       } else {
         this.setHidden(this.gradient_b, false);
       }
-
     } else {
       this.setHidden(this.gradient_t, true);
       this.setHidden(this.gradient_b, true);

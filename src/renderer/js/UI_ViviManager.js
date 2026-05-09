@@ -1,9 +1,8 @@
 import { UI_Manager } from "./UI_Manager.js";
-export { UI_devManager };
 
-class UI_devManager extends UI_Manager {
-  constructor( verbose=false ) {
-    super( verbose );
+export class UI_ViviManager extends UI_Manager {
+  constructor(verbose = false) {
+    super(verbose);
   }
 
   initialize() {
@@ -35,24 +34,24 @@ class UI_devManager extends UI_Manager {
 
   async received_started(mode) {
     this.toggle_panel_left("busy");
-    if (mode == "live"){
-      this.set_busy_left_msg("Live Acquisition in Progress")
-    } else if (mode =="acquire") {
-      this.set_busy_left_msg("Timed Acquisition in Progress")
+    if (mode == "live") {
+      this.set_busy_left_msg("Live Acquisition in Progress");
+    } else if (mode == "acquire") {
+      this.set_busy_left_msg("Timed Acquisition in Progress");
     }
   }
 
   async received_delay() {
     this.toggle_panel_left("busy");
-    this.set_busy_left_msg("Pre-acqusition Delay in Progress")
+    this.set_busy_left_msg("Pre-acqusition Delay in Progress");
   }
 
   async received_finished() {
     this.toggle_panel_left("control");
   }
 
-  set_busy_left_msg( msg ){
-    this.div_busy_left_status.innerHTML = msg 
+  set_busy_left_msg(msg) {
+    this.div_busy_left_status.innerHTML = msg;
   }
 
   toggle_panel_left(page) {

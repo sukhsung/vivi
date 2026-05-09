@@ -7,8 +7,8 @@ const verbose = true;
 const vivi_connection_manager = new UI_ConnectionManager(
   "ADC Controller",
   "vivi",
-  "latin1", // encoding: Critical for CTC100 Ohm symbol (cp-1252)
-  "\r\n", // delimiter
+  "utf-8",
+  "\n", // delimiter
   t_interval, // t_interval,
   1, // flex order
   verbose,
@@ -48,6 +48,7 @@ export class UI_DeviceManager extends UI_SplashManager {
       if (data.connected) {
         print("Temperature: received connected");
         vivi_connection_manager.received_connected(data.protocol);
+        this.hide();
       } else {
         print("Temperature: received disconnected");
         vivi_connection_manager.received_disconnected();

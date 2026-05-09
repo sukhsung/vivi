@@ -36,6 +36,7 @@ const path_main = __dirname;
 const path_preload = path.join(path_main, "..", "preload", "preload.js");
 const path_renderer = path.join(path_main, "..", "renderer");
 const path_ipcchannel = path.join(path_main, "..", "common", "ipcChannels.js");
+const path_terminal = path.join(path_main, "..", "terminal");
 const path_icon = path.join(path_main, "..", "assets", "vivi-icon.png");
 process.env.IPC_CHANNEL = resolve_path(path_ipcchannel);
 
@@ -44,7 +45,7 @@ const fft_manager = new FFTManager();
 const dev_manager = new ADC8Manager(verbose);
 const log_manager = new LogManager(verbose);
 
-function print(message, header = "main.js") {
+function log(message, header = "main.js") {
   if (verbose) {
     console.log("\x1b[32m%s:\x1b[0m \x1b[33m%s\x1b[0m", header, message);
   }
@@ -55,7 +56,7 @@ function send_to_renderer(channel, data) {
     // console.log("Window is still alive");
     win.webContents.send(channel, data);
   } else {
-    print("Window is already destroyed");
+    log("Window is already destroyed");
   }
 }
 
@@ -104,6 +105,7 @@ function registerConnectionHandlers() {
   });
 
   ipcMain.on(CH.VIVI.CONNECT, async (_evt, data) => {
+    console.log("Received connect request with data:", data);
     await dev_manager.connect(data.protocol);
   });
 
@@ -127,11 +129,11 @@ function registerConnectionHandlers() {
   // dev_manager.on("connection", async (status) => {
   //   const data = {};
   //   if (status.connected) {
-  //     print("Sending connected to renderer");
+  //     log("Sending connected to renderer");
   //     data.connected = true;
-  //     data.NUM_CHANNELS = dev_manager.NUM_CHANNELS;
+  //     data.device_info.NUM_CHANNELS = dev_manager.device_info.NUM_CHANNELS;
   //   } else {
-  //     print("Sending disconnected to renderer");
+  //     log("Sending disconnected to renderer");
   //     data.connected = false;
   //   }
 
@@ -159,16 +161,16 @@ function registerSettingHandlers() {
 
 function registerAcquisitionHandlers() {
   ipcMain.on("acquire:start", (evt, data) => {
-    print("Requested to start");
+    log("Requested to start");
     dev_manager.update_labels(data.labels);
+    dev_manager.settings.NUM_FFT = data.NUM_FFT;
     log_manager.start_log(data.t, dev_manager.settings);
     fft_manager.initialize(
       data.NUM_FFT,
-      dev_manager.NUM_CHANNELS,
+      dev_manager.device_info.NUM_CHANNELS,
       data.NUM_AVE,
     );
 
-    dev_manager.NUM_FFT = data.NUM_FFT;
     dev_manager.start_acquisition(data.t_acquire, data.t_delay);
   });
 
@@ -196,10 +198,10 @@ function registerAcquisitionHandlers() {
 }
 
 function registerTerminalHandlers() {
-  ipcMain.handle("terminal-open", () => {
+  ipcMain.handle(CH.TERMINAL.OPEN, () => {
     openTerminal();
   });
-  ipcMain.handle("terminal-command", async (evt, msg) => {
+  ipcMain.handle(CH.TERMINAL.COMMAND, async (evt, msg) => {
     const return_msg = await dev_manager.run_command(msg.value);
     send_to_renderer("setting-updated", dev_manager.settings);
     return return_msg;
@@ -262,7 +264,7 @@ function createWindow() {
     if (response == 0) {
       e.preventDefault();
     } else {
-      print("Closing");
+      log("Closing");
     }
   });
 

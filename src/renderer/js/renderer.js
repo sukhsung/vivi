@@ -1,5 +1,6 @@
 import { UI_DeviceManager } from "./splash/UI_DeviceManager.js";
 import { UI_InfoManager } from "./splash/UI_InfoManager.js";
+import { UI_ViviManager } from "./UI_ViviManager.js";
 
 import { UI_PathManager } from "./UI_Path.js";
 import { UI_SettingManager } from "./UI_Settings.js";
@@ -12,6 +13,7 @@ import { UI_KeyboardManager } from "./UI_Keyboard.js";
 const verbose = true;
 let CONFIG = {};
 const device_manager = new UI_DeviceManager();
+const vivi_manager = new UI_ViviManager(verbose);
 const path_manager = new UI_PathManager();
 const setting_manager = new UI_SettingManager(verbose);
 const acquisition_manager = new UI_AcquisitionManager();
@@ -31,6 +33,7 @@ function print(message, header = "renderer.js") {
 async function initialize() {
   CONFIG = await window.api_app.get_config();
   await device_manager.initialize(CONFIG);
+  await vivi_manager.initialize();
   path_manager.initialize();
   setting_manager.initialize();
   acquisition_manager.initialize();
@@ -96,14 +99,13 @@ window.addEventListener("load", async () => {
 window.api_vivi.evt_connection((data) => {
   if (data.connected) {
     print("received connected");
-    dev_manager.received_connected();
-    connection_manager.received_connected();
-    setting_manager.create_ADC_settings(data.NUM_CHANNELS);
-    waterfall_manager.create_tabs(data.NUM_CHANNELS);
+    vivi_manager.received_connected();
+    console.log(data);
+    setting_manager.create_ADC_settings(data.device_info.NUM_CHANNELS);
+    waterfall_manager.create_tabs(data.device_info.NUM_CHANNELS);
   } else {
     print("received disconnected");
-    dev_manager.received_disconnected();
-    connection_manager.received_disconnected();
+    vivi_manager.received_disconnected();
     setting_manager.received_disconnected();
     waterfall_manager.received_disconnected();
   }
@@ -112,15 +114,15 @@ window.api_vivi.evt_connection((data) => {
 window.api_acquire.receivedStatus((data) => {
   if (data.status === "started") {
     acquisition_manager.received_started(data.mode);
-    dev_manager.received_started(data.mode);
+    vivi_manager.received_started(data.mode);
   } else if (data.status === "finished") {
     acquisition_manager.received_finished();
-    dev_manager.received_finished();
+    vivi_manager.received_finished();
   } else if (data.status === "progress") {
     acquisition_manager.update_progress(data.value);
   } else if (data.status === "delay") {
     acquisition_manager.received_delay();
-    dev_manager.received_delay();
+    vivi_manager.received_delay();
   }
 });
 

@@ -97,11 +97,6 @@
                 class="pointer-events-none absolute bottom-0 left-0 z-20 hidden h-6 w-full rounded-b-xl bg-gradient-to-t from-gray-300 to-transparent transition-opacity duration-300"
               ></div>
             </div>
-
-            <div class="grid grid-cols-2 items-center gap-4 self-end py-2">
-              <button id="terminal">Open Console</button>
-              <button id="PB_disconnect2">Disconnect</button>
-            </div>
           </div>
 
           <div
@@ -249,6 +244,16 @@
 
             <div class="ml-auto flex w-full gap-2 px-4 py-3 text-center">
               <button id="PB_device_manager" class="">Device Manager</button>
+
+              <button
+                id="terminal"
+                class="aspect-square h-full items-center p-0"
+              >
+                <img
+                  src="../assets/UI_icons/terminal.svg"
+                  class="keyboard-icon-on mx-auto h-10 w-10"
+                />
+              </button>
               <button
                 id="PB_keyboard"
                 class="aspect-square h-full items-center p-0"

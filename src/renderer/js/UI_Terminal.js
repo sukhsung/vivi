@@ -16,6 +16,6 @@ class UI_TerminalManager extends UI_Manager {
   }
 
   open_terminal() {
-    window.api.openTerminal();
+    window.api_terminal.openTerminal();
   }
 }

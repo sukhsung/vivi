@@ -10,9 +10,9 @@ const { contextBridge, ipcRenderer } = require("electron");
       ipcRenderer.invoke(CH.DEVICE_MANAGER.LIST_SERIAL_PORTS),
   });
 
-  contextBridge.exposeInMainWorld("api", {
-    openTerminal: () => ipcRenderer.invoke("terminal-open"),
-    terminalCommand: (msg) => ipcRenderer.invoke("terminal-command", msg),
+  contextBridge.exposeInMainWorld("api_terminal", {
+    openTerminal: () => ipcRenderer.invoke(CH.TERMINAL.OPEN),
+    terminalCommand: (msg) => ipcRenderer.invoke(CH.TERMINAL.COMMAND, msg),
   });
 
   contextBridge.exposeInMainWorld("api_acquire", {

@@ -1,23 +1,29 @@
 import { DeviceManager } from "./deviceManager.js";
+import CH from "../common/ipcChannels.js";
 import { ADCProtocol } from "./ADCProtocol.js";
+
+const BIPOLAR = 2;
 
 export class ADC8Manager extends DeviceManager {
   constructor(verbose = false) {
-    super(verbose);
+    super(
+      {
+        board_type: null,
+        NUM_CHANNELS: null,
+      },
+      verbose,
+    );
 
-    this.settings = { sampling: null, adcs: null };
-    this.board_type = null;
+    this.settings = { sampling: null, adcs: null, NUM_FFT: null };
     this.STOP = null;
 
-    this.NUM_FFT = null;
-    this.NUM_CHANNELS = null;
-    this.BIPOLAR = 2;
     this.is_acquiring = false;
+
+    this.api_device = CH.VIVI;
   }
 
   async _init_device() {
     const responses = (await this.query("c")).split(this.delimiter);
-
     this.settings.adcs = [];
     let ch = 0;
     responses.forEach((line) => {
@@ -31,9 +37,12 @@ export class ADC8Manager extends DeviceManager {
         });
       }
     });
-    this.NUM_CHANNELS = this.settings.adcs.length;
+    this.device_info.NUM_CHANNELS = this.settings.adcs.length;
 
-    this.ADC_Protocol = new ADCProtocol(this.board_type, this.NUM_CHANNELS);
+    this.ADC_Protocol = new ADCProtocol(
+      this.device_info.board_type,
+      this.device_info.NUM_CHANNELS,
+    );
 
     // Default setting
     await this.setSampling(400);
@@ -49,10 +58,10 @@ export class ADC8Manager extends DeviceManager {
       let line = lines[i];
       if (line.length > 0) {
         if (line.startsWith("ADC-8 driver")) {
-          this.board_type = "ADC-8";
+          this.device_info.board_type = "ADC-8";
           return true;
         } else if (line.startsWith("ADC-8x driver")) {
-          this.board_type = "ADC-8x";
+          this.device_info.board_type = "ADC-8x";
           return true;
         }
       }
@@ -67,13 +76,20 @@ export class ADC8Manager extends DeviceManager {
     }
   }
 
+  async run_command(msg) {
+    await this.write(msg);
+    const response = await this.read();
+    await this.update_settings();
+    return response;
+  }
+
   async setSampling(sampling) {
     const response = await this.query(`s ${sampling}`);
     // response = 'Sampling rate set to 400.00 Hz'
     const parts = response.split(" ");
     this.settings.sampling = parseFloat(parts[parts.length - 2]);
     this.settings.sampling = this.settings.sampling;
-    this._print(`Sampling set to ${this.settings.sampling} Hz`);
+    this.log(`Sampling set to ${this.settings.sampling} Hz`);
   }
 
   async setADC(data) {
@@ -109,7 +125,7 @@ export class ADC8Manager extends DeviceManager {
   }
 
   async update_settings() {
-    if (global.verbose) console.log("Updating status");
+    this.log("Updating status");
 
     // flush
     await this.device.read_all();
@@ -124,7 +140,7 @@ export class ADC8Manager extends DeviceManager {
         const line_part = line.split(": ");
         const ch = parseInt(line_part[0].split(" ").pop());
 
-        console.log(line_part[1]);
+        this.log(line_part[1]);
         const settings = line_part[1].split(", ");
 
         this.settings.adcs[ch - 1].gain = parseInt(
@@ -141,7 +157,7 @@ export class ADC8Manager extends DeviceManager {
   }
 
   async update_labels(labels) {
-    for (let i = 0; i < this.NUM_CHANNELS; i++) {
+    for (let i = 0; i < this.device_info.NUM_CHANNELS; i++) {
       this.settings.adcs[i].label = labels[i];
     }
   }
@@ -151,7 +167,7 @@ export class ADC8Manager extends DeviceManager {
     this.STOP = false;
 
     // Delay Logic
-    this._print(`Delay for ${t_delay}s`);
+    this.log(`Delay for ${t_delay}s`);
     this.emit("acquire:status", { status: "delay" });
 
     let delay = true;
@@ -173,7 +189,7 @@ export class ADC8Manager extends DeviceManager {
       }
 
       if (this.STOP) {
-        this._print("Acquisition Termination Requested");
+        this.log("Acquisition Termination Requested");
         break;
       }
     }
@@ -208,7 +224,7 @@ export class ADC8Manager extends DeviceManager {
     } else if (sig === "ADC8x-1.") {
       chans = hdr.data;
     } else {
-      this._print("Invalid header received, transfer aborted", undefined, "r");
+      this.log("Invalid header received, transfer aborted", undefined, "r");
       this._write_buffer(Buffer.from("\n"));
       this.emit("status", { status: "error", message: "Invalid header" });
       return -1;
@@ -218,9 +234,9 @@ export class ADC8Manager extends DeviceManager {
     const gains = [];
     const bipolar = [];
 
-    for (let i = 0; i < this.NUM_CHANNELS; i++) {
+    for (let i = 0; i < this.device_info.NUM_CHANNELS; i++) {
       const g = chans[2 * i];
-      const b = chans[2 * i + 1] & this.BIPOLAR;
+      const b = chans[2 * i + 1] & BIPOLAR;
 
       gains.push(g);
       bipolar.push(b);
@@ -229,15 +245,11 @@ export class ADC8Manager extends DeviceManager {
     }
 
     if (num === 0) {
-      this._print(
-        "Header shows no active ADCs, transfer aborted",
-        undefined,
-        "r",
-      );
+      this.log("Header shows no active ADCs, transfer aborted", undefined, "r");
       this._write_buffer(Buffer.from("\n"));
       return -1;
     } else {
-      this._print(`Header shows ${num} active ADCs`);
+      this.log(`Header shows ${num} active ADCs`);
     }
 
     const blocksize = num * 3;
@@ -245,7 +257,10 @@ export class ADC8Manager extends DeviceManager {
     let warned = false;
     let output_data = [];
 
-    if (this.board_type === "ADC-8x" && this.NUM_CHANNELS === 4) {
+    if (
+      this.device_info.board_type === "ADC-8x" &&
+      this.device_info.NUM_CHANNELS === 4
+    ) {
       await this.device.read(8); // Skip extra header
     }
 
@@ -262,25 +277,25 @@ export class ADC8Manager extends DeviceManager {
 
       const nBuf = await this.device.read(1);
       if (nBuf.length === 0) {
-        console.log("Timeout");
+        this.log("Timeout");
         break;
       }
 
       let n = nBuf[0];
       if (n === 0) {
-        console.log("End of data");
+        this.log("End of data");
         break;
       }
 
       const d = await this.device.read(n);
       if (d.length < n) {
-        console.log("Short data buffer received");
+        this.log("Short data buffer received");
         break;
       }
 
       if (n % blocksize !== 0) {
         if (!warned) {
-          console.log("Warning: Invalid buffer length", n);
+          this.log("Warning: Invalid buffer length", n);
           warned = true;
         }
         n -= n % blocksize;
@@ -296,7 +311,7 @@ export class ADC8Manager extends DeviceManager {
         );
         output_data.push(volts);
 
-        if (output_data.length === this.NUM_FFT) {
+        if (output_data.length === this.settings.NUM_FFT) {
           this.emit("acquire:live-data", output_data);
           output_data = [];
           break;
@@ -306,7 +321,7 @@ export class ADC8Manager extends DeviceManager {
       total_blocks += Math.floor(n / blocksize);
 
       if (this.STOP) {
-        this._print("Acquisition Termination Requested");
+        this.log("Acquisition Termination Requested");
         break;
       }
     }
@@ -319,16 +334,16 @@ export class ADC8Manager extends DeviceManager {
       this.emit("acquire:status", { status: "progress", value: 100 });
     }
 
-    this._print("Acquisition has finished");
+    this.log("Acquisition has finished");
     this.is_acquiring = false;
     this.emit("acquire:status", { status: "finished" });
   }
 
   async stop_acquisition() {
-    this._print("Stopping Acquisition");
+    this.log("Stopping Acquisition");
     this.STOP = true;
     while (this.is_acquiring) {
-      this._print("Still Acquiring");
+      this.log("Still Acquiring");
       await this._sleep(300);
     }
     return;

@@ -36,6 +36,11 @@ const CH = Object.freeze({
     MAXIMIZE: "window:maximize",
     CLOSE: "window:close",
   },
+
+  TERMINAL: {
+    OPEN: "terminal:open",
+    COMMAND: "terminal:command",
+  },
 });
 
 export default CH;
