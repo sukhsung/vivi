@@ -1,4 +1,4 @@
-import {UI_Manager} from './UI_Manager.js'
+import { UI_Manager } from "../../../node_modules/instrument-ui/src/renderer/js/UI_Manager.js";
 export { UI_PathManager };
 
 class UI_PathManager extends UI_Manager {
@@ -21,18 +21,19 @@ class UI_PathManager extends UI_Manager {
     this.PB_open.onclick = () => {
       this.onclick_open();
     };
-    this.TB_path.value = await window.log_api.getCurrentPath() || "No Path Set";
+    this.TB_path.value =
+      (await window.api_log.get_current_path()) || "No Path Set";
   }
 
   async onclick_browse() {
-    this.path = await window.log_api.selectPath();
+    this.path = await window.api_log.select_path();
     if (this.path) {
       this.TB_path.value = this.path;
     }
   }
 
   async onclick_open() {
-    await window.log_api.openPath();
+    await window.api_log.open_path();
   }
 
   received_started(file_name) {

@@ -7,7 +7,7 @@ import path from "node:path";
 import fs from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-import { list_serial_ports } from "./util/list_serial_ports.js";
+import { list_serial_ports } from "instrument-ui/main/util/list_serial_ports.js";
 import { FFTManager } from "./fftManager.js";
 import { ADC8Manager } from "./ADC8Manager.js";
 import { LogManager } from "./logManager.js";
@@ -15,6 +15,8 @@ import CH from "../common/ipcChannels.js";
 import { config as appConfig } from "./configManager.js";
 
 const verbose = app.isPackaged ? 0 : 3;
+const APP_INFO_URL = "hbarinstruments.com";
+const APP_INFO_COPYRIGHT = "© 2026 h-Bar Instruments";
 
 if (process.platform === "linux") {
   // app.commandLine.appendSwitch("gtk-version", "3");
@@ -36,9 +38,22 @@ const path_main = __dirname;
 const path_preload = path.join(path_main, "..", "preload", "preload.js");
 const path_renderer = path.join(path_main, "..", "renderer");
 const path_ipcchannel = path.join(path_main, "..", "common", "ipcChannels.js");
+const path_app_ipcchannels = path.join(
+  path_main,
+  "..",
+  "common",
+  "appIpcChannels.js",
+);
 const path_terminal = path.join(path_main, "..", "terminal");
-const path_icon = path.join(path_main, "..", "assets", "vivi-icon.png");
+const path_icon = path.join(path_main, "..", "assets", "app-icon.png");
 process.env.IPC_CHANNEL = resolve_path(path_ipcchannel);
+process.env.APP_IPC_CHANNELS = resolve_path(path_app_ipcchannels);
+process.env.INSTRUMENT_UI_IPC_CHANNELS = resolve_path(
+  _require.resolve("instrument-ui/common/ipcChannels.js"),
+);
+process.env.INSTRUMENT_UI_PRELOAD_COMMON = resolve_path(
+  _require.resolve("instrument-ui/preload/common.js"),
+);
 
 let win;
 const fft_manager = new FFTManager();
@@ -63,6 +78,10 @@ function send_to_renderer(channel, data) {
 function registerAppHandlers() {
   ipcMain.handle(CH.APP.GET_VERSION, () => APP_VERSION);
   ipcMain.handle(CH.APP.GET_CONFIG, () => appConfig);
+  ipcMain.handle(CH.APP.GET_INFO, () => ({
+    url: APP_INFO_URL,
+    copyright: APP_INFO_COPYRIGHT,
+  }));
 }
 
 function registerWindowHandlers() {
@@ -79,18 +98,27 @@ function registerWindowHandlers() {
   });
 }
 function registerLogHandlers() {
-  ipcMain.handle("log_api", async (evt, data) => {
-    if (data == "selectPath") {
-      return await log_manager.select_dir();
-    } else if (data == "openPath") {
-      await log_manager.open_path();
-    } else if (data == "getCurrentPath") {
-      return log_manager.path;
-    }
+  ipcMain.handle(CH.LOG.PATH_SELECT, async () => {
+    return await log_manager.select_dir();
+  });
+  ipcMain.handle(CH.LOG.PATH_OPEN, async () => {
+    return await log_manager.open_path();
+  });
+  ipcMain.handle(CH.LOG.PATH_GET_CURRENT, async () => {
+    return log_manager.path;
+  });
+  ipcMain.on(CH.LOG.START, async () => {
+    log_manager.start_log(0, dev_manager.settings);
+  });
+  ipcMain.on(CH.LOG.STOP, async () => {
+    log_manager.stop_log();
+  });
+  ipcMain.on(CH.LOG.SET_TAG, async (_evt, data) => {
+    log_manager.set_tag(data.tag);
   });
 
-  log_manager.on("log:status", (data) => {
-    send_to_renderer("log:status", data);
+  log_manager.on(CH.LOG.EVT_STATUS, (data) => {
+    send_to_renderer(CH.LOG.EVT_STATUS, data);
   });
 }
 
@@ -142,25 +170,25 @@ function registerConnectionHandlers() {
 }
 
 function registerSettingHandlers() {
-  ipcMain.on("setting:setSampling", async (evt, sampling) => {
+  ipcMain.on(CH.SETTING.SET_SAMPLING, async (_evt, sampling) => {
     dev_manager.setSampling(sampling);
   });
 
-  ipcMain.on("setting:setADC", async (evt, data) => {
+  ipcMain.on(CH.SETTING.SET_ADC, async (_evt, data) => {
     dev_manager.setADC(data);
   });
 
-  ipcMain.on("setting:setAllGain", async (evt, data) => {
+  ipcMain.on(CH.SETTING.SET_ALL_GAIN, async (_evt, data) => {
     dev_manager.setAllGain(data);
   });
 
-  dev_manager.on("setting:update", () => {
-    send_to_renderer("setting:update", dev_manager.settings);
+  dev_manager.on(CH.SETTING.EVT_UPDATE, () => {
+    send_to_renderer(CH.SETTING.EVT_UPDATE, dev_manager.settings);
   });
 }
 
 function registerAcquisitionHandlers() {
-  ipcMain.on("acquire:start", (evt, data) => {
+  ipcMain.on(CH.ACQUIRE.START, (_evt, data) => {
     log("Requested to start");
     dev_manager.update_labels(data.labels);
     dev_manager.settings.NUM_FFT = data.NUM_FFT;
@@ -174,12 +202,12 @@ function registerAcquisitionHandlers() {
     dev_manager.start_acquisition(data.t_acquire, data.t_delay);
   });
 
-  ipcMain.on("acquire:stop", () => {
+  ipcMain.on(CH.ACQUIRE.STOP, () => {
     dev_manager.stop_acquisition();
   });
 
-  dev_manager.on("acquire:status", async (data) => {
-    send_to_renderer("acquire:status", data);
+  dev_manager.on(CH.ACQUIRE.EVT_STATUS, async (data) => {
+    send_to_renderer(CH.ACQUIRE.EVT_STATUS, data);
     if (data["status"] === "finished") {
       await fft_manager.calc_ave();
       await log_manager.write_data_fft(fft_manager.fft_ave);
@@ -187,13 +215,13 @@ function registerAcquisitionHandlers() {
     }
   });
 
-  dev_manager.on("acquire:live-data", (data) => {
+  dev_manager.on(CH.ACQUIRE.EVT_LIVE_DATA, (data) => {
     log_manager.write_data_raw(data);
     fft_manager.calc_fft(data);
   });
 
   fft_manager.on("fft:live-data", (data) => {
-    send_to_renderer("acquire:live-data", data.ffts);
+    send_to_renderer(CH.ACQUIRE.EVT_LIVE_DATA, data.ffts);
   });
 }
 

@@ -1,5 +1,5 @@
 import { UI_DeviceManager } from "./splash/UI_DeviceManager.js";
-import { UI_InfoManager } from "./splash/UI_InfoManager.js";
+import { UI_InfoManager } from "../../../node_modules/instrument-ui/src/renderer/js/splash/UI_InfoManager.js";
 import { UI_ViviManager } from "./UI_ViviManager.js";
 
 import { UI_PathManager } from "./UI_Path.js";
@@ -8,7 +8,7 @@ import { UI_AcquisitionManager } from "./UI_Acquisition.js";
 import { UI_LiveviewManager } from "./UI_LiveView.js";
 import { UI_WaterfallManager } from "./UI_Waterfall.js";
 import { UI_TerminalManager } from "./UI_Terminal.js";
-import { UI_KeyboardManager } from "./UI_Keyboard.js";
+import { UI_KeyboardManager } from "../../../node_modules/instrument-ui/src/renderer/js/UI_Keyboard.js";
 
 const verbose = true;
 let CONFIG = {};
@@ -21,7 +21,7 @@ const liveview_manager = new UI_LiveviewManager();
 const waterfall_manager = new UI_WaterfallManager();
 const terminal_manager = new UI_TerminalManager();
 
-const info_manager = new UI_InfoManager();
+let info_manager;
 const keyboard_manager = new UI_KeyboardManager();
 
 function print(message, header = "renderer.js") {
@@ -32,6 +32,8 @@ function print(message, header = "renderer.js") {
 
 async function initialize() {
   CONFIG = await window.api_app.get_config();
+  const APP_INFO = await window.api_app.get_info();
+  info_manager = new UI_InfoManager(APP_INFO.url, APP_INFO.copyright);
   await device_manager.initialize(CONFIG);
   await vivi_manager.initialize();
   path_manager.initialize();
@@ -135,7 +137,7 @@ window.api_setting.receivedSetting((data) => {
   setting_manager.update_settings(data);
 });
 
-window.log_api.receivedStatus((data) => {
+window.api_log.evt_status((data) => {
   if (data.status === "started") {
     path_manager.received_started(data.fname);
   } else if (data.status === "finished") {

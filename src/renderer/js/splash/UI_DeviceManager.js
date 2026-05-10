@@ -1,6 +1,5 @@
-import { import_template } from "../util/import_template.js";
-import { UI_SplashManager } from "./UI_SplashManager.js";
-import { UI_ConnectionManager } from "./UI_Connection.js";
+import { UI_SplashManager } from "../../../../node_modules/instrument-ui/src/renderer/js/splash/UI_SplashManager.js";
+import { UI_ConnectionManager } from "../../../../node_modules/instrument-ui/src/renderer/js/splash/UI_Connection.js";
 
 const t_interval = 100;
 const verbose = true;
@@ -12,6 +11,7 @@ const vivi_connection_manager = new UI_ConnectionManager(
   t_interval, // t_interval,
   1, // flex order
   verbose,
+  window.api_vivi,
 );
 
 function print(message, header = "device_manager.js") {

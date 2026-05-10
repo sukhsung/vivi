@@ -19,6 +19,7 @@
     "binary-parser": "^2.2.1",
     "electron-squirrel-startup": "^1.0.1",
     "fftw-js": "^0.1.4",
+    "instrument-ui": "git+ssh://git@github.com/sukhsung/instrument-ui.git#main",
     "serialport": "^13.0.0"
   },
   "devDependencies": {

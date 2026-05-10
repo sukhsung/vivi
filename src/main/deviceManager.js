@@ -1,5 +1,5 @@
 import { EventEmitter } from "node:events";
-import { ConnectionManager } from "./connection/ConnectionManager.js";
+import { ConnectionManager } from "instrument-ui/main/connection/ConnectionManager.js";
 
 export class DeviceManager extends EventEmitter {
   constructor(device_info, verbose = 0) {

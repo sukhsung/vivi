@@ -3,6 +3,7 @@ import EventEmitter from "node:events";
 import path from "node:path";
 import os from "node:os";
 import fs from "node:fs";
+import CH from "../common/ipcChannels.js";
 
 export class LogManager extends EventEmitter {
   constructor(verbose) {
@@ -18,6 +19,8 @@ export class LogManager extends EventEmitter {
     this.f_csv = null;
     this.f_json = null;
     this.f_fft = null;
+    this.api_log = CH.LOG;
+    this.tag = "";
   }
 
   async close() {
@@ -36,6 +39,10 @@ export class LogManager extends EventEmitter {
 
   set_win(win) {
     this.win = win;
+  }
+
+  set_tag(tag) {
+    this.tag = tag;
   }
 
   write_data_raw(data) {
@@ -95,13 +102,17 @@ export class LogManager extends EventEmitter {
     this.f_json.write(JSON.stringify(metadata, null, 2));
     this.f_json.end();
 
-    this.emit("log:status", { status: "started", fname: this.fname });
+    this.emit(this.api_log.EVT_STATUS, { status: "started", fname: this.fname });
   }
 
   stop_log() {
+    if (!this.f_csv || !this.f_fft) return;
     this.f_csv.end();
     this.f_fft.end();
-    this.emit("log:status", { status: "finished", fname: this.fname });
+    this.emit(this.api_log.EVT_STATUS, {
+      status: "finished",
+      fname: this.fname,
+    });
   }
 
   get_time() {

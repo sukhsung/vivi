@@ -1,4 +1,4 @@
-import { UI_Manager } from "./UI_Manager.js";
+import { UI_Manager } from "../../../node_modules/instrument-ui/src/renderer/js/UI_Manager.js";
 
 export { UI_LiveviewManager };
 

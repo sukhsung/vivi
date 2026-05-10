@@ -9,7 +9,7 @@ const config = {
     name: "vivi",
     executableName: "vivi", // File name of the actual binary
     asar: true,
-    icon: "./src/assets/vivi-icon",
+    icon: "./src/assets/app-icon",
     osxSign: false, //{}, // object must exist even if empty
   },
   rebuildConfig: {
@@ -43,7 +43,7 @@ const config = {
         options: {
           name: "vivi",
           maintainer: "https://shsung.com",
-          icon: "./src/assets/vivi-icon.png",
+          icon: "./src/assets/app-icon.png",
         },
       },
     },
@@ -55,7 +55,7 @@ const config = {
         options: {
           name: "vivi",
           maintainer: "https://shsung.com",
-          icon: "./src/assets/vivi-icon.png",
+          icon: "./src/assets/app-icon.png",
         },
       },
     },
