@@ -20,24 +20,6 @@ const { contextBridge, ipcRenderer } = require("electron");
     terminalCommand: (msg) => ipcRenderer.invoke(CH.TERMINAL.COMMAND, msg),
   });
 
-  contextBridge.exposeInMainWorld("api_acquire", {
-    startAcquire: (data) => ipcRenderer.send(CH.ACQUIRE.START, data),
-    stopAcquire: () => ipcRenderer.send(CH.ACQUIRE.STOP),
-    receivedStatus: (callback) =>
-      ipcRenderer.on(CH.ACQUIRE.EVT_STATUS, (_evt, data) => callback(data)),
-    receivedLiveData: (callback) =>
-      ipcRenderer.on(CH.ACQUIRE.EVT_LIVE_DATA, (_evt, data) => callback(data)),
-  });
-
-  contextBridge.exposeInMainWorld("api_setting", {
-    setSampling: (sampling) =>
-      ipcRenderer.send(CH.SETTING.SET_SAMPLING, sampling),
-    setADC: (data) => ipcRenderer.send(CH.SETTING.SET_ADC, data),
-    setAllGain: (data) => ipcRenderer.send(CH.SETTING.SET_ALL_GAIN, data),
-    receivedSetting: (callback) =>
-      ipcRenderer.on(CH.SETTING.EVT_UPDATE, (_evt, data) => callback(data)),
-  });
-
   contextBridge.exposeInMainWorld(
     "api_vivi",
     createDevicePreloadApi(ipcRenderer, CH.VIVI),

@@ -34,7 +34,7 @@ export class UI_DeviceManager extends UI_SplashManager {
   }
 
   async _initialize(config) {
-    document.getElementById("panel_logo")?.classList.add("bg-vivi-500");
+    document.getElementById("panel_logo")?.classList.add("bg-app-500");
 
     const col_count = 2;
     const container = document.getElementById("connection-container");

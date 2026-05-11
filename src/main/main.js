@@ -9,7 +9,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { list_serial_ports } from "instrument-ui/main/util/list_serial_ports.js";
 import { FFTManager } from "./fftManager.js";
-import { ADC8Manager } from "./ADC8Manager.js";
+import { ADC8Manager, EVT_RAW_DATA } from "./ADC8Manager.js";
 import { LogManager } from "./logManager.js";
 import CH from "../common/ipcChannels.js";
 import { config as appConfig } from "./configManager.js";
@@ -145,6 +145,10 @@ function registerConnectionHandlers() {
     await dev_manager.start_comm();
   });
 
+  ipcMain.on(CH.VIVI.ADD_REQUEST, async (_evt, request) => {
+    await handleDeviceRequest(request);
+  });
+
   dev_manager.on(CH.VIVI.EVT_CONNECTION, async (data) => {
     if (data.connected) {
       log("Sending connected to renderer");
@@ -153,61 +157,47 @@ function registerConnectionHandlers() {
     }
     send_to_renderer(CH.VIVI.EVT_CONNECTION, data);
   });
-
-  // dev_manager.on("connection", async (status) => {
-  //   const data = {};
-  //   if (status.connected) {
-  //     log("Sending connected to renderer");
-  //     data.connected = true;
-  //     data.device_info.NUM_CHANNELS = dev_manager.device_info.NUM_CHANNELS;
-  //   } else {
-  //     log("Sending disconnected to renderer");
-  //     data.connected = false;
-  //   }
-
-  //   send_to_renderer("device:connection", data);
-  // });
 }
 
-function registerSettingHandlers() {
-  ipcMain.on(CH.SETTING.SET_SAMPLING, async (_evt, sampling) => {
-    dev_manager.setSampling(sampling);
-  });
+async function handleDeviceRequest(request) {
+  if (!request?.type) return;
 
-  ipcMain.on(CH.SETTING.SET_ADC, async (_evt, data) => {
-    dev_manager.setADC(data);
-  });
-
-  ipcMain.on(CH.SETTING.SET_ALL_GAIN, async (_evt, data) => {
-    dev_manager.setAllGain(data);
-  });
-
-  dev_manager.on(CH.SETTING.EVT_UPDATE, () => {
-    send_to_renderer(CH.SETTING.EVT_UPDATE, dev_manager.settings);
-  });
+  if (request.type === "set_sampling") {
+    await dev_manager.setSampling(request.value);
+  } else if (request.type === "set_adc") {
+    await dev_manager.setADC(request.data);
+  } else if (request.type === "set_all_gain") {
+    await dev_manager.setAllGain(request.data);
+  } else if (request.type === "start_acquisition") {
+    startAcquisition(request);
+  } else if (request.type === "stop_acquisition") {
+    await dev_manager.stop_acquisition();
+  } else {
+    log(`Unknown device request type: ${request.type}`);
+  }
 }
 
-function registerAcquisitionHandlers() {
-  ipcMain.on(CH.ACQUIRE.START, (_evt, data) => {
-    log("Requested to start");
-    dev_manager.update_labels(data.labels);
-    dev_manager.settings.NUM_FFT = data.NUM_FFT;
-    log_manager.start_log(data.t, dev_manager.settings);
-    fft_manager.initialize(
-      data.NUM_FFT,
-      dev_manager.device_info.NUM_CHANNELS,
-      data.NUM_AVE,
-    );
+function startAcquisition(data) {
+  log("Requested to start");
+  dev_manager.update_labels(data.labels);
+  dev_manager.settings.NUM_FFT = data.NUM_FFT;
+  log_manager.start_log(data.t, dev_manager.settings);
+  fft_manager.initialize(
+    data.NUM_FFT,
+    dev_manager.device_info.NUM_CHANNELS,
+    data.NUM_AVE,
+  );
 
-    dev_manager.start_acquisition(data.t_acquire, data.t_delay);
+  dev_manager.start_acquisition(data.t_acquire, data.t_delay);
+}
+
+function registerDeviceEventHandlers() {
+  dev_manager.on(CH.VIVI.EVT_SETTINGS, (data) => {
+    send_to_renderer(CH.VIVI.EVT_SETTINGS, data);
   });
 
-  ipcMain.on(CH.ACQUIRE.STOP, () => {
-    dev_manager.stop_acquisition();
-  });
-
-  dev_manager.on(CH.ACQUIRE.EVT_STATUS, async (data) => {
-    send_to_renderer(CH.ACQUIRE.EVT_STATUS, data);
+  dev_manager.on(CH.VIVI.EVT_STATUS, async (data) => {
+    send_to_renderer(CH.VIVI.EVT_STATUS, data);
     if (data["status"] === "finished") {
       await fft_manager.calc_ave();
       await log_manager.write_data_fft(fft_manager.fft_ave);
@@ -215,13 +205,16 @@ function registerAcquisitionHandlers() {
     }
   });
 
-  dev_manager.on(CH.ACQUIRE.EVT_LIVE_DATA, (data) => {
+  dev_manager.on(EVT_RAW_DATA, (data) => {
     log_manager.write_data_raw(data);
     fft_manager.calc_fft(data);
   });
 
   fft_manager.on("fft:live-data", (data) => {
-    send_to_renderer(CH.ACQUIRE.EVT_LIVE_DATA, data.ffts);
+    send_to_renderer(CH.VIVI.EVT_STATUS, {
+      kind: "live-data",
+      data: data.ffts,
+    });
   });
 }
 
@@ -231,7 +224,6 @@ function registerTerminalHandlers() {
   });
   ipcMain.handle(CH.TERMINAL.COMMAND, async (evt, msg) => {
     const return_msg = await dev_manager.run_command(msg.value);
-    send_to_renderer("setting-updated", dev_manager.settings);
     return return_msg;
   });
 }
@@ -307,9 +299,8 @@ function createWindow() {
 app.whenReady().then(() => {
   createWindow();
   registerAppHandlers();
-  registerSettingHandlers();
   registerConnectionHandlers();
-  registerAcquisitionHandlers();
+  registerDeviceEventHandlers();
   registerTerminalHandlers();
   registerLogHandlers();
   registerWindowHandlers();

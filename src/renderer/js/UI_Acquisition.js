@@ -199,7 +199,8 @@ class UI_AcquisitionManager extends UI_Manager {
   }
 
   async start_acquisition(NUM_FFT, NUM_AVE, t_acquire, t_delay, labels) {
-    await window.api_acquire.startAcquire({
+    await window.api_vivi.add_request({
+      type: "start_acquisition",
       NUM_FFT: NUM_FFT,
       NUM_AVE: NUM_AVE,
       t_acquire: t_acquire,
@@ -221,7 +222,9 @@ class UI_AcquisitionManager extends UI_Manager {
   }
 
   async onclick_stop() {
-    await window.api_acquire.stopAcquire();
+    await window.api_vivi.add_request({
+      type: "stop_acquisition",
+    });
   }
 
   update_progress(progress) {
@@ -237,23 +240,23 @@ class UI_AcquisitionManager extends UI_Manager {
     if (mode === "acquire") {
       this.progress.classList.remove("animate-flicker");
       this.progress.classList.remove("bg-pink-700")
-      this.progress.classList.add("bg-vivi-500")
+      this.progress.classList.add("bg-app-500")
       this.progress.style.width = "0%"; // reset or update as needed
     }
     else if (mode === "delay"){
       this.progress.classList.remove("animate-flicker");
-      this.progress.classList.remove("bg-vivi-500")
+      this.progress.classList.remove("bg-app-500")
       this.progress.classList.add("bg-pink-700")
       this.progress.style.width = "0%"; // reset or update as needed
     } else if (mode === "live") {
       this.progress.style.width = "100%"; // or any fixed value to show full bar
       this.progress.classList.add("animate-flicker");
       this.progress.classList.remove("bg-pink-700")
-      this.progress.classList.add("bg-vivi-500")
+      this.progress.classList.add("bg-app-500")
     } else if (mode === "finished") {
       this.progress.classList.remove("animate-flicker");
       this.progress.classList.remove("bg-pink-700")
-      this.progress.classList.add("bg-vivi-500")
+      this.progress.classList.add("bg-app-500")
       this.progress.style.width = "100%"; // reset or update as needed
     }
   }

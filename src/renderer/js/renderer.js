@@ -7,7 +7,7 @@ import { UI_SettingManager } from "./UI_Settings.js";
 import { UI_AcquisitionManager } from "./UI_Acquisition.js";
 import { UI_LiveviewManager } from "./UI_LiveView.js";
 import { UI_WaterfallManager } from "./UI_Waterfall.js";
-import { UI_TerminalManager } from "./UI_Terminal.js";
+import { UI_TerminalManager } from "./splash/UI_Terminal.js";
 import { UI_KeyboardManager } from "../../../node_modules/instrument-ui/src/renderer/js/UI_Keyboard.js";
 
 const verbose = true;
@@ -113,7 +113,15 @@ window.api_vivi.evt_connection((data) => {
   }
 });
 
-window.api_acquire.receivedStatus((data) => {
+window.api_vivi.evt_status((data) => {
+  if (data.kind === "live-data") {
+    liveview_manager.received_liveData(data.data);
+    waterfall_manager.received_liveData(data.data);
+    return;
+  }
+
+  if (data.kind !== "acquire") return;
+
   if (data.status === "started") {
     acquisition_manager.received_started(data.mode);
     vivi_manager.received_started(data.mode);
@@ -128,12 +136,7 @@ window.api_acquire.receivedStatus((data) => {
   }
 });
 
-window.api_acquire.receivedLiveData((data) => {
-  liveview_manager.received_liveData(data);
-  waterfall_manager.received_liveData(data);
-});
-
-window.api_setting.receivedSetting((data) => {
+window.api_vivi.evt_settings((data) => {
   setting_manager.update_settings(data);
 });
 

@@ -1,5 +1,5 @@
 import { UI_Manager } from "../../../node_modules/instrument-ui/src/renderer/js/UI_Manager.js";
-import { colormap } from "./colormap.js";
+import { colormap } from "./util/colormap.js";
 
 export { UI_WaterfallManager };
 

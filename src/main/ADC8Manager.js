@@ -1,8 +1,9 @@
-import { DeviceManager } from "./deviceManager.js";
+import { DeviceManager } from "instrument-ui/main/DeviceManager.js";
 import CH from "../common/ipcChannels.js";
 import { ADCProtocol } from "./ADCProtocol.js";
 
 const BIPOLAR = 2;
+export const EVT_RAW_DATA = "vivi:raw-data";
 
 export class ADC8Manager extends DeviceManager {
   constructor(verbose = false) {
@@ -20,6 +21,14 @@ export class ADC8Manager extends DeviceManager {
     this.is_acquiring = false;
 
     this.api_device = CH.VIVI;
+  }
+
+  emit_acquisition_status(data) {
+    this.emit_status({ kind: "acquire", ...data });
+  }
+
+  emit_raw_data(data) {
+    this.emit(EVT_RAW_DATA, data);
   }
 
   async _init_device() {
@@ -90,6 +99,7 @@ export class ADC8Manager extends DeviceManager {
     this.settings.sampling = parseFloat(parts[parts.length - 2]);
     this.settings.sampling = this.settings.sampling;
     this.log(`Sampling set to ${this.settings.sampling} Hz`);
+    this.emit_settings(this.settings);
   }
 
   async setADC(data) {
@@ -111,6 +121,7 @@ export class ADC8Manager extends DeviceManager {
       this.settings.adcs[data.ch - 1].polarity = data.polarity;
       this.settings.adcs[data.ch - 1].buffer = data.buffer;
     }
+    this.emit_settings(this.settings);
   }
 
   async setAllGain(data) {
@@ -119,9 +130,10 @@ export class ADC8Manager extends DeviceManager {
     // set all adcs
     this.settings.adcs.forEach((adc) => {
       adc.gain = data.gain;
-      adc.polarity = data.polarity;
-      adc.buffer = data.buffer;
+      if ("polarity" in data) adc.polarity = data.polarity;
+      if ("buffer" in data) adc.buffer = data.buffer;
     });
+    this.emit_settings(this.settings);
   }
 
   async update_settings() {
@@ -153,7 +165,7 @@ export class ADC8Manager extends DeviceManager {
       }
     });
 
-    this.emit(CH.SETTING.EVT_UPDATE);
+    this.emit_settings(this.settings);
   }
 
   async update_labels(labels) {
@@ -168,7 +180,7 @@ export class ADC8Manager extends DeviceManager {
 
     // Delay Logic
     this.log(`Delay for ${t_delay}s`);
-    this.emit(CH.ACQUIRE.EVT_STATUS, { status: "delay" });
+    this.emit_acquisition_status({ status: "delay" });
 
     let delay = true;
     let t0 = Date.now();
@@ -178,7 +190,7 @@ export class ADC8Manager extends DeviceManager {
       t_elapsed = (Date.now() - t0) / 1000;
       progress = parseInt((t_elapsed / t_delay) * 100);
 
-      this.emit(CH.ACQUIRE.EVT_STATUS, {
+      this.emit_acquisition_status({
         status: "progress",
         value: 100 - progress,
       });
@@ -201,7 +213,7 @@ export class ADC8Manager extends DeviceManager {
     } else if (t_acquire > 0) {
       mode = "acquire";
     }
-    this.emit(CH.ACQUIRE.EVT_STATUS, { status: "started", mode: mode });
+    this.emit_acquisition_status({ status: "started", mode: mode });
     await this.device.read_all();
 
     await this.write(`b${t_acquire}`);
@@ -226,7 +238,10 @@ export class ADC8Manager extends DeviceManager {
     } else {
       this.log("Invalid header received, transfer aborted", undefined, "r");
       this._write_buffer(Buffer.from("\n"));
-      this.emit("status", { status: "error", message: "Invalid header" });
+      this.emit_acquisition_status({
+        status: "error",
+        message: "Invalid header",
+      });
       return -1;
     }
 
@@ -270,12 +285,12 @@ export class ADC8Manager extends DeviceManager {
       if (t_acquire > 0) {
         let dt = Date.now() - t0;
         let progress = parseInt((dt / (t_acquire * 1000)) * 100);
-        this.emit(CH.ACQUIRE.EVT_STATUS, {
+        this.emit_acquisition_status({
           status: "progress",
           value: progress,
         });
       } else {
-        this.emit(CH.ACQUIRE.EVT_STATUS, { status: "progress", value: 0 });
+        this.emit_acquisition_status({ status: "progress", value: 0 });
       }
 
       const nBuf = await this.device.read(1);
@@ -315,7 +330,7 @@ export class ADC8Manager extends DeviceManager {
         output_data.push(volts);
 
         if (output_data.length === this.settings.NUM_FFT) {
-          this.emit(CH.ACQUIRE.EVT_LIVE_DATA, output_data);
+          this.emit_raw_data(output_data);
           output_data = [];
           break;
         }
@@ -334,12 +349,12 @@ export class ADC8Manager extends DeviceManager {
     await this.device.read_all(); // Flush
 
     if (t_acquire > 0) {
-      this.emit(CH.ACQUIRE.EVT_STATUS, { status: "progress", value: 100 });
+      this.emit_acquisition_status({ status: "progress", value: 100 });
     }
 
     this.log("Acquisition has finished");
     this.is_acquiring = false;
-    this.emit(CH.ACQUIRE.EVT_STATUS, { status: "finished" });
+    this.emit_acquisition_status({ status: "finished" });
   }
 
   async stop_acquisition() {

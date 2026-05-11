@@ -37,7 +37,7 @@
       >
         <div
           id="panel_left"
-          class="bg-vivi-500 shadow-box relative col-span-1 min-h-0 overflow-hidden px-6 pt-6 pb-0"
+          class="bg-app-500 shadow-box relative col-span-1 min-h-0 overflow-hidden px-6 pt-6 pb-0"
         >
           <div
             id="connection"
@@ -63,6 +63,9 @@
                 <div class="flex items-center gap-2">
                   <input
                     id="TB_sampling"
+                    type="number"
+                    min="0"
+                    step="any"
                     value="400"
                     class="flex h-9 w-full items-center justify-center"
                   />
@@ -88,7 +91,7 @@
 
               <div
                 id="scroll-indicator"
-                class="text-vivi-500 border-vivi-500 pointer-events-none absolute bottom-2 left-1/2 z-30 h-7 w-7 -translate-x-1/2 animate-bounce rounded-full border bg-white text-center text-lg"
+                class="text-app-500 border-app-500 pointer-events-none absolute bottom-2 left-1/2 z-30 h-7 w-7 -translate-x-1/2 animate-bounce rounded-full border bg-white text-center text-lg"
               >
                 ↓
               </div>
@@ -105,7 +108,7 @@
 
           <div
             id="busy_left"
-            class="bg-vivi-500/50 pointer-events-none absolute inset-0 z-50 flex flex-col items-center justify-center rounded-xl opacity-0 backdrop-blur-sm transition-opacity duration-300"
+            class="bg-app-500/50 pointer-events-none absolute inset-0 z-50 flex flex-col items-center justify-center rounded-xl opacity-0 backdrop-blur-sm transition-opacity duration-300"
           >
             <div id="busy_left_status" class="text-center text-white">
               Acquisition in Progress...
@@ -135,6 +138,9 @@
                   <label class="col-span-3 text-sm"># FFT Samples </label>
                   <input
                     id="TB_NUM_FFT"
+                    type="number"
+                    min="16"
+                    step="1"
                     value="1024"
                     class="col-span-2 h-7 rounded border border-slate-200 text-center text-sm hover:border-slate-400"
                   />
@@ -144,6 +150,9 @@
                   <label class="col-span-3 text-sm"># Average </label>
                   <input
                     id="TB_NUM_AVE"
+                    type="number"
+                    min="1"
+                    step="1"
                     value="1"
                     class="col-span-2 h-7 rounded border border-slate-200 text-center text-sm hover:border-slate-400"
                   />
@@ -153,6 +162,9 @@
                   <label class="col-span-3 text-sm">Acquisition (s) </label>
                   <input
                     id="TB_acquireTime"
+                    type="number"
+                    min="0"
+                    step="1"
                     value="120"
                     class="col-span-2 h-7 rounded border border-slate-200 text-center text-sm hover:border-slate-400"
                   />
@@ -162,6 +174,9 @@
                   <label class="col-span-3 text-sm">Delay (s) </label>
                   <input
                     id="TB_delayTime"
+                    type="number"
+                    min="0"
+                    step="1"
                     value="0"
                     class="col-span-2 h-7 rounded border border-slate-200 text-center text-sm hover:border-slate-400"
                   />
@@ -178,7 +193,7 @@
                   <div class="h-3 w-full rounded-full bg-slate-200">
                     <div
                       id="progress"
-                      class="bg-vivi-500 animate-flicker h-full rounded-full transition-all duration-10"
+                      class="bg-app-500 animate-flicker h-full rounded-full transition-all duration-10"
                       style="width: 0%"
                     ></div>
                   </div>
@@ -212,7 +227,7 @@
           </div>
           <div
             id="busy_right"
-            class="bg-vivi-500/50 pointer-events-none absolute inset-0 z-50 flex flex-col items-center justify-center rounded-xl opacity-0 backdrop-blur-xs transition-opacity duration-300"
+            class="bg-app-500/50 pointer-events-none absolute inset-0 z-50 flex flex-col items-center justify-center rounded-xl opacity-0 backdrop-blur-xs transition-opacity duration-300"
           >
             <div class="text-white">Connect to a Device to Continue...</div>
           </div>
@@ -236,7 +251,7 @@
               </div>
             </div>
 
-            <div class="border-vivi-800 my-auto border-r px-4">
+            <div class="border-app-800 my-auto border-r px-4">
               <div class="grid grid-cols-[auto_minmax(0,1fr)] gap-2">
                 <div class="my-auto">
                   <div id="div_log_status" class="w-full truncate">
@@ -294,7 +309,7 @@
           <div class="adc_name">ADC X</div>
           <div>
             <label>Label:</label>
-            <input class="w-20" value="Ch 1" />
+            <input class="w-20" type="text" value="Ch 1" />
           </div>
           <button
             class="collapse-btn flex h-5 w-5 items-center justify-center rounded-full p-0"

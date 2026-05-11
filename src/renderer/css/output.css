@@ -47,12 +47,11 @@
     --default-mono-font-family: var(--font-mono);
     --color-background: #010f0f;
     --color-panel-50: #faf8f4;
-    --color-vivi-500: #058b8c;
-    --color-vivi-800: #023636;
     --color-app-400: #08d4d4;
     --color-app-500: #058b8c;
     --color-app-600: #047171;
     --color-app-700: #035454;
+    --color-app-800: #023636;
     --color-app-900: #011e1e;
   }
 }
@@ -536,14 +535,23 @@
     border-right-style: var(--tw-border-style);
     border-right-width: 1px;
   }
+  .border-app-500 {
+    border-color: var(--color-app-500);
+  }
+  .border-app-800 {
+    border-color: var(--color-app-800);
+  }
   .border-slate-200 {
     border-color: var(--color-slate-200);
   }
-  .border-vivi-500 {
-    border-color: var(--color-vivi-500);
+  .bg-app-500 {
+    background-color: var(--color-app-500);
   }
-  .border-vivi-800 {
-    border-color: var(--color-vivi-800);
+  .bg-app-500\/50 {
+    background-color: color-mix(in srgb, #058b8c 50%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      background-color: color-mix(in oklab, var(--color-app-500) 50%, transparent);
+    }
   }
   .bg-black {
     background-color: var(--color-black);
@@ -556,15 +564,6 @@
   }
   .bg-slate-200 {
     background-color: var(--color-slate-200);
-  }
-  .bg-vivi-500 {
-    background-color: var(--color-vivi-500);
-  }
-  .bg-vivi-500\/50 {
-    background-color: color-mix(in srgb, #058b8c 50%, transparent);
-    @supports (color: color-mix(in lab, red, red)) {
-      background-color: color-mix(in oklab, var(--color-vivi-500) 50%, transparent);
-    }
   }
   .bg-white {
     background-color: var(--color-white);
@@ -659,8 +658,8 @@
     --tw-font-weight: var(--font-weight-semibold);
     font-weight: var(--font-weight-semibold);
   }
-  .text-vivi-500 {
-    color: var(--color-vivi-500);
+  .text-app-500 {
+    color: var(--color-app-500);
   }
   .text-white {
     color: var(--color-white);

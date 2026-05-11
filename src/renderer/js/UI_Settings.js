@@ -70,7 +70,10 @@ class UI_SettingManager extends UI_Manager {
       gain: gain,
     };
 
-    window.api_setting.setAllGain(data);
+    window.api_vivi.add_request({
+      type: "set_all_gain",
+      data: data,
+    });
   }
 
   register_handler_sampling() {
@@ -216,7 +219,10 @@ class UI_SettingManager extends UI_Manager {
       buffer: buffer,
     };
 
-    window.api_setting.setADC(data);
+    window.api_vivi.add_request({
+      type: "set_adc",
+      data: data,
+    });
     this.print("Setting ADCs");
   }
 
@@ -226,7 +232,10 @@ class UI_SettingManager extends UI_Manager {
       this.sampling = 400;
     }
 
-    window.api_setting.setSampling(this.sampling);
+    window.api_vivi.add_request({
+      type: "set_sampling",
+      value: this.sampling,
+    });
     this.print("Setting sampling");
   }
 
