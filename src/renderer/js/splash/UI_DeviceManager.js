@@ -1,5 +1,6 @@
 import { UI_SplashManager } from "../../../../node_modules/instrument-ui/src/renderer/js/splash/UI_SplashManager.js";
 import { UI_ConnectionManager } from "../../../../node_modules/instrument-ui/src/renderer/js/splash/UI_Connection.js";
+import { instrumentTemplateUrl } from "../../../../node_modules/instrument-ui/src/renderer/js/util/package_urls.js";
 
 const t_interval = 100;
 const verbose = true;
@@ -23,7 +24,7 @@ function print(message, header = "device_manager.js") {
 export class UI_DeviceManager extends UI_SplashManager {
   constructor() {
     super(
-      "./templates/template_devicemanager.html",
+      instrumentTemplateUrl("template_devicemanager.html"),
       "device_manager",
       "PB_device_manager",
       "PB_device_manager_close",
@@ -33,6 +34,8 @@ export class UI_DeviceManager extends UI_SplashManager {
   }
 
   async _initialize(config) {
+    document.getElementById("panel_logo")?.classList.add("bg-vivi-500");
+
     const col_count = 2;
     const container = document.getElementById("connection-container");
     container.classList.remove("grid-cols-2", "grid-cols-3", "grid-cols-4");

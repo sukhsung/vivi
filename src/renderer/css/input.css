@@ -1,5 +1,7 @@
 @import "tailwindcss";
-@import "../../../node_modules/instrument-ui/src/renderer/css/fonts.css";
+@import "../../../node_modules/instrument-ui/src/renderer/css/base.css";
+@import "../../../node_modules/instrument-ui/src/renderer/css/components.css";
+@import "../../../node_modules/instrument-ui/src/renderer/css/keyboard.css";
 
 @source "../../../node_modules/instrument-ui/src/renderer/templates";
 @source "../../../node_modules/instrument-ui/src/renderer/js";
@@ -7,9 +9,11 @@
 @theme {
   --font-sans: "Satoshi", sans-serif;
 
-  --color-sand-50: #faf8f4;
-  --color-sand-100: #f5f1eb;
-  --color-sand-950: #1c1a16;
+  --color-background: #010f0f;
+
+  --color-panel-50: #faf8f4;
+  --color-panel-100: #f5f1eb;
+  --color-panel-950: #1c1a16;
 
   --color-vivi-50: #ddfefe;
   --color-vivi-100: #bafdfd;
@@ -22,105 +26,18 @@
   --color-vivi-800: #023636;
   --color-vivi-900: #011e1e;
   --color-vivi-950: #010f0f;
-}
 
-@layer base {
-  * {
-    -electron-corner-smoothing: 60%;
-  }
-
-  html:not(.touch-mode) button:hover {
-    @apply bg-vivi-500 text-white shadow-lg;
-  }
-
-  body {
-    @apply bg-vivi-950 grid h-screen grid-rows-[40px_1fr] px-4 pt-0 pb-4;
-  }
-
-  button {
-    @apply bg-sand-50 items-center justify-center rounded-md border border-slate-200 px-4 py-2 text-center text-sm shadow-sm transition-all;
-    @apply active:bg-vivi-700 active:text-white active:shadow-none;
-    @apply disabled:pointer-events-none disabled:opacity-50;
-  }
-
-  select {
-    @apply h-8 rounded border border-slate-200 bg-transparent py-0 py-2 pr-8 pl-3 text-sm text-black shadow-sm transition-all;
-    @apply hover:border-slate-400;
-    @apply focus:border-slate-400;
-    @apply disabled:opacity-50;
-  }
-
-  label {
-    @apply mb-1 text-sm text-slate-800;
-  }
-
-  input {
-    @apply h-7 rounded border border-slate-200 text-center text-sm;
-    @apply shadow-sm hover:border-slate-400;
-    @apply border-none disabled:opacity-50;
-  }
-  /* Hide spinners in Chrome, Safari, Edge, Electron (Chromium) */
-  input[type="number"]::-webkit-inner-spin-button,
-  input[type="number"]::-webkit-outer-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
-  }
-
-  /* Hide spinners in Firefox */
-  input[type="number"] {
-    -moz-appearance: textfield;
-  }
-}
-
-/* Title Bar */
-@layer components {
-  .title-bar {
-    -webkit-app-region: drag;
-    @apply relative flex flex-none items-center;
-  }
-
-  .title-text {
-    @apply absolute left-1/2 -translate-x-1/2 text-sm font-medium text-white/60 select-none;
-  }
-
-  .win-btn {
-    @apply bg-vivi-900 mx-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-0 p-0 text-xs text-white/50 shadow-none transition-colors;
-    -webkit-app-region: no-drag;
-    &:hover {
-      @apply bg-vivi-700 text-white;
-    }
-  }
-
-  .win-btn-close:hover {
-    @apply bg-red-700 text-white;
-  }
-}
-
-/* Splash */
-@layer components {
-  .splash {
-    @apply fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.2s ease;
-  }
-
-  .splash.splash-open {
-    opacity: 1;
-    pointer-events: auto;
-  }
-
-  .splash-close {
-    @apply bg-vivi-500 absolute top-5 right-5 mx-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-white/40 p-0 text-xs text-white/50 shadow-none transition-colors;
-  }
-
-  .splash-close:hover {
-    @apply text-white;
-  }
-
-  .splash-box {
-    @apply bg-vivi-500 relative rounded-4xl px-15 py-15;
-  }
+  --color-app-50: #ddfefe;
+  --color-app-100: #bafdfd;
+  --color-app-200: #70fafa;
+  --color-app-300: #2bf7f7;
+  --color-app-400: #08d4d4;
+  --color-app-500: #058b8c;
+  --color-app-600: #047171;
+  --color-app-700: #035454;
+  --color-app-800: #023636;
+  --color-app-900: #011e1e;
+  --color-app-950: #010f0f;
 }
 
 @layer components {
@@ -128,19 +45,6 @@
     @apply hover:bg-pink-700 hover:text-white hover:shadow-lg;
     @apply focus:bg-pink-700 focus:text-white focus:shadow-none;
     @apply disabled:opacity-50 disabled:shadow-none;
-  }
-
-  .shadow-box {
-    @apply rounded-xl shadow-lg outline outline-black/5;
-  }
-
-  .tab {
-    @apply relative rounded-lg border border-transparent px-4 py-2 text-sm text-gray-700 transition-all duration-300 select-none;
-    @apply hover:border-vivi-500;
-  }
-
-  .tab_active {
-    @apply bg-vivi-500 rounded-lg border-transparent text-white;
   }
 
   .tab_black {
@@ -163,166 +67,3 @@
     animation: flicker 2s infinite;
   }
 }
-
-@layer components {
-  #PB_keyboard .keyboard-icon-off {
-    display: none;
-  }
-  #PB_keyboard.keyboard-off .keyboard-icon-on {
-    display: none;
-  }
-  #PB_keyboard.keyboard-off .keyboard-icon-off {
-    display: block;
-  }
-
-  .numpad {
-    position: fixed;
-    z-index: 9999;
-    width: 300px;
-    padding: 0.625rem;
-    @apply bg-sand-50 rounded-xl shadow-xl outline outline-black/10;
-  }
-
-  .numpad-header {
-    display: flex;
-    justify-content: flex-end;
-    margin-bottom: 0.375rem;
-  }
-
-  .numpad-close {
-    @apply border-0 bg-transparent px-3 py-1.5 text-lg text-slate-400 shadow-none;
-    &:hover {
-      @apply bg-slate-100 text-slate-700 shadow-none;
-    }
-    &:active {
-      @apply bg-slate-200 shadow-none;
-    }
-  }
-
-  .numpad-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 0.5rem;
-  }
-
-  .numpad-btn {
-    @apply px-0 py-4 text-xl shadow-none;
-  }
-
-  .numpad-action {
-    @apply text-vivi-600 font-medium;
-  }
-
-  .numpad-zero {
-    grid-column: span 2;
-  }
-
-  .numpad-enter {
-    grid-column: span 2;
-    @apply bg-vivi-500 border-vivi-600 text-white;
-    &:hover {
-      @apply bg-vivi-400;
-    }
-    &:active {
-      @apply bg-vivi-700;
-    }
-  }
-
-  .keyboard-buffer-inline {
-    flex: 1;
-    min-width: 0;
-    @apply rounded-lg bg-transparent px-3 py-2;
-  }
-
-  .keyboard-buffer-inline-value {
-    min-height: 1.5rem;
-    @apply truncate text-lg font-semibold text-slate-950;
-  }
-
-  /* ── QWERTY keyboard ── */
-  .qwerty {
-    position: fixed;
-    z-index: 9999;
-    width: 500px;
-    padding: 0.625rem;
-    @apply bg-sand-50 rounded-xl shadow-xl outline outline-black/10;
-  }
-
-  .qwerty-header {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin-bottom: 0.5rem;
-  }
-
-  .qwerty-close {
-    @apply border-0 bg-transparent px-3 py-1.5 text-lg text-slate-400 shadow-none;
-    &:hover {
-      @apply bg-slate-100 text-slate-700 shadow-none;
-    }
-    &:active {
-      @apply bg-slate-200 shadow-none;
-    }
-  }
-
-  .qwerty-row {
-    display: flex;
-    gap: 4px;
-    margin-bottom: 4px;
-    &:last-child {
-      margin-bottom: 0;
-    }
-  }
-
-  .qwerty-row-center {
-    justify-content: center;
-  }
-  .qwerty-row-bottom {
-    margin-top: 4px;
-  }
-
-  .qwerty-key {
-    flex: 1;
-    @apply min-w-0 px-0 py-4 text-xl shadow-none;
-  }
-
-  .qwerty-wide {
-    flex: 1.5;
-    @apply min-w-0 px-0 py-4 text-xl shadow-none;
-  }
-
-  .qwerty-space {
-    flex: 4;
-    @apply min-w-0 px-0 py-4 text-xl shadow-none;
-  }
-
-  .qwerty-action {
-    @apply text-vivi-600 font-medium;
-  }
-
-  .qwerty-enter {
-    @apply bg-vivi-500 border-vivi-600 text-white;
-    &:hover {
-      @apply bg-vivi-400;
-    }
-    &:active {
-      @apply bg-vivi-700;
-    }
-  }
-
-  /* Shift state */
-  .qwerty-key .qu {
-    display: none;
-  }
-  #qwerty.shifted .qwerty-key .ql {
-    display: none;
-  }
-  #qwerty.shifted .qwerty-key .qu {
-    display: inline;
-  }
-  #qwerty.shifted .qwerty-shift {
-    @apply bg-vivi-500 border-vivi-600 text-white;
-  }
-}
-
-@source inline('{sm:,md:,lg:,xl:,}grid-cols-{1,2,3,4,5,6,7,8,9,10,11,12}');

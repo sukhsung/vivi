@@ -1,5 +1,4 @@
 @import "tailwindcss";
-@import "../../../node_modules/instrument-ui/src/renderer/css/fonts.css";
 
 @source "../../../node_modules/instrument-ui/src/renderer/templates";
 @source "../../../node_modules/instrument-ui/src/renderer/js";
@@ -7,9 +6,11 @@
 @theme {
   --font-sans: "Satoshi", sans-serif;
 
-  --color-sand-50: #faf8f4;
-  --color-sand-100: #f5f1eb;
-  --color-sand-950: #1c1a16;
+  --color-background: #010f0f;
+
+  --color-panel-50: #faf8f4;
+  --color-panel-100: #f5f1eb;
+  --color-panel-950: #1c1a16;
 
   --color-vivi-50: #ddfefe;
   --color-vivi-100: #bafdfd;
