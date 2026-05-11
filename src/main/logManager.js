@@ -4,7 +4,7 @@ import fs from "node:fs";
 
 export class LogManager extends LogManagerBase {
   constructor(verbose) {
-    super(verbose, "vivi");
+    super(verbose, path.join("Desktop", "vivi-log"));
     this.f_csv = null;
     this.f_json = null;
     this.f_fft = null;
@@ -82,14 +82,20 @@ export class LogManager extends LogManagerBase {
     this.f_json.write(JSON.stringify(metadata, null, 2));
     this.f_json.end();
 
-    this.emit(this.api_log.EVT_STATUS, { status: "started", fname: this.fname });
+    this.emit(this.api_log.EVT_STATUS, {
+      status: "started",
+      fname: this.fname,
+    });
   }
 
   stop_log() {
     if (!this.f_csv || !this.f_fft) return;
     this.f_csv.end();
     this.f_fft.end();
-    this.emit(this.api_log.EVT_STATUS, { status: "finished", fname: this.fname });
+    this.emit(this.api_log.EVT_STATUS, {
+      status: "finished",
+      fname: this.fname,
+    });
   }
 
   transpose(matrix) {
