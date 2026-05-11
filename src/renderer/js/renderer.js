@@ -9,9 +9,13 @@ import { UI_LiveviewManager } from "./UI_LiveView.js";
 import { UI_WaterfallManager } from "./UI_Waterfall.js";
 import { UI_TerminalManager } from "./splash/UI_Terminal.js";
 import { UI_KeyboardManager } from "../../../node_modules/instrument-ui/src/renderer/js/UI_Keyboard.js";
+import { make_printer } from "../../../node_modules/instrument-ui/src/common/printer.js";
 
 const verbose = true;
+
 let CONFIG = {};
+
+// UI managers own renderer state and DOM updates.
 const device_manager = new UI_DeviceManager();
 const vivi_manager = new UI_ViviManager(verbose);
 const path_manager = new UI_PathManager();
@@ -24,12 +28,9 @@ const terminal_manager = new UI_TerminalManager();
 let info_manager;
 const keyboard_manager = new UI_KeyboardManager();
 
-function print(message, header = "renderer.js") {
-  if (verbose) {
-    console.log(`${header}`, message);
-  }
-}
+const print = make_printer(verbose, "renderer", false);
 
+// Initial renderer setup.
 async function initialize() {
   CONFIG = await window.api_app.get_config();
   const APP_INFO = await window.api_app.get_info();
@@ -46,19 +47,8 @@ async function initialize() {
   await keyboard_manager.initialize();
 }
 
-window.addEventListener("load", async () => {
-  document
-    .getElementById("PB_win_min")
-    .addEventListener("click", () => window.api_window.minimize());
-  document
-    .getElementById("PB_win_max")
-    .addEventListener("click", () => window.api_window.maximize());
-  document
-    .getElementById("PB_win_close")
-    .addEventListener("click", () => window.api_window.close());
-
-  await initialize();
-
+// Renderer-local UI events.
+function attachUIListeners() {
   acquisition_manager.addEventListener("start-view", () => {
     const NUM_FFT = acquisition_manager.NUM_FFT;
     const NUM_AVE = acquisition_manager.NUM_AVE;
@@ -77,6 +67,7 @@ window.addEventListener("load", async () => {
       labels,
     );
   });
+
   acquisition_manager.addEventListener("start-acquire", () => {
     const NUM_FFT = acquisition_manager.NUM_FFT;
     const NUM_AVE = acquisition_manager.NUM_AVE;
@@ -96,13 +87,33 @@ window.addEventListener("load", async () => {
       labels,
     );
   });
+}
+
+function attachWindowControls() {
+  document
+    .getElementById("PB_win_min")
+    .addEventListener("click", () => window.api_window.minimize());
+  document
+    .getElementById("PB_win_max")
+    .addEventListener("click", () => window.api_window.maximize());
+  document
+    .getElementById("PB_win_close")
+    .addEventListener("click", () => window.api_window.close());
+}
+
+// App startup wires DOM controls after the document is available.
+window.addEventListener("load", async () => {
+  attachWindowControls();
+  await initialize();
+  attachUIListeners();
 });
 
+// Main-process events.
 window.api_vivi.evt_connection((data) => {
   if (data.connected) {
     print("received connected");
     vivi_manager.received_connected();
-    console.log(data);
+    print(data);
     setting_manager.create_ADC_settings(data.device_info.NUM_CHANNELS);
     waterfall_manager.create_tabs(data.device_info.NUM_CHANNELS);
   } else {

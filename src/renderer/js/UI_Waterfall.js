@@ -167,7 +167,7 @@ class UI_WaterfallManager extends UI_Manager {
   }
 
   onclick_tab(idx) {
-    console.log(`Ch ${idx + 1} Activated`);
+    this.print(`Ch ${idx + 1} Activated`);
 
     for (let i = 0; i < this.NUM_CHANNELS; i++) {
       if (idx == i) {

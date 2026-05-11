@@ -4,6 +4,7 @@ import { ADCProtocol } from "./ADCProtocol.js";
 
 const BIPOLAR = 2;
 export const EVT_RAW_DATA = "vivi:raw-data";
+export const EVT_ACQUIRE_START = "vivi:acquire-start";
 
 export class ADC8Manager extends DeviceManager {
   constructor(verbose = false) {
@@ -98,7 +99,7 @@ export class ADC8Manager extends DeviceManager {
     const parts = response.split(" ");
     this.settings.sampling = parseFloat(parts[parts.length - 2]);
     this.settings.sampling = this.settings.sampling;
-    this.log(`Sampling set to ${this.settings.sampling} Hz`);
+    this.print(`Sampling set to ${this.settings.sampling} Hz`);
     this.emit_settings(this.settings);
   }
 
@@ -137,7 +138,7 @@ export class ADC8Manager extends DeviceManager {
   }
 
   async update_settings() {
-    this.log("Updating status");
+    this.print("Updating status");
 
     // flush
     await this.device.read_all();
@@ -152,7 +153,7 @@ export class ADC8Manager extends DeviceManager {
         const line_part = line.split(": ");
         const ch = parseInt(line_part[0].split(" ").pop());
 
-        this.log(line_part[1]);
+        this.print(line_part[1]);
         const settings = line_part[1].split(", ");
 
         this.settings.adcs[ch - 1].gain = parseInt(
@@ -179,7 +180,7 @@ export class ADC8Manager extends DeviceManager {
     this.STOP = false;
 
     // Delay Logic
-    this.log(`Delay for ${t_delay}s`);
+    this.print(`Delay for ${t_delay}s`);
     this.emit_acquisition_status({ status: "delay" });
 
     let delay = true;
@@ -201,7 +202,7 @@ export class ADC8Manager extends DeviceManager {
       }
 
       if (this.STOP) {
-        this.log("Acquisition Termination Requested");
+        this.print("Acquisition Termination Requested");
         break;
       }
     }
@@ -236,7 +237,7 @@ export class ADC8Manager extends DeviceManager {
     } else if (sig === "ADC8x-1.") {
       chans = hdr.data;
     } else {
-      this.log("Invalid header received, transfer aborted", undefined, "r");
+      this.print("Invalid header received, transfer aborted");
       this._write_buffer(Buffer.from("\n"));
       this.emit_acquisition_status({
         status: "error",
@@ -260,11 +261,11 @@ export class ADC8Manager extends DeviceManager {
     }
 
     if (num === 0) {
-      this.log("Header shows no active ADCs, transfer aborted", undefined, "r");
+      this.print("Header shows no active ADCs, transfer aborted");
       this._write_buffer(Buffer.from("\n"));
       return -1;
     } else {
-      this.log(`Header shows ${num} active ADCs`);
+      this.print(`Header shows ${num} active ADCs`);
     }
 
     const blocksize = num * 3;
@@ -295,25 +296,25 @@ export class ADC8Manager extends DeviceManager {
 
       const nBuf = await this.device.read(1);
       if (nBuf.length === 0) {
-        this.log("Timeout");
+        this.print("Timeout");
         break;
       }
 
       let n = nBuf[0];
       if (n === 0) {
-        this.log("End of data");
+        this.print("End of data");
         break;
       }
 
       const d = await this.device.read(n);
       if (d.length < n) {
-        this.log("Short data buffer received");
+        this.print("Short data buffer received");
         break;
       }
 
       if (n % blocksize !== 0) {
         if (!warned) {
-          this.log("Warning: Invalid buffer length", n);
+          this.print(`Warning: Invalid buffer length ${n}`);
           warned = true;
         }
         n -= n % blocksize;
@@ -339,7 +340,7 @@ export class ADC8Manager extends DeviceManager {
       total_blocks += Math.floor(n / blocksize);
 
       if (this.STOP) {
-        this.log("Acquisition Termination Requested");
+        this.print("Acquisition Termination Requested");
         break;
       }
     }
@@ -352,18 +353,38 @@ export class ADC8Manager extends DeviceManager {
       this.emit_acquisition_status({ status: "progress", value: 100 });
     }
 
-    this.log("Acquisition has finished");
+    this.print("Acquisition has finished");
     this.is_acquiring = false;
     this.emit_acquisition_status({ status: "finished" });
   }
 
   async stop_acquisition() {
-    this.log("Stopping Acquisition");
+    this.print("Stopping Acquisition");
     this.STOP = true;
     while (this.is_acquiring) {
-      this.log("Still Acquiring");
+      this.print("Still Acquiring");
       await this.sleep(300);
     }
     return;
+  }
+
+  async _process_request(request) {
+    if (!request?.type) return;
+    if (request.type === "set_sampling") {
+      await this.setSampling(request.value);
+    } else if (request.type === "set_adc") {
+      await this.setADC(request.data);
+    } else if (request.type === "set_all_gain") {
+      await this.setAllGain(request.data);
+    } else if (request.type === "start_acquisition") {
+      await this.update_labels(request.labels);
+      this.settings.NUM_FFT = request.NUM_FFT;
+      this.emit(EVT_ACQUIRE_START, request);
+      this.start_acquisition(request.t_acquire, request.t_delay);
+    } else if (request.type === "stop_acquisition") {
+      await this.stop_acquisition();
+    } else {
+      this.print(`Unknown request type: ${request.type}`);
+    }
   }
 }

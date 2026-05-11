@@ -1,9 +1,11 @@
 import { FFT } from "fftw-js";
 import { EventEmitter } from "node:events";
+import { make_printer } from "instrument-ui/main/util/printer.js";
 
 export class FFTManager extends EventEmitter {
-  constructor() {
+  constructor(verbose = 0) {
     super();
+    this.print = make_printer(verbose, "FFTManager");
     this.NUM_FFT = null;
     this.NUM_AVE = null;
     this.NUM_CHANNELS = null;
@@ -44,7 +46,7 @@ export class FFTManager extends EventEmitter {
   fft(data) {
     // Output format: [re0, im0, re1, im1, ..., reN, imN]
     if (data.length != this.NUM_FFT) {
-      this._print("FFT size is incorrect", undefined, "r");
+      this.print("FFT size is incorrect");
       return null;
     }
 
@@ -79,7 +81,7 @@ export class FFTManager extends EventEmitter {
     this.counter_live += 1;
     this.counter_ave += 1;
 
-    this._print("Counter " + this.counter_live);
+    this.print("Counter " + this.counter_live);
     if (this.counter_live == this.NUM_AVE) {
       this.emit("fft:live-data", { ffts: this.fft_live });
       this.reset_live();
@@ -94,30 +96,6 @@ export class FFTManager extends EventEmitter {
     }
 
     this.emit("fft:live-data", { ffts: this.fft_ave });
-  }
-
-  _print(message, header = this.constructor.name, color = "y") {
-    let col;
-    if (color === "r") {
-      col = "\x1b[31m";
-    } else if (color === "g") {
-      col = "\x1b[32m";
-    } else if (color === "y") {
-      col = "\x1b[33m";
-    }
-
-    if (this.verbose) {
-      message = message.split("\n");
-
-      if (message.length <= 1) {
-        console.log("\x1b[32m%s:\x1b[0m %s%s\x1b[0m", header, col, message[0]);
-      } else {
-        console.log("\x1b[32m%s:\x1b[0m", header);
-        message.forEach((m) => {
-          console.log("    %s%s\x1b[0m", col, m);
-        });
-      }
-    }
   }
 
   transpose(matrix) {

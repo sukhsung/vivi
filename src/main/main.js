@@ -1,100 +1,67 @@
-import { app, BrowserWindow, ipcMain, dialog, Menu, screen } from "electron";
+import { app, BrowserWindow, ipcMain } from "electron";
 
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-
-import { load_config, list_serial_ports } from "instrument-ui";
 import { FFTManager } from "./fftManager.js";
-import { ADC8Manager, EVT_RAW_DATA } from "./ADC8Manager.js";
+import { ADC8Manager, EVT_RAW_DATA, EVT_ACQUIRE_START } from "./ADC8Manager.js";
 import { LogManager } from "./logManager.js";
+import {
+  load_config,
+  list_serial_ports,
+  guardEPIPE,
+  registerOSSwitches,
+  registerApplicationMenu,
+  resolvePaths,
+  registerAppHandlers,
+  registerAppLifecycleHandlers,
+  registerWindowHandlers,
+  send_to_renderer,
+  make_printer,
+  createAbout,
+  createMainWindow,
+  registerMainWindowEvents,
+} from "instrument-ui";
 import CH from "../common/ipcChannels.js";
 
 const APP_VERSION = app.getVersion();
-const verbose = app.isPackaged ? 0 : 3;
+const verbose = app.isPackaged ? 0 : 2;
 const APP_INFO_URL = "hbarinstruments.com";
 const APP_INFO_COPYRIGHT = "© 2026 h-Bar Instruments";
 
-// Suppress EPIPE crashes when running without a terminal (packaged app)
-process.stdout.on("error", (err) => {
-  if (err.code !== "EPIPE") throw err;
-});
+// Process-level setup must run before windows or IPC handlers are registered.
+guardEPIPE();
+registerOSSwitches();
+registerApplicationMenu();
 
-if (process.platform === "linux") {
-  app.commandLine.appendSwitch("--no-zygote");
-}
-if (process.platform === "darwin") {
-  app.commandLine.appendSwitch("--use-mock-keychain");
-}
+// App-local paths follow the standard src/main, src/preload, src/renderer layout.
+const {
+  path_preload,
+  path_renderer_index,
+  path_terminal_index,
+  path_icon,
+  path_default_config,
+  url_app_ipc_channels,
+} = resolvePaths(import.meta.url);
 
-app.commandLine.appendSwitch("--password-store", "basic");
-
+const appConfig = load_config(path_default_config);
 const DEV_MODE = process.argv.includes("dev");
 
-const __filename = import.meta.url;
-const __dirname = path.dirname(fileURLToPath(__filename));
-
-const path_preload = path.join(__dirname, "..", "preload", "preload.js");
-const path_renderer = path.join(__dirname, "..", "renderer");
-const path_terminal = path.join(__dirname, "..", "terminal");
-const path_default_config = path.join(
-  __dirname,
-  "..",
-  "assets",
-  "default.config",
-);
-
-const appConfig = load_config("vivi", path_default_config);
-process.env.APP_IPC_CHANNELS = new URL(
-  "../common/appIpcChannels.js",
-  __filename,
-).href;
+process.env.APP_IPC_CHANNELS = url_app_ipc_channels;
 process.env.INSTRUMENT_UI_PRELOAD_COMMON = import.meta.resolve(
   "instrument-ui/preload/common.js",
 );
 
 let win;
-const fft_manager = new FFTManager();
+
+// Device and service managers own hardware, acquisition, and app-side state.
+const fft_manager = new FFTManager(verbose);
 const dev_manager = new ADC8Manager(verbose);
 const log_manager = new LogManager(verbose);
 
-function log(message, header = "main.js") {
-  if (verbose) {
-    console.log("\x1b[32m%s:\x1b[0m \x1b[33m%s\x1b[0m", header, message);
-  }
-}
+const print = make_printer(verbose, "main");
 
-function send_to_renderer(channel, data) {
-  if (win && !win.isDestroyed()) {
-    win.webContents.send(channel, data);
-  } else {
-    log("Window is already destroyed");
-  }
-}
-
-function registerAppHandlers() {
-  ipcMain.handle(CH.APP.GET_VERSION, () => APP_VERSION);
-  ipcMain.handle(CH.APP.GET_CONFIG, () => appConfig);
-  ipcMain.handle(CH.APP.GET_INFO, () => ({
-    url: APP_INFO_URL,
-    copyright: APP_INFO_COPYRIGHT,
-  }));
-}
-
-function registerWindowHandlers() {
-  ipcMain.on(CH.WINDOW.MINIMIZE, (event) => {
-    BrowserWindow.fromWebContents(event.sender)?.minimize();
-  });
-  ipcMain.on(CH.WINDOW.MAXIMIZE, (event) => {
-    const w = BrowserWindow.fromWebContents(event.sender);
-    if (w?.isMaximized()) w.unmaximize();
-    else w?.maximize();
-  });
-  ipcMain.on(CH.WINDOW.CLOSE, (event) => {
-    BrowserWindow.fromWebContents(event.sender)?.close();
-  });
-}
-
+// App-specific IPC and device events.
 function registerLogHandlers() {
+  log_manager.set_win(win);
+
   ipcMain.handle(CH.LOG.PATH_SELECT, async () => {
     return await log_manager.select_dir();
   });
@@ -115,7 +82,7 @@ function registerLogHandlers() {
   });
 
   log_manager.on(CH.LOG.EVT_STATUS, (data) => {
-    send_to_renderer(CH.LOG.EVT_STATUS, data);
+    send_to_renderer(win, CH.LOG.EVT_STATUS, data);
   });
 }
 
@@ -142,58 +109,35 @@ function registerConnectionHandlers() {
   });
 
   ipcMain.on(CH.VIVI.ADD_REQUEST, async (_evt, request) => {
-    await handleDeviceRequest(request);
+    await dev_manager._process_request(request);
   });
 
   dev_manager.on(CH.VIVI.EVT_CONNECTION, async (data) => {
     if (data.connected) {
-      log("Sending connected to renderer");
+      print("Sending connected to renderer");
     } else {
-      log("Sending disconnected to renderer");
+      print("Sending disconnected to renderer");
     }
-    send_to_renderer(CH.VIVI.EVT_CONNECTION, data);
+    send_to_renderer(win, CH.VIVI.EVT_CONNECTION, data);
   });
-}
-
-async function handleDeviceRequest(request) {
-  if (!request?.type) return;
-
-  if (request.type === "set_sampling") {
-    await dev_manager.setSampling(request.value);
-  } else if (request.type === "set_adc") {
-    await dev_manager.setADC(request.data);
-  } else if (request.type === "set_all_gain") {
-    await dev_manager.setAllGain(request.data);
-  } else if (request.type === "start_acquisition") {
-    startAcquisition(request);
-  } else if (request.type === "stop_acquisition") {
-    await dev_manager.stop_acquisition();
-  } else {
-    log(`Unknown device request type: ${request.type}`);
-  }
-}
-
-function startAcquisition(data) {
-  log("Requested to start");
-  dev_manager.update_labels(data.labels);
-  dev_manager.settings.NUM_FFT = data.NUM_FFT;
-  log_manager.start_log(data.t, dev_manager.settings);
-  fft_manager.initialize(
-    data.NUM_FFT,
-    dev_manager.device_info.NUM_CHANNELS,
-    data.NUM_AVE,
-  );
-
-  dev_manager.start_acquisition(data.t_acquire, data.t_delay);
 }
 
 function registerDeviceEventHandlers() {
+  dev_manager.on(EVT_ACQUIRE_START, (data) => {
+    log_manager.start_log(data.t, dev_manager.settings);
+    fft_manager.initialize(
+      data.NUM_FFT,
+      dev_manager.device_info.NUM_CHANNELS,
+      data.NUM_AVE,
+    );
+  });
+
   dev_manager.on(CH.VIVI.EVT_SETTINGS, (data) => {
-    send_to_renderer(CH.VIVI.EVT_SETTINGS, data);
+    send_to_renderer(win, CH.VIVI.EVT_SETTINGS, data);
   });
 
   dev_manager.on(CH.VIVI.EVT_STATUS, async (data) => {
-    send_to_renderer(CH.VIVI.EVT_STATUS, data);
+    send_to_renderer(win, CH.VIVI.EVT_STATUS, data);
     if (data["status"] === "finished") {
       await fft_manager.calc_ave();
       await log_manager.write_data_fft(fft_manager.fft_ave);
@@ -207,7 +151,7 @@ function registerDeviceEventHandlers() {
   });
 
   fft_manager.on("fft:live-data", (data) => {
-    send_to_renderer(CH.VIVI.EVT_STATUS, {
+    send_to_renderer(win, CH.VIVI.EVT_STATUS, {
       kind: "live-data",
       data: data.ffts,
     });
@@ -239,68 +183,39 @@ function openTerminal() {
   });
 
   termWin.setMenu(null);
-
-  termWin.loadFile(path.join(path_terminal, "terminal.html"));
+  termWin.loadFile(path_terminal_index);
 }
 
-function createWindow() {
-  const { width, height } = screen.getDisplayNearestPoint(
-    screen.getCursorScreenPoint(),
-  ).workAreaSize;
-
-  win = new BrowserWindow({
-    width,
-    height,
-    frame: false,
-    webPreferences: {
-      contextIsolation: true,
-      nodeIntegration: false,
-      preload: path_preload,
-      devTools: DEV_MODE || !app.isPackaged,
-      sandbox: true, // extra isolation
-      webSecurity: true, // enforce same-origin/CORS
-      disableBlinkFeatures: "Auxclick", // minor footgun
+// App startup wires the shared Electron shell to app-specific managers.
+app.whenReady().then(() => {
+  win = createMainWindow({
+    preload: path_preload,
+    renderer: path_renderer_index,
+    icon: path_icon,
+    devMode: DEV_MODE,
+    fillWorkArea: true,
+  });
+  registerMainWindowEvents({
+    win,
+    icon: path_icon,
+    onClosed: async () => {
+      await dev_manager.close();
+      await log_manager.close();
     },
   });
-  if (!DEV_MODE) win.setMenu(null);
-  win.maximize();
-
-  win.loadFile(path.join(path_renderer, "index.html"));
-  log_manager.set_win(win);
-
-  win.on("close", (e) => {
-    let response = dialog.showMessageBoxSync(win, {
-      type: "question",
-      buttons: ["No", "Yes"],
-      title: "Confirm",
-      message: "Are you sure you want to quit?",
-    });
-
-    if (response == 0) {
-      e.preventDefault();
-    } else {
-      log("Closing");
-    }
+  createAbout({
+    applicationName: "vivi",
+    copyright: APP_INFO_COPYRIGHT,
   });
-
-  win.on("closed", async () => {
-    await dev_manager.close();
-    await log_manager.close();
-    // Closing main window closes everything
-    app.quit();
+  registerAppHandlers({
+    version: APP_VERSION,
+    config: appConfig,
+    info: { url: APP_INFO_URL, copyright: APP_INFO_COPYRIGHT },
   });
-}
-
-app.whenReady().then(() => {
-  createWindow();
-  registerAppHandlers();
   registerConnectionHandlers();
+  registerLogHandlers();
   registerDeviceEventHandlers();
   registerTerminalHandlers();
-  registerLogHandlers();
   registerWindowHandlers();
-});
-
-app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") app.quit();
+  registerAppLifecycleHandlers();
 });

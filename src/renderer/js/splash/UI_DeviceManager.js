@@ -1,6 +1,7 @@
 import { UI_SplashManager } from "../../../../node_modules/instrument-ui/src/renderer/js/splash/UI_SplashManager.js";
 import { UI_ConnectionManager } from "../../../../node_modules/instrument-ui/src/renderer/js/splash/UI_Connection.js";
 import { instrumentTemplateUrl } from "../../../../node_modules/instrument-ui/src/renderer/js/util/package_urls.js";
+import { make_printer } from "../../../../node_modules/instrument-ui/src/common/printer.js";
 
 const t_interval = 100;
 const verbose = true;
@@ -15,11 +16,7 @@ const vivi_connection_manager = new UI_ConnectionManager(
   window.api_vivi,
 );
 
-function print(message, header = "device_manager.js") {
-  if (verbose) {
-    console.log(`${header}`, message);
-  }
-}
+const print = make_printer(verbose, "UI_DeviceManager", false);
 
 export class UI_DeviceManager extends UI_SplashManager {
   constructor() {
