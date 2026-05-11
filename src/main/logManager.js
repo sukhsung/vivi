@@ -12,9 +12,19 @@ export class LogManager extends LogManagerBase {
 
   async close() {
     this._print("Closing");
-    if (this.f_csv !== null) this.f_csv.end();
-    if (this.f_json !== null) this.f_json.end();
-    if (this.f_fft !== null) this.f_fft.end();
+    await Promise.all([
+      this.close_stream(this.f_csv),
+      this.close_stream(this.f_json),
+      this.close_stream(this.f_fft),
+    ]);
+  }
+
+  close_stream(stream) {
+    if (!stream || stream.closed || stream.destroyed) return Promise.resolve();
+    return new Promise((resolve) => {
+      stream.once("close", resolve);
+      stream.end();
+    });
   }
 
   write_data_raw(data) {
