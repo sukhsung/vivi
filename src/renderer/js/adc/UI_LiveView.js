@@ -1,4 +1,4 @@
-import { UI_Manager } from "../../../node_modules/instrument-ui/src/renderer/js/UI_Manager.js";
+import { UI_Manager } from "../../../../node_modules/instrument-ui/src/renderer/js/UI_Manager.js";
 
 export { UI_LiveviewManager };
 
@@ -13,7 +13,6 @@ class UI_LiveviewManager extends UI_Manager {
       div_livefft: "livefft",
       canvas: "canvas_live",
     });
-
 
     this.data = {};
     this.options = {

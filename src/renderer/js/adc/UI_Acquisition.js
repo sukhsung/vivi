@@ -1,4 +1,4 @@
-import { UI_Manager } from "../../../node_modules/instrument-ui/src/renderer/js/UI_Manager.js";
+import { UI_Manager } from "../../../../node_modules/instrument-ui/src/renderer/js/UI_Manager.js";
 export { UI_AcquisitionManager };
 
 class UI_AcquisitionManager extends UI_Manager {
@@ -23,7 +23,6 @@ class UI_AcquisitionManager extends UI_Manager {
     this.t_delay = parseInt(this.TB_delayTime.value);
     this.NUM_FFT = parseInt(this.TB_NUM_FFT.value);
     this.NUM_AVE = parseInt(this.TB_NUM_AVE.value);
-
 
     this.register_handler_NUM_FFT();
     this.register_handler_NUM_AVE();
@@ -55,7 +54,6 @@ class UI_AcquisitionManager extends UI_Manager {
     });
   }
 
-  
   register_handler_NUM_AVE() {
     this.TB_NUM_AVE.addEventListener("blur", () => {
       this.onchange_NUM_AVE();
@@ -92,12 +90,11 @@ class UI_AcquisitionManager extends UI_Manager {
     });
   }
 
-
   onchange_t_acquire() {
     this.t_acquire = parseInt(this.TB_acquireTime.value);
     if (isNaN(this.t_acquire)) {
       this.t_acquire = 120;
-    } else if (this.t_delay<1) {
+    } else if (this.t_delay < 1) {
       this.t_delay == 1;
     }
     this.TB_acquireTime.value = this.t_acquire.toString();
@@ -107,7 +104,7 @@ class UI_AcquisitionManager extends UI_Manager {
     this.t_delay = parseInt(this.TB_delayTime.value);
     if (isNaN(this.t_delay)) {
       this.t_delay = 5;
-    } else if (this.t_delay<0) {
+    } else if (this.t_delay < 0) {
       this.t_delay == 0;
     }
     this.TB_delayTime.value = this.t_delay.toString();
@@ -115,7 +112,7 @@ class UI_AcquisitionManager extends UI_Manager {
 
   onchange_NUM_AVE() {
     this.NUM_AVE = parseInt(this.TB_NUM_AVE.value);
-    if (this.NUM_AVE<1) {
+    if (this.NUM_AVE < 1) {
       this.NUM_AVE = 1;
     }
     this.TB_NUM_AVE.value = this.NUM_AVE.toString();
@@ -153,7 +150,7 @@ class UI_AcquisitionManager extends UI_Manager {
     }
   }
 
-  received_started( mode ) {
+  received_started(mode) {
     this.TB_NUM_FFT.disabled = true;
     this.TB_NUM_AVE.disabled = true;
     this.TB_acquireTime.disabled = true;
@@ -166,7 +163,7 @@ class UI_AcquisitionManager extends UI_Manager {
 
     if (mode === "acquire") {
       this.set_progress_mode("acquire");
-    } else if (mode ==="live") {
+    } else if (mode === "live") {
       this.set_progress_mode("live");
     }
   }
@@ -230,7 +227,7 @@ class UI_AcquisitionManager extends UI_Manager {
   update_progress(progress) {
     // this.progress.value = progress.toString();
     // const percent = (value / max) * 100;
-    if (this.mode === "acquire" || this.mode ==="delay") {
+    if (this.mode === "acquire" || this.mode === "delay") {
       this.progress.style.width = `${progress}%`;
     }
   }
@@ -239,24 +236,23 @@ class UI_AcquisitionManager extends UI_Manager {
     this.mode = mode;
     if (mode === "acquire") {
       this.progress.classList.remove("animate-flicker");
-      this.progress.classList.remove("bg-pink-700")
-      this.progress.classList.add("bg-app-500")
+      this.progress.classList.remove("bg-pink-700");
+      this.progress.classList.add("bg-app-500");
       this.progress.style.width = "0%"; // reset or update as needed
-    }
-    else if (mode === "delay"){
+    } else if (mode === "delay") {
       this.progress.classList.remove("animate-flicker");
-      this.progress.classList.remove("bg-app-500")
-      this.progress.classList.add("bg-pink-700")
+      this.progress.classList.remove("bg-app-500");
+      this.progress.classList.add("bg-pink-700");
       this.progress.style.width = "0%"; // reset or update as needed
     } else if (mode === "live") {
       this.progress.style.width = "100%"; // or any fixed value to show full bar
       this.progress.classList.add("animate-flicker");
-      this.progress.classList.remove("bg-pink-700")
-      this.progress.classList.add("bg-app-500")
+      this.progress.classList.remove("bg-pink-700");
+      this.progress.classList.add("bg-app-500");
     } else if (mode === "finished") {
       this.progress.classList.remove("animate-flicker");
-      this.progress.classList.remove("bg-pink-700")
-      this.progress.classList.add("bg-app-500")
+      this.progress.classList.remove("bg-pink-700");
+      this.progress.classList.add("bg-app-500");
       this.progress.style.width = "100%"; // reset or update as needed
     }
   }

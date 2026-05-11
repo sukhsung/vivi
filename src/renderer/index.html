@@ -303,60 +303,6 @@
         </div>
       </div>
     </div>
-    <template id="adc-setting-template">
-      <div
-        class="adc-setting shadow-box mb-2 grid gap-2 py-2 pr-2 pl-6 shadow-sm"
-      >
-        <!-- Top Row: Label + Collapse Button -->
-        <div class="flex items-center justify-between text-sm">
-          <div class="adc_name">ADC X</div>
-          <div>
-            <label>Label:</label>
-            <input class="w-20" type="text" value="Ch 1" />
-          </div>
-          <button
-            class="collapse-btn flex h-5 w-5 items-center justify-center rounded-full p-0"
-          >
-            <svg
-              class="h-4 w-4 transition-transform"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path d="M7 10l5 5 5-5H7z" />
-            </svg>
-          </button>
-        </div>
-
-        <!-- Collapsible Content -->
-        <div class="adc-settings-body flex hidden flex-col gap-2">
-          <!-- Gain -->
-          <div>
-            <label>Gain:</label>
-            <select class="h-7 p-1 text-sm"></select>
-          </div>
-
-          <!-- Polarity -->
-          <div>
-            <label>Polarity:</label>
-            <select class="h-7 p-1 text-sm">
-              <option>unipolar</option>
-              <option>bipolar</option>
-            </select>
-          </div>
-
-          <!-- Buffer -->
-          <div>
-            <label>Buffer:</label>
-            <select class="h-7 p-1 text-sm">
-              <option>unbuffered</option>
-              <option>buffered</option>
-            </select>
-          </div>
-        </div>
-      </div>
-    </template>
-
     <script src="js/renderer.js" type="module" defer></script>
   </body>
 </html>

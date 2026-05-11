@@ -1,6 +1,6 @@
 import { UI_Manager } from "../../../node_modules/instrument-ui/src/renderer/js/UI_Manager.js";
 
-export class UI_ViviManager extends UI_Manager {
+export class UI_PanelManager extends UI_Manager {
   constructor(verbose = false) {
     super(verbose);
   }
@@ -22,6 +22,7 @@ export class UI_ViviManager extends UI_Manager {
     this.toggle_panel_left("connection");
     this.toggle_panel_right("busy");
   }
+
   async received_connected() {
     this.toggle_panel_left("control");
     this.toggle_panel_right("viewer");

@@ -5,6 +5,7 @@
 
 @source "../../../node_modules/instrument-ui/src/renderer/templates";
 @source "../../../node_modules/instrument-ui/src/renderer/js";
+@source "../templates";
 
 @theme {
   --font-sans: "Satoshi", sans-serif;

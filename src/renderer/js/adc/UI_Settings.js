@@ -1,4 +1,4 @@
-import { UI_Manager } from "../../../node_modules/instrument-ui/src/renderer/js/UI_Manager.js";
+import { UI_Manager } from "../../../../node_modules/instrument-ui/src/renderer/js/UI_Manager.js";
 export { UI_SettingManager };
 
 const GAINS = [128, 64, 32, 16, 8, 1];
@@ -113,7 +113,7 @@ class UI_SettingManager extends UI_Manager {
     this.div_ADCs.innerHTML = "";
   }
 
-  create_ADC_settings(NUM_CHANNELS) {
+  async create_ADC_settings(NUM_CHANNELS) {
     this.NUM_CHANNELS = NUM_CHANNELS;
     this.CB_gains = [];
     this.CB_buffers = [];
@@ -123,7 +123,7 @@ class UI_SettingManager extends UI_Manager {
     this.labels = [];
     for (let i = 0; i < this.NUM_CHANNELS; i++) {
       const [div_adc, CB_gain, CB_polarity, CB_buffer, TB_label] =
-        this._create_ADC_setting(i + 1);
+        await this._create_ADC_setting(i + 1);
       this.div_ADCs.appendChild(div_adc);
       this.CB_gains.push(CB_gain);
       this.CB_buffers.push(CB_buffer);
@@ -178,8 +178,10 @@ class UI_SettingManager extends UI_Manager {
     this.update_scroll_visibility();
   }
 
-  _create_ADC_setting(channel) {
-    const template = document.getElementById("adc-setting-template");
+  async _create_ADC_setting(channel) {
+    const template = await this.import_template(
+      "./templates/template_adc_setting.html",
+    );
     const clone = template.content.cloneNode(true);
 
     const wrapper = clone.querySelector("div");

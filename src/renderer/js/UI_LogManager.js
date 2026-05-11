@@ -1,9 +1,9 @@
 import { UI_Manager } from "../../../node_modules/instrument-ui/src/renderer/js/UI_Manager.js";
-export { UI_PathManager };
+export { UI_LogManager };
 
-class UI_PathManager extends UI_Manager {
+class UI_LogManager extends UI_Manager {
   constructor() {
-    super()
+    super();
   }
 
   async initialize() {
@@ -49,5 +49,4 @@ class UI_PathManager extends UI_Manager {
   received_error() {
     this.TB_log.innerHTML = `Something Wrong`;
   }
-
 }

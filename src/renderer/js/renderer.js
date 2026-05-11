@@ -1,13 +1,15 @@
 import { UI_DeviceManager } from "./splash/UI_DeviceManager.js";
-import { UI_InfoManager } from "../../../node_modules/instrument-ui/src/renderer/js/splash/UI_InfoManager.js";
-import { UI_ViviManager } from "./UI_ViviManager.js";
-
-import { UI_PathManager } from "./UI_Path.js";
-import { UI_SettingManager } from "./UI_Settings.js";
-import { UI_AcquisitionManager } from "./UI_Acquisition.js";
-import { UI_LiveviewManager } from "./UI_LiveView.js";
-import { UI_WaterfallManager } from "./UI_Waterfall.js";
 import { UI_TerminalManager } from "./splash/UI_Terminal.js";
+import { UI_InfoManager } from "../../../node_modules/instrument-ui/src/renderer/js/splash/UI_InfoManager.js";
+
+import { UI_PanelManager } from "./UI_PanelManager.js";
+import { UI_LogManager } from "./UI_LogManager.js";
+
+import { UI_SettingManager } from "./adc/UI_Settings.js";
+import { UI_AcquisitionManager } from "./adc/UI_Acquisition.js";
+import { UI_LiveviewManager } from "./adc/UI_LiveView.js";
+import { UI_WaterfallManager } from "./adc/UI_Waterfall.js";
+
 import { UI_KeyboardManager } from "../../../node_modules/instrument-ui/src/renderer/js/UI_Keyboard.js";
 import { make_printer } from "../../../node_modules/instrument-ui/src/common/printer.js";
 
@@ -17,8 +19,8 @@ let CONFIG = {};
 
 // UI managers own renderer state and DOM updates.
 const device_manager = new UI_DeviceManager();
-const vivi_manager = new UI_ViviManager(verbose);
-const path_manager = new UI_PathManager();
+const vivi_manager = new UI_PanelManager(verbose);
+const log_manager = new UI_LogManager();
 const setting_manager = new UI_SettingManager(verbose);
 const acquisition_manager = new UI_AcquisitionManager();
 const liveview_manager = new UI_LiveviewManager();
@@ -37,7 +39,7 @@ async function initialize() {
   info_manager = new UI_InfoManager(APP_INFO.url, APP_INFO.copyright);
   await device_manager.initialize(CONFIG);
   await vivi_manager.initialize();
-  path_manager.initialize();
+  log_manager.initialize();
   setting_manager.initialize();
   acquisition_manager.initialize();
   liveview_manager.initialize();
@@ -109,12 +111,12 @@ window.addEventListener("load", async () => {
 });
 
 // Main-process events.
-window.api_vivi.evt_connection((data) => {
+window.api_vivi.evt_connection(async (data) => {
   if (data.connected) {
     print("received connected");
     vivi_manager.received_connected();
     print(data);
-    setting_manager.create_ADC_settings(data.device_info.NUM_CHANNELS);
+    await setting_manager.create_ADC_settings(data.device_info.NUM_CHANNELS);
     waterfall_manager.create_tabs(data.device_info.NUM_CHANNELS);
   } else {
     print("received disconnected");
@@ -153,11 +155,11 @@ window.api_vivi.evt_settings((data) => {
 
 window.api_log.evt_status((data) => {
   if (data.status === "started") {
-    path_manager.received_started(data.fname);
+    log_manager.received_started(data.fname);
   } else if (data.status === "finished") {
-    path_manager.received_finished(data.fname);
+    log_manager.received_finished(data.fname);
   } else {
-    path_manager.received_error();
+    log_manager.received_error();
   }
 });
 

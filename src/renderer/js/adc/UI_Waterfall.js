@@ -1,5 +1,5 @@
-import { UI_Manager } from "../../../node_modules/instrument-ui/src/renderer/js/UI_Manager.js";
-import { colormap } from "./util/colormap.js";
+import { UI_Manager } from "../../../../node_modules/instrument-ui/src/renderer/js/UI_Manager.js";
+import { colormap } from "../util/colormap.js";
 
 export { UI_WaterfallManager };
 
@@ -31,11 +31,10 @@ class UI_WaterfallManager extends UI_Manager {
     // Create an offscreen canvas with the ImageData size
     this.offscreen = document.createElement("canvas");
     this.ctx_off = this.offscreen.getContext("2d");
-
   }
 
-  create_tabs( NUM_CHANNELS ) {
-    this.NUM_CHANNELS = NUM_CHANNELS
+  create_tabs(NUM_CHANNELS) {
+    this.NUM_CHANNELS = NUM_CHANNELS;
     this.tabs = [];
 
     for (let i = 0; i < this.NUM_CHANNELS; i++) {
@@ -53,7 +52,7 @@ class UI_WaterfallManager extends UI_Manager {
 
   received_disconnected() {
     this.tabs = [];
-    this.div_tabList.innerHTML=""
+    this.div_tabList.innerHTML = "";
   }
 
   toggle_cmap() {
@@ -72,7 +71,6 @@ class UI_WaterfallManager extends UI_Manager {
 
     this.num_k = NUM_FFT / 2;
     this.num_t = Math.min(Math.round(this.num_k * this.aspect), 256);
-
 
     this.offscreen.width = this.num_t;
     this.offscreen.height = this.num_k;
