@@ -44,7 +44,7 @@ export class FFTManager extends EventEmitter {
   fft(data) {
     // Output format: [re0, im0, re1, im1, ..., reN, imN]
     if (data.length != this.NUM_FFT) {
-      console.log("FFT size is incorrect");
+      this._print("FFT size is incorrect", undefined, "r");
       return null;
     }
 

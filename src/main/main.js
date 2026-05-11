@@ -1,58 +1,55 @@
 import { app, BrowserWindow, ipcMain, dialog, Menu, screen } from "electron";
-import { createRequire } from "module";
-const _require = createRequire(import.meta.url);
-const { version: APP_VERSION } = _require("../../package.json");
 
 import path from "node:path";
-import fs from "node:fs";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 
-import { list_serial_ports } from "instrument-ui/main/util/list_serial_ports.js";
+import { load_config, list_serial_ports } from "instrument-ui";
 import { FFTManager } from "./fftManager.js";
 import { ADC8Manager, EVT_RAW_DATA } from "./ADC8Manager.js";
 import { LogManager } from "./logManager.js";
 import CH from "../common/ipcChannels.js";
-import { config as appConfig } from "./configManager.js";
 
+const APP_VERSION = app.getVersion();
 const verbose = app.isPackaged ? 0 : 3;
 const APP_INFO_URL = "hbarinstruments.com";
 const APP_INFO_COPYRIGHT = "© 2026 h-Bar Instruments";
 
+// Suppress EPIPE crashes when running without a terminal (packaged app)
+process.stdout.on("error", (err) => {
+  if (err.code !== "EPIPE") throw err;
+});
+
 if (process.platform === "linux") {
-  // app.commandLine.appendSwitch("gtk-version", "3");
   app.commandLine.appendSwitch("--no-zygote");
+}
+if (process.platform === "darwin") {
+  app.commandLine.appendSwitch("--use-mock-keychain");
 }
 
 app.commandLine.appendSwitch("--password-store", "basic");
 
 const DEV_MODE = process.argv.includes("dev");
 
-// Pre-resolve filenames
-function resolve_path(path) {
-  return pathToFileURL(path).href;
-}
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const path_main = __dirname;
+const __filename = import.meta.url;
+const __dirname = path.dirname(fileURLToPath(__filename));
 
-const path_preload = path.join(path_main, "..", "preload", "preload.js");
-const path_renderer = path.join(path_main, "..", "renderer");
-const path_ipcchannel = path.join(path_main, "..", "common", "ipcChannels.js");
-const path_app_ipcchannels = path.join(
-  path_main,
+const path_preload = path.join(__dirname, "..", "preload", "preload.js");
+const path_renderer = path.join(__dirname, "..", "renderer");
+const path_terminal = path.join(__dirname, "..", "terminal");
+const path_default_config = path.join(
+  __dirname,
   "..",
-  "common",
-  "appIpcChannels.js",
+  "assets",
+  "default.config",
 );
-const path_terminal = path.join(path_main, "..", "terminal");
-const path_icon = path.join(path_main, "..", "assets", "app-icon.png");
-process.env.IPC_CHANNEL = resolve_path(path_ipcchannel);
-process.env.APP_IPC_CHANNELS = resolve_path(path_app_ipcchannels);
-process.env.INSTRUMENT_UI_IPC_CHANNELS = resolve_path(
-  _require.resolve("instrument-ui/common/ipcChannels.js"),
-);
-process.env.INSTRUMENT_UI_PRELOAD_COMMON = resolve_path(
-  _require.resolve("instrument-ui/preload/common.js"),
+
+const appConfig = load_config("vivi", path_default_config);
+process.env.APP_IPC_CHANNELS = new URL(
+  "../common/appIpcChannels.js",
+  __filename,
+).href;
+process.env.INSTRUMENT_UI_PRELOAD_COMMON = import.meta.resolve(
+  "instrument-ui/preload/common.js",
 );
 
 let win;
@@ -68,7 +65,6 @@ function log(message, header = "main.js") {
 
 function send_to_renderer(channel, data) {
   if (win && !win.isDestroyed()) {
-    // console.log("Window is still alive");
     win.webContents.send(channel, data);
   } else {
     log("Window is already destroyed");
@@ -97,6 +93,7 @@ function registerWindowHandlers() {
     BrowserWindow.fromWebContents(event.sender)?.close();
   });
 }
+
 function registerLogHandlers() {
   ipcMain.handle(CH.LOG.PATH_SELECT, async () => {
     return await log_manager.select_dir();
@@ -133,7 +130,6 @@ function registerConnectionHandlers() {
   });
 
   ipcMain.on(CH.VIVI.CONNECT, async (_evt, data) => {
-    console.log("Received connect request with data:", data);
     await dev_manager.connect(data.protocol);
   });
 
@@ -255,7 +251,6 @@ function createWindow() {
   win = new BrowserWindow({
     width,
     height,
-    // icon: path_icon,
     frame: false,
     webPreferences: {
       contextIsolation: true,

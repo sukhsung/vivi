@@ -197,7 +197,7 @@ export class ADC8Manager extends DeviceManager {
       if (t_elapsed >= t_delay) {
         delay = false;
       } else {
-        await this._sleep(10, false);
+        await this.sleep(10, false);
       }
 
       if (this.STOP) {
@@ -362,7 +362,7 @@ export class ADC8Manager extends DeviceManager {
     this.STOP = true;
     while (this.is_acquiring) {
       this.log("Still Acquiring");
-      await this._sleep(300);
+      await this.sleep(300);
     }
     return;
   }
