@@ -13,7 +13,8 @@
     "start": "electron-forge start",
     "package": "electron-forge package",
     "make": "electron-forge make",
-    "dev": "electron-forge start -- dev"
+    "dev": "electron-forge start -- dev",
+    "postinstall": "patch-package"
   },
   "dependencies": {
     "binary-parser": "^2.2.1",
@@ -36,6 +37,7 @@
     "@tailwindcss/cli": "^4.2.2",
     "electron": "42.1.0",
     "node-abi": "4.31.0",
+    "patch-package": "^8.0.0",
     "prettier": "^3.5.3",
     "prettier-plugin-tailwindcss": "^0.6.14",
     "tailwindcss": "^4.2.2"
