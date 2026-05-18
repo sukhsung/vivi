@@ -47,7 +47,6 @@ class Terminal {
     } else if (message["func"] == "command_return") {
       this.print(message["value"]);
     } else if (message["type"] == "connected") {
-      console.log(message);
       if (message["value"]) {
         this.connect();
       } else {
@@ -79,7 +78,6 @@ class Terminal {
   print(msg) {
     var newDiv = document.createElement("div");
     this.div_result.appendChild(newDiv);
-    console.log(msg.length);
     msg = msg.split("\n");
     if (typeof msg == "string") {
       newDiv.innerHTML += msg + "</br>";
@@ -109,8 +107,6 @@ class Terminal {
         e.preventDefault();
         this.history_ind += 1;
         this.lineBuffer_history();
-      } else {
-        console.log(e);
       }
 
       this.div_input.innerHTML = this.line_buffer;
@@ -165,7 +161,6 @@ class Terminal {
   }
 
   async return_action(line) {
-    console.log("msg was:" + line);
     var msg = { origin: "terminal", func: "command", value: line };
     var res = await window.api_terminal.terminalCommand(msg);
     this.print(res);
